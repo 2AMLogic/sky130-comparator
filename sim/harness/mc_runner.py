@@ -33,12 +33,9 @@ import statistics
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, TypeVar
 
 from . import corners as corners_mod
 from . import evidence, measure, pdk, testbench, toolchain
-
-DrawT = TypeVar("DrawT")
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 
@@ -113,37 +110,33 @@ def _build_mc_netlist(
 
 
 def _draw_n(
-    one_draw_fn: Callable[[str, int, Path, str], DrawT],
+    manifest: testbench.Manifest,
+    pdk_info: pdk.PdkInfo,
     corner: str,
+    temp_c: float,
+    supply_v: float,
     seed: int,
     n: int,
     scratch_dir: Path,
     quiet: bool,
     log_prefix: str,
     label: str,
-    describe_fn: Callable[[DrawT], str],
-) -> list[DrawT]:
-    """Run n draws at a fixed corner, seeding rndseed=seed+i on each, via the
-    caller-supplied `one_draw_fn(corner, seed, scratch_dir, log_name) ->
-    Draw` callback, and return the resulting Draw list. Generalized in
-    sky130-sar-adc (that repo's issue #228) out of a single-caller helper
-    (issue #40) so a second, non-manifest-based caller
-    (sim/cdac-array-transfer/run_mc.py, in that repo) can reuse the same
-    seed-sequencing/print/scratch-dir scaffolding without adopting this
-    module's manifest-based netlist build + parse -- `one_draw_fn` supplies
-    that part, and `describe_fn` supplies the per-draw print suffix (each
-    caller's Draw shape differs, so this stays a callback rather than a
-    hardcoded field lookup). This repo has no such second caller yet; the
-    generalized shape is carried over unchanged from the port source.
+) -> list[Draw]:
+    """Run n draws at a fixed corner, seeding rndseed=seed+i on each: build
+    the MC netlist, run ngspice, parse the requested measurements, and
+    return the resulting Draw list.
     """
-    out: list[DrawT] = []
+    out: list[Draw] = []
     for i in range(n):
         this_seed = seed + i
         log_name = f"{log_prefix}_{i}"
-        draw = one_draw_fn(corner, this_seed, scratch_dir, log_name)
+        netlist = _build_mc_netlist(manifest, pdk_info, corner, temp_c, supply_v, this_seed)
+        log_text = toolchain.run_ngspice(netlist, scratch_dir, log_name)
+        parsed = measure.parse(log_text, list(manifest.measure.keys()))
+        draw = Draw(seed=this_seed, measures=parsed, log_text=log_text)
         out.append(draw)
         if not quiet:
-            print(f"  {label} {i} (seed={this_seed}, {corner}): {describe_fn(draw)}")
+            print(f"  {label} {i} (seed={this_seed}, {corner}): {draw.measures}")
     return out
 
 
@@ -170,24 +163,15 @@ def run(
     record_id = evidence.new_record_id()
     netlist_sha = evidence.sha256_file(manifest.netlist_fragment)
 
-    def one_draw(corner: str, this_seed: int, scratch_dir: Path, log_name: str) -> Draw:
-        netlist = _build_mc_netlist(manifest, info, corner, temp_c, supply_v, this_seed)
-        log_text = toolchain.run_ngspice(netlist, scratch_dir, log_name)
-        parsed = measure.parse(log_text, list(manifest.measure.keys()))
-        return Draw(seed=this_seed, measures=parsed, log_text=log_text)
-
-    def describe(draw: Draw) -> str:
-        return str(draw.measures)
-
     with tempfile.TemporaryDirectory(prefix="sim-harness-mc-") as scratch:
         scratch_dir = Path(scratch)
         draws = _draw_n(
-            one_draw, mismatch_corner, seed, n,
-            scratch_dir, quiet, log_prefix="draw", label="draw", describe_fn=describe,
+            manifest, info, mismatch_corner, temp_c, supply_v, seed, n,
+            scratch_dir, quiet, log_prefix="draw", label="draw",
         )
         negative_control_draws = _draw_n(
-            one_draw, process_corner, seed, n,
-            scratch_dir, quiet, log_prefix="neg", label="negative-control", describe_fn=describe,
+            manifest, info, process_corner, temp_c, supply_v, seed, n,
+            scratch_dir, quiet, log_prefix="neg", label="negative-control",
         )
 
     return McResult(
