@@ -1,0 +1,53 @@
+* comparator_core.spice -- PLACEHOLDER DUT for the comparator-decision
+* experiment plumbing (issue #9).
+*
+* THIS IS NOT THIS REPO'S OWN TOPOLOGY DECISION. spec/porting-plan.md's
+* "Next steps" item 1 (design/comparator.sch, sized from first principles
+* against sky130 device models, with its own decision record) is explicitly
+* OUT OF SCOPE for issue #9 -- see that issue's "Out of Scope" section. This
+* fragment exists only so run.py's regen/offset/noise driver has something
+* real to exercise end to end while no design/comparator.sch exists yet, the
+* same role sim/harness-corner-smoke/ and sim/mc-smoke/ play for the PVT/MC
+* harness (sim/README.md "Harness self-test experiments").
+*
+* Ported VERBATIM (devices, sizing, node names -- nothing adapted) from
+* 2AMLogic/sky130-sar-adc's sim/comparator-decision/testbench/
+* comparator_core.spice as it stood after that repo's issue #175 / DR-004
+* Amendment A reset-integrity fix (the pre-Amendment-A device set is known,
+* by that repo's own evidence records, to leave the latch at an unstable
+* mid-rail equilibrium during CLK=0 reset -- the amended set is the one
+* actually verified to hold reset at tt/27C/1.8V). Citing the fixed set
+* rather than the original one is a deliberate choice to avoid porting a
+* known-bad starting point for this repo's own future design, even though
+* the *topology itself* is still just a borrowed placeholder, not a decision.
+*
+* Ports: VDD, GND (auto-tied to node 0 by ngspice's built-in gnd-name
+* recognition), CLK, VINP, VINN, OUTP, OUTN. Internal nodes: TAIL, DIP, DIN.
+* Vin,diff = VINP - VINN > 0 => OUTP settles high.
+*
+* Every device is sky130_fd_pr__{n,p}fet_01v8 (1.8V core flavour, matching
+* this repo's own 1.8V headroom constraint per CLAUDE.md) -- no
+* _g5v0d10v5 or other non-core flavour instances.
+
+XM_TAIL TAIL CLK GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_INN DIP VINN TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_INP DIN VINP TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_LATN_P OUTP OUTN DIP GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_LATN_N OUTN OUTP DIN GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_LATP_P OUTP OUTN VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_LATP_N OUTN OUTP VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_RST_P OUTP CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1 ad=4.64 as=4.64 pd=32.58 ps=32.58 nrd=0.018125 nrs=0.018125 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_RST_N OUTN CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1 ad=4.64 as=4.64 pd=32.58 ps=32.58 nrd=0.018125 nrs=0.018125 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_RST_DIP DIP CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_RST_DIN DIN CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=4 nf=1 ad=1.16 as=1.16 pd=8.58 ps=8.58 nrd=0.0725 nrs=0.0725 sa=0 sb=0
++ sd=0 mult=1 m=1
