@@ -1,0 +1,40 @@
+{
+  "name": "harness-corner-smoke",
+  "description": "Harness acceptance test: ideal divider + diode-connected nfet_01v8 bias. Not a comparator circuit.",
+  "claim": "None -- harness self-verification, not a spec claim. Proves the PVT plumbing (vdd_val substitution, the process-corner .lib section, .temp) actually takes effect on real sky130 devices, so later records against this repo's own target-spec table (top-level README, DRAFT) can be trusted.",
+  "netlist_fragment": "harness_corner_smoke.spice",
+  "nominal_supply_v": 1.8,
+  "supply_tolerance": 0.1,
+  "temperatures_c": [-40, 27, 125],
+  "process_corners": ["tt", "ss", "ff", "sf", "fs"],
+  "measure": {
+    "vdiv_ratio": "v(ndiv)/v(vdd)",
+    "vdiv_abs": "v(ndiv)",
+    "vgs_nfet": "v(nbias)"
+  },
+  "checks": {
+    "vdiv_ratio": {
+      "min": 0.4999,
+      "max": 0.5001,
+      "max_spread_pct_by_axis": { "process": 0.001, "temperature": 0.001, "supply": 0.001 },
+      "description": "an ideal divider is exactly vdd/2 at every PVT point -- the invariant control. If this moves, the harness is perturbing something it should not."
+    },
+    "vdiv_abs": {
+      "min_spread_pct_by_axis": { "supply": 15.0 },
+      "max_spread_pct_by_axis": { "process": 0.001, "temperature": 0.001 },
+      "description": "the same divider in absolute volts must track the supply (+-10% -> ~20% spread) and must NOT move with process or temperature. Proves vdd_val substitution reaches the netlist and is the only thing the supply axis changes."
+    },
+    "vgs_nfet": {
+      "min": 0.3,
+      "max": 1.2,
+      "min_spread_pct_by_axis": { "process": 1.0, "temperature": 3.0 },
+      "description": "diode-connected nfet_01v8 Vgs at a fixed 10 uA bias. The per-axis floors prove the process-corner .lib section changes between corners AND that .temp is applied -- a grid-wide floor alone would pass with either one stuck. Empirically (tt/27C/1.8V, this repo's own bootstrap run, issue #8): see sim/harness-corner-smoke/records/ for the recorded values."
+    }
+  },
+  "evidence": {
+    "record_kind": "corner-matrix",
+    "notes": [
+      "Harness acceptance testbench (issue #8), ported from 2AMLogic/sky130-sar-adc's identical fixture (commit b80c144efbf467a586f728726cabb25c1eb5a1f2) -- same PDK, unchanged. The per-axis sensitivity floors here are this repo's guard against a corner runner that silently simulates typical everywhere; sim/selftest.sh re-runs this testbench with --sabotage-corners (process-corner .lib section forced to tt) and requires the process-axis floor to FAIL."
+    ]
+  }
+}

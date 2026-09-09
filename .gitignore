@@ -7,9 +7,12 @@ __pycache__/
 # ngspice BSIM4 parameter-check scratch file, written to the invocation cwd
 bsim4v5.out
 
-# sim/ harness: per-corner ngspice logs under corners/ are committed evidence
-# (append-only record trail), so they escape the *.log rule.
+# sim/ harness: the raw ngspice logs under corners/ (one per PVT point) and
+# mc-draws/ (one per Monte Carlo draw and per negative-control draw) are
+# committed evidence (append-only record trail, per sim/README.md), so
+# they escape the *.log rule above.
 !sim/*/corners/**/*.log
+!sim/*/mc-draws/**/*.log
 sim/build/
 design/build/
 # synthesis / P&R scratch
