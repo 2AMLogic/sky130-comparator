@@ -1,6 +1,9 @@
 """Parse `let <name> = <expr>` / `print <name>` output from an ngspice batch
 log into a {name: float} dict.
 
+Ported (issue #8) from 2AMLogic/sky130-sar-adc's sim/harness/measure.py
+(commit b80c144efbf467a586f728726cabb25c1eb5a1f2) -- unchanged logic.
+
 ngspice's `print <var>` (inside a .control block, after the var has been
 `let`) writes a line shaped exactly `name = 1.234500e+00` -- this is more
 robust across ngspice versions than `.measure`, which does not support the
