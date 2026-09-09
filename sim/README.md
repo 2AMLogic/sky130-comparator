@@ -102,18 +102,24 @@ claims**, and neither will ever substantiate a spec row:
   `tt` corner as the negative control.
 
 They exist because issue #8 stands the harness up *before* any comparator
-schematic exists. Once a real testbench lands (issue #9's
-`sim/comparator-decision/`-style experiment, per `spec/porting-plan.md`),
-it adds an experiment directory alongside these and reuses the same two
-runners unchanged; these two stay as the regression that proves the
-plumbing still works.
+schematic exists. `sim/comparator-decision/` (issue #9) has since landed
+alongside them — but it exercises a **placeholder DUT**, not a real
+`design/comparator.sch` (see `sim/comparator-decision/README.md`), and it is
+a bespoke driver reusing `sim/harness/{pdk,toolchain,evidence,corners}.py`
+directly rather than `sim/run_corners.py` / `sim/monte_carlo.py` (a dynamic
+latched comparator has no static `.op` operating point during regeneration —
+see that experiment's `run.py` module docstring for the full argument).
+`harness-corner-smoke/` and `mc-smoke/` stay as the regression that proves
+the *harness's own* PVT/MC plumbing still works, independent of whichever
+DUT `sim/comparator-decision/` currently exercises.
 
 ## Directory / naming convention
 
 ```
 sim/
   <experiment-slug>/                 # e.g. harness-corner-smoke, mc-smoke,
-                                     # comparator-decision (future, issue #9)
+                                     # comparator-decision (issue #9 --
+                                     # placeholder DUT, own bespoke run.py)
     testbench/
       tb.json                        # manifest: netlist fragment, PVT axes,
                                      # measurements, checks
