@@ -330,9 +330,10 @@ chain.
 
 ## Environment setup
 
-No `docs/environment-setup.md` exists in this repo yet (sky130-sar-adc and
-sky130-bandgap each have one, documenting the volare/xschem/ngspice install
-steps for their pinned versions above). Until one is written here, `sim/pdk.json`'s
-`install_command` and `sim/toolchain.json`'s pinned versions are the
-authoritative install target; `sim/run_corners.py --check-env` tells you
-whether the current machine matches them.
+See [`docs/environment-setup.md`](../docs/environment-setup.md) for the
+step-by-step volare/xschem/ngspice bootstrap against the pins above (a dated
+toolchain-versions table, the `sim/pdk.json` `install_command`, `sim/env.sh`
+usage, and a final `sim/run_corners.py --check-env` verification step).
+`sim/pdk.json`'s `install_command` and `sim/toolchain.json`'s pinned versions
+remain the authoritative install target; `sim/run_corners.py --check-env`
+tells you whether the current machine matches them.
