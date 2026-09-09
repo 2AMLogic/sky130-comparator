@@ -1,0 +1,23 @@
+{
+  "name": "mc-smoke",
+  "description": "Monte Carlo harness acceptance test: diode-connected nfet_01v8 mismatch. Not a comparator circuit.",
+  "claim": "None -- harness self-verification, not a spec claim. Proves the Monte Carlo plumbing (rndseed reproducibility, the tt_mm local-mismatch switch, and the deterministic negative control) actually takes effect on a real sky130 device, so later offset-sigma distribution records against this repo's own target-spec table (top-level README, DRAFT) can be trusted.",
+  "netlist_fragment": "mc_smoke.spice",
+  "nominal_supply_v": 1.8,
+  "supply_tolerance": 0.0,
+  "temperatures_c": [27],
+  "process_corners": ["tt"],
+  "measure": {
+    "vgs_nfet": "v(nbias)"
+  },
+  "checks": {
+    "vgs_nfet": {"min_stdev": 1e-6}
+  },
+  "evidence": {
+    "record_kind": "monte-carlo",
+    "notes": [
+      "Harness acceptance testbench (issue #8), ported from 2AMLogic/sky130-sar-adc's identical fixture (commit b80c144efbf467a586f728726cabb25c1eb5a1f2) -- same PDK, unchanged. The negative control (N draws at the plain 'tt' corner, mismatch disabled, same seed sequence as the 'real' tt_mm draws) must reproduce vgs_nfet EXACTLY (stdev == 0) -- see sim/harness/mc_runner.py's negative_control_ok() docstring for why a nonzero negative-control stdev invalidates the accompanying distribution.",
+      "The positive control requires the mismatch-ENABLED (tt_mm) draws' vgs_nfet stdev to exceed the min_stdev floor above -- 1e-6 V, comfortably below the mismatch-driven spread observed empirically in sky130-sar-adc's own port source and reconfirmed in this repo's own bootstrap run (issue #8; see sim/mc-smoke/records/), but strictly above zero, so a regression that silences MC_MM_SWITCH (collapsing both arms to stdev == 0) is caught even if floating-point noise alone would technically satisfy a bare '> 0' check. See sim/harness/mc_runner.py's positive_control_ok() docstring."
+    ]
+  }
+}
