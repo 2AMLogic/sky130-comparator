@@ -1,0 +1,54 @@
+* DR-001 support: nfet_01v8/pfet_01v8 .op threshold probe
+*
+* Standalone-comparator headroom quantification for
+* spec/decision-records/DR-001-comparator-topology.md. Mirrors the
+* methodology 2AMLogic/sky130-sar-adc's DR-003 Item 1 documents (a BSIM4
+* .op-point "vth" probe, NOT the model card's raw vth0 -- see that record's
+* note on why: vth0 is a long-channel fitting parameter, not the device's
+* actual bias-dependent threshold). No value from that record is copied;
+* this deck is re-run against this repo's own installed PDK, independently,
+* per CLAUDE.md's clean-room convention.
+*
+* Representative planning geometry W=4um/L=0.5um -- not a locked design
+* point; the eventual design/comparator.sch sizing is separate work
+* (porting-plan next step 2, out of scope for this decision record).
+*
+* Bias point: source grounded, Vgs = Vds = 0.9 V (near the VDD/2 = 0.9 V
+* common-mode planning point this record assumes for a standalone
+* differential stimulus with no CDAC to fix it -- see the DR's Context
+* section), Vbs = 0 V. This is a simplified single-device probe (it does
+* not model the body-effect stack a real cascoded input-pair/tail
+* arrangement would see); the same simplification DR-003 Item 1 used for
+* the identical headroom argument.
+*
+* Run: ngspice -b spec/dr-001-support/vth_probe.spice
+* (requires sim/env.sh sourced, or PDK_ROOT/PDK set -- see sim/pdk.json)
+
+.temp 27
+
+.lib $PDK_ROOT/$PDK/libs.tech/combined/sky130.lib.spice tt
+
+.param VDD=1.8
+
+vgn  gn  0  DC {VDD/2}
+vdn  dn  0  DC {VDD/2}
+vgp  gp  0  DC {VDD/2}
+vdp  dp  vddp  DC {-VDD/2}
+vddp vddp 0 DC {VDD}
+
+xnm1 dn gn 0 0 sky130_fd_pr__nfet_01v8 l=0.5 w=4
+xpm1 dp gp vddp vddp sky130_fd_pr__pfet_01v8 l=0.5 w=4
+
+.control
+op
+echo "--- nfet_01v8 (W=4um/L=0.5um, Vgs=Vds=0.9V, Vbs=0V) ---"
+print @m.xnm1.msky130_fd_pr__nfet_01v8[vth]
+print @m.xnm1.msky130_fd_pr__nfet_01v8[vdsat]
+print @m.xnm1.msky130_fd_pr__nfet_01v8[id]
+echo "--- pfet_01v8 (W=4um/L=0.5um, |Vgs|=|Vds|=0.9V, Vbs=0V) ---"
+print @m.xpm1.msky130_fd_pr__pfet_01v8[vth]
+print @m.xpm1.msky130_fd_pr__pfet_01v8[vdsat]
+print @m.xpm1.msky130_fd_pr__pfet_01v8[id]
+.endc
+
+.end
