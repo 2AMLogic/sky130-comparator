@@ -168,3 +168,16 @@ testbenches.
 5. Once real measurements exist, revisit the README target-spec table's
    DRAFT bounds and file a ratification decision record if/when the table
    is set, changed, or scoped (see `spec/README.md`).
+
+   **Addressed** (issue #28,
+   [DR-002](decision-records/DR-002-target-spec-ratification.md),
+   2026-09-16): a first ratification pass against real measurements of this
+   repo's own `design/comparator.sch`. Three of five rows (Offset sigma,
+   Input-referred noise, Kickback) are ratified; two (Decision time vs.
+   overdrive, Supply/power) stay explicitly DRAFT/open pending further
+   evidence (full PVT sweep; a clock-rate assumption and a power
+   measurement, respectively). This numbered list itself is left unedited,
+   append-only, per this repo's evidence convention — see DR-002 for the
+   full per-row reasoning and open items, including the Kickback row's
+   ~29×/~72× measured deviation and the recommended (not yet filed)
+   mitigation follow-on work.
