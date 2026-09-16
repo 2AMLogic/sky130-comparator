@@ -95,55 +95,145 @@ issue's own scope statement (issue #9) cites in full.
   characterize across PVT.
 - **The reset-integrity `classify()` / `RESET-NOT-HELD` / `WRONG-POLARITY`
   instrumentation** the port source's `regen`/`regen-corners` accumulated in
-  response to a specific bug in *its own* pre-fix device set (see
-  "Placeholder DUT" below) -- not reproduced here because the placeholder
-  DUT below already uses the fixed device set and this repo's own
-  regen record shows a clean, monotonic reset-hold.
+  response to a specific bug in *its own* pre-fix device set -- not ported
+  as such. This repo instead grew its own, differently-shaped
+  reset-integrity check under issue #24 (the `reset` sub-command below),
+  derived from DR-001 Decision 3's first-principles argument rather than
+  transcribed from the port source's instrumentation.
 
-## Placeholder DUT
+## The DUT
 
-`testbench/comparator_core.spice` is **not this repo's own topology
-decision**. `spec/porting-plan.md`'s "Next steps" item 1 (`design/
-comparator.sch`, sized from first principles against sky130 device models,
-with its own decision record) is explicitly out of scope for issue #9 (see
-that issue's "Out of Scope" section). The fragment committed here is ported
-**verbatim** (devices, sizing, node names -- nothing adapted) from the port
-source's `comparator_core.spice` as it stood after that repo's own issue
-#175 / DR-004 Amendment A reset-integrity fix -- the pre-fix device set is
-known, by that repo's own evidence records, to leave the latch at an
-unstable mid-rail equilibrium during the CLK=0 reset phase. Citing the fixed
-device set rather than the original one avoids porting a known-bad starting
-point into this repo, even though the topology itself remains just a
-borrowed placeholder pending this repo's own `design/comparator.sch` (issue
-#9's parent tracking issue, #7, next step 1).
+`testbench/comparator_core.spice` is **this repo's own design**, and has
+been since issue #24: it is a generated artifact of
+[`design/comparator.sch`](../../design/comparator.sch), produced by
+`./design/netlist.sh` and carrying a "do not hand-edit" header. See
+[`design/README.md`](../../design/README.md) for the topology, the sizing
+derivation, and the regeneration command.
 
-It exists for exactly the reason `sim/harness-corner-smoke/` and
-`sim/mc-smoke/` exist for the PVT/MC harness (`sim/README.md` "Harness
-self-test experiments"): so `run.py`'s regen/offset/noise driver has
-something real to exercise end to end, proving the plumbing works, before a
-real design/comparator.sch exists. **None of the records under `records/`
-substantiate any row of the top-level README's target-spec table** -- every
-record's own `Claim` field says so explicitly, and each will need to be
-re-run against the real schematic once it exists (a distinct claim, not a
-correction, so the placeholder records are never edited or superseded --
-they simply stop being the freshest evidence once real records land
-alongside them).
+Before issue #24 it was a **placeholder** -- ported verbatim from
+`2AMLogic/sky130-sar-adc`, so that `run.py`'s driver had something real to
+exercise end to end while this repo had no schematic, exactly the role
+`sim/harness-corner-smoke/` and `sim/mc-smoke/` play for the PVT/MC harness.
+That placeholder is gone from the working tree (it remains in git history),
+and with it the last gap issue #3's T1 checklist item 9 named: "every
+testbench here exercises a placeholder DUT."
 
-## Committed records (nominal corner: tt/27C/1.8V)
+**The records written against the placeholder are still here and are still
+correct.** `sim/README.md`'s evidence convention is append-only: a record is
+never edited or deleted, and these were not *wrong*, they simply
+characterized a different circuit. They are not superseded either --
+superseding means replacing a record that made the same claim, and these
+made a different one (each says so in its own `Claim` field). They just stop
+being the freshest evidence. The `Netlist provenance` field is what tells
+the two generations apart:
 
-One record per experiment, proving the ported plumbing runs end to end
-against the placeholder DUT on this repo's pinned toolchain
-(`sim/toolchain.json`) and PDK (`sim/pdk.json`):
+- `schematic, placeholder (...)` -- the ported placeholder (issue #9).
+- `schematic-derived (design/comparator.sch -> ./design/netlist.sh -> ...)`
+  -- this repo's own design (issue #24 onward).
 
-- `regen` -- `records/20260909-153206-c6e2e1d.md`: 8/8 Vindiff points
-  resolved within the evaluate window; regeneration time grows monotonically
-  as Vindiff shrinks (1.11 ns at 50 mV -> 2.36 ns at 0.5 mV), the expected
-  `ln(1/Vindiff)` positive-feedback-latch shape.
-- `offset` -- `records/20260909-154218-c6e2e1d.md`: N=16 draws at `tt_mm`,
-  offset mean 0.26 mV / stdev 3.90 mV; same-seed negative control at plain
-  `tt` reproduces stdev == 0 exactly, confirming the mismatch-corner
-  statistical convention works end to end on this PDK/toolchain.
-- `noise` -- `records/20260909-154235-c6e2e1d.md`: single-ended
-  input-referred noise 0.4814 mV rms, differential estimate 0.6808 mV rms
-  (informational -- no noise-budget spec row exists in this repo yet to
-  grade against).
+**Neither generation substantiates any row of the top-level README's
+target-spec table**, because that table is DRAFT and unratified. Records
+written since issue #24 do quote the DRAFT rows, but only as the design
+intent the sizing pass aimed at -- never as a pass/fail grade.
+
+## Sub-commands
+
+`regen`, `offset` and `noise` are the ported methodology (above). `reset`
+was added by issue #24 and is this repo's own:
+
+```sh
+python3 sim/comparator-decision/run.py reset --record
+```
+
+It is a reset-integrity **negative control** with a matching **positive
+control**. DR-001 Decision 3 derives from first principles that a
+StrongARM-class latch whose NMOS sources sit at `GND` during reset leaves
+the feedback loop live, making the reset state an unstable equilibrium that
+any asymmetry can amplify before the real decision edge -- and cites
+same-PDK prior art where precisely that defect was found empirically, after
+the fact, failing at 3 of 9 PVT corners. DR-001 states the correct reset
+scheme up front specifically so this repo checks for it before, rather than
+after, being bitten. `reset` is that check:
+
+- It starts the transient from a deliberately **wrong** state -- outputs
+  pinned at opposite rails, internal nodes at GND -- with reset asserted and
+  no input applied, and requires the design to reject that asymmetry rather
+  than amplify it.
+- Its primary criterion is DR-001's own mechanism measured directly: the
+  cross-coupled latch NMOS pair's `Vgs` must be ~0 during reset.
+- It runs the same check against a **`GND`-tied counterfactual** (the latch
+  NMOS sources moved to GND, nothing else changed) and requires that variant
+  to FAIL. A negative control that cannot be shown to fail on the defect it
+  screens for is not evidence that the defect is absent.
+
+One caveat is written into the record itself and worth repeating: the
+supply-current criterion is not "zero current". A single-tail dynamic latch
+with an NMOS tail and a non-zero input common mode always has an off-state
+path (`VDD` -> DI-node reset PMOS -> input pair -> `TAIL` -> subthreshold
+tail switch -> `GND`), measuring a couple of hundred nA here. That floor is
+a property of the topology class, not a defect; the positive control is what
+gives the criterion its scale.
+
+## Committed records
+
+Records against **this repo's own design** (`design/comparator.sch`), on the
+pinned toolchain (`sim/toolchain.json`) and PDK (`sim/pdk.json`). DRAFT
+target-spec rows are quoted for orientation only -- the table is unratified,
+so nothing below is a pass/fail grade.
+
+- `reset` -- `records/20260916-004042-52eb9b2.md`: reset-integrity negative
+  control + positive control, 5 PVT points each (tt/27C, ss/-40C, ss/125C,
+  ff/-40C, ff/125C). **As-drawn holds reset at all 5**: the deliberate
+  opposite-rails initial condition collapses to exactly 0 mV of output
+  difference, both outputs precharge to 1.8000 V, and the latch NMOS pair's
+  Vgs stays at most 0.23 mV -- DR-001 Decision 3's "Vgs = 0, loop gain
+  exactly zero" mechanism, measured. **The GND-tied positive control breaks
+  reset at all 5**, on all four criteria at once: outputs separate to
+  ~1.65-1.74 V (i.e. toward opposite rails, with no input applied -- the
+  same failure signature the prior art DR-001 cites observed), latch Vgs sits
+  at the full 1800 mV, and supply current rises to 300-390 uA against the
+  as-drawn leakage floor of 0.13-0.25 uA. That ~1500x separation is what
+  makes the as-drawn result meaningful rather than merely unfalsified.
+- `regen` (tt/27C) -- `records/20260916-000727-52eb9b2.md`: 8/8 Vindiff
+  points resolved; 0.6775 ns at 50 mV rising monotonically to 1.6825 ns at
+  0.5 mV, the expected `ln(1/Vindiff)` positive-feedback-latch shape. The
+  -10 mV point reproduces the +10 mV time to the sample (1.0225 ns), i.e.
+  the decision is polarity-symmetric.
+- `regen` (ss/-40C) -- `records/20260916-001345-52eb9b2.md`: the slow/cold
+  corner DR-001's headroom probe flagged, and the corner the DRAFT
+  "Decision time vs. overdrive" row already expected to bind. 8/8 points
+  still resolve. At 50 mV the penalty is almost nil (0.6875 ns vs
+  0.6775 ns); it grows as the input shrinks and regeneration -- rather than
+  the input pair -- dominates the decision (2.5575 ns vs 1.6825 ns at
+  0.5 mV). Read together with DR-001 Amendment 1's operating-point evidence,
+  this is the transient half of the case that the flagged headroom deficit
+  is closed, not merely accounted for.
+- `offset` -- `records/20260916-003531-52eb9b2.md`: N=16 draws at `tt_mm`,
+  input-referred offset mean -0.57 mV / stdev **2.02 mV** (3 sigma =
+  6.06 mV). Same-seed negative control at plain `tt` reproduces stdev == 0
+  exactly. Note the sample size: SE(s)/s ~= 18% at N=16, so the stdev is
+  known to roughly +/-0.4 mV -- adequate for distribution shape, not for a
+  yield-fraction claim.
+- `noise` -- `records/20260916-001416-52eb9b2.md`: single-ended
+  input-referred noise 0.3158 mV rms, differential estimate 0.4466 mV rms.
+  Still the loop-broken lower bound by construction (it excludes the
+  regenerative phase) -- see the methodology note above.
+
+For orientation against the **DRAFT, unratified** target-spec table (not a
+grade -- that table sets no binding bound until ratified):
+
+| DRAFT row | Target | Stretch | Measured here |
+|---|---|---|---|
+| Offset sigma (3 sigma, input-referred) | <= 15 mV | <= 8 mV | 6.06 mV @ `tt_mm`/27C, N=16 |
+| Input-referred noise (differential) | <= 1.0 mV rms | <= 0.6 mV rms | 0.4466 mV rms @ tt/27C |
+| Decision time @ 50 mV overdrive | <= 1.5 ns | <= 0.8 ns | 0.6775 ns @ tt/27C; 0.6875 ns @ ss/-40C |
+| Kickback | <= 5 mV | <= 2 mV | **not measured** -- no testbench exists |
+| Supply / power | <= 50 uW | <= 20 uW | **not measured** -- no clock-rate assumption ratified |
+
+Two of those five rows have no measurement at all, and the three that do are
+single-corner (or five-corner, for `reset`) results against a table that has
+not been ratified. Nothing here closes the gap issue #3's T1 item 5 names:
+a full PVT corner campaign against a *ratified* spec.
+
+Earlier records (`20260909-*`) characterize the **ported placeholder DUT**,
+not this design. See [The DUT](#the-dut) for why they remain, unedited.

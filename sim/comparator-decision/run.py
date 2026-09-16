@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
-"""Standalone driver for the comparator-decision experiment (issue #9).
+"""Standalone driver for the comparator-decision experiment (issues #9, #24).
 
-Exercises the placeholder DUT fragment at
+Exercises the DUT fragment at
 sim/comparator-decision/testbench/comparator_core.spice for its decision
-behavior in isolation: mismatch-driven offset, input-referred noise, and
-regeneration time vs. differential input. No CDAC array or SAR sequencer is
-involved -- every source here is an ideal differential DC/pulse stimulus,
-because this repo has no SAR ADC (spec/porting-plan.md "Next steps" item 3).
+behavior in isolation: mismatch-driven offset, input-referred noise,
+regeneration time vs. differential input, and reset integrity. No CDAC array
+or SAR sequencer is involved -- every source here is an ideal differential
+DC/pulse stimulus, because this repo has no SAR ADC (spec/porting-plan.md
+"Next steps" item 3).
+
+Since issue #24 that fragment is THIS REPO'S OWN design -- generated from
+design/comparator.sch by ./design/netlist.sh -- not the sky130-sar-adc-ported
+placeholder issue #9 stood the plumbing up against. Nothing in this driver
+hardcodes the DUT's sizing: the `noise` sub-model is assembled from the
+fragment's own device lines, so it tracks the schematic automatically.
 
     python3 sim/comparator-decision/run.py --check-env
     python3 sim/comparator-decision/run.py regen  --record
     python3 sim/comparator-decision/run.py offset --record --n 16 --seed 1
     python3 sim/comparator-decision/run.py noise  --record
+    python3 sim/comparator-decision/run.py reset  --record
 
 Provenance (per sim/comparator-decision/README.md, in full): the bespoke
 regen/offset/noise MEASUREMENT METHODOLOGY below is ported from
@@ -79,9 +87,76 @@ NOISE_FSTOP_HZ = 1e9
 
 PROCESS_CORNERS = ["tt", "ss", "ff", "sf", "fs"]
 
+# --- Shared evidence-record preamble fields. Since issue #24 the DUT is this
+# repo's OWN design (design/comparator.sch), not the sky130-sar-adc-ported
+# placeholder issue #9 stood up the plumbing against -- but the top-level
+# README target-spec table is still DRAFT and unratified, so a measurement
+# here still substantiates no spec ROW. Both halves of that have to be said,
+# and said the same way in every record this driver writes. ---
+CLAIM_TEXT = (
+    "- **Claim**: None -- the top-level README's target-spec table is DRAFT and "
+    "unratified (spec/README.md), so no row exists here to substantiate or "
+    "fail. What this record DOES characterize, unlike every record written "
+    "before issue #24, is **this repo's own comparator**: "
+    "`design/comparator.sch`, the DR-001 topology at a sizing derived from "
+    "this PDK's own mismatch models (see that schematic's sizing-rationale "
+    "block and DR-001 Amendment 1). The DRAFT table's rows are quoted in the "
+    "analysis below for orientation only -- as the design intent this sizing "
+    "pass aimed at, never as a pass/fail grade against a ratified bound."
+)
+NETLIST_PROVENANCE = (
+    "- **Netlist provenance**: schematic-derived "
+    "(`design/comparator.sch` -> `./design/netlist.sh` -> "
+    "`sim/comparator-decision/testbench/comparator_core.spice`)"
+)
+
 
 def _dut_lines() -> str:
     return DUT_FRAGMENT.read_text()
+
+
+def _dut_devices() -> dict[str, list[str]]:
+    """Parse the DUT fragment into {instance name: [token, ...]}.
+
+    Continuation lines ('+ ...') are folded into the instance they continue,
+    and comment/blank lines are dropped -- so the result is one flat token
+    list per device instance, in file order.
+
+    This exists so derived sub-model decks (the `noise` sub-command's
+    loop-broken model) are built from the SAME device lines the schematic
+    netlister emitted, rather than from sizing transcribed into this file by
+    hand. Before issue #24 the noise sub-model carried its own hardcoded
+    copy of the placeholder DUT's W/L values, which silently would not have
+    tracked design/comparator.sch's real sizing.
+    """
+    devices: dict[str, list[str]] = {}
+    current: str | None = None
+    for raw in _dut_lines().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("*"):
+            continue
+        if line.startswith("+"):
+            if current is not None:
+                devices[current].extend(line[1:].split())
+            continue
+        tokens = line.split()
+        current = tokens[0]
+        devices[current] = tokens[1:]
+    return devices
+
+
+def _dut_device_line(name: str, *, nodes: list[str] | None = None) -> str:
+    """Re-emit one parsed DUT device instance, optionally on different nodes.
+
+    `nodes`, when given, replaces the instance's four terminal nodes
+    (d g s b) -- used by the noise sub-model to diode-connect a device.
+    Everything after the terminals (model name, W/L and the netlister's
+    geometry parameters) is passed through untouched.
+    """
+    tokens = _dut_devices()[name]
+    tail = tokens[4:]
+    terminals = nodes if nodes is not None else tokens[:4]
+    return " ".join([name, *terminals, *tail])
 
 
 def _run(deck_text: str, scratch_dir: Path, log_name: str) -> str:
@@ -214,23 +289,16 @@ def write_regen_evidence(
     a(f"# Record {record_id}")
     a("")
     a(f"- **Record ID**: {record_id}")
-    a(
-        "- **Claim**: None -- top-level README's target-spec table is DRAFT "
-        "(spec/README.md) and design/comparator.sch does not exist yet "
-        "(spec/porting-plan.md 'Next steps' item 1). This record characterizes "
-        "the placeholder DUT (see testbench/comparator_core.spice's header) "
-        "purely to prove the regen/offset/noise driver plumbing ported from "
-        "2AMLogic/sky130-sar-adc works end to end against a real dynamic latch "
-        "on this PDK -- it substantiates NO spec row and must not be quoted as "
-        "if it characterized this repo's own comparator."
-    )
-    a(f"- **Netlist provenance**: schematic, placeholder (`{DUT_FRAGMENT.relative_to(evidence.REPO_ROOT)}`)")
+    a(CLAIM_TEXT)
+    a(NETLIST_PROVENANCE)
     a(
         f"- **Corner matrix run**: process=['{corner}'], temperature_c=[{temp_c}], "
         f"supply_v=[{VDD}] (1 PVT point -- **subset-corner justification**: "
-        "plumbing proof at the nominal corner only, per issue #9's acceptance "
-        "criteria; a full PVT sweep is deferred to when a real "
-        "design/comparator.sch exists to characterize)"
+        "single-point characterization of this repo's own design at the stated "
+        "corner, per issue #24's acceptance criteria; a full ratified PVT "
+        "corner sweep and Monte Carlo campaign remain open work, blocked on "
+        "the top-level README target-spec table's ratification -- see issue #3 "
+        "item 5 and DR-001's 'A full PVT sweep' open item)"
     )
     a(
         f"- **Stimulus**: single reset({RESET_NS}ns, CLK=0)->evaluate(CLK={VDD}V) "
@@ -439,15 +507,8 @@ def write_offset_evidence(
     a(f"# Monte Carlo record {record_id}")
     a("")
     a(f"- **Record ID**: {record_id}")
-    a(
-        "- **Claim**: None -- see the `regen` record's Claim field for why "
-        "(placeholder DUT, DRAFT spec, no design/comparator.sch yet). This "
-        "record's purpose is to prove the offset-extraction methodology "
-        "(linearized pick-off + mismatch-corner Monte Carlo + negative "
-        "control) ported from 2AMLogic/sky130-sar-adc works end to end on "
-        "this PDK -- distribution shape only, not a spec claim."
-    )
-    a(f"- **Netlist provenance**: schematic, placeholder (`{DUT_FRAGMENT.relative_to(evidence.REPO_ROOT)}`)")
+    a(CLAIM_TEXT)
+    a(NETLIST_PROVENANCE)
     rel_se_pct = 100.0 / (2 * (result.n - 1)) ** 0.5 if result.n > 1 else float("inf")
     a(
         f"- **Statistical convention**: mismatch corner `{result.mismatch_corner}`, "
@@ -562,11 +623,17 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
-        "XM_TAIL TAIL CLK GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=8 nf=1",
-        "XM_INN DIP VINN TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1",
-        "XM_INP DIN VINP TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=4 nf=1",
-        "XM_RST_DIP DIP DIP VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=4 nf=1",
-        "XM_RST_DIN DIN DIN VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=4 nf=1",
+        # Built from the committed DUT fragment's OWN device lines (issue
+        # #24) -- tail + input pair verbatim, and the DI-node reset PMOS
+        # pair re-emitted diode-connected (gate moved from CLK to its own
+        # drain). The cross-coupled latch pairs and the output-node reset
+        # PMOS are omitted: that is the loop break. Sizing therefore tracks
+        # design/comparator.sch automatically; it is not transcribed here.
+        _dut_device_line("XM_TAIL"),
+        _dut_device_line("XM_INN"),
+        _dut_device_line("XM_INP"),
+        _dut_device_line("XM_RST_DIP", nodes=["DIP", "DIP", "VDD", "VDD"]),
+        _dut_device_line("XM_RST_DIN", nodes=["DIN", "DIN", "VDD", "VDD"]),
         "",
         ".control",
         # sim/spiceinit sets 'option klu' repo-wide for corner-sweep speed,
@@ -641,15 +708,15 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     a(f"# Record {record_id}")
     a("")
     a(f"- **Record ID**: {record_id}")
+    a(CLAIM_TEXT)
     a(
-        "- **Claim**: None -- see the `regen` record's Claim field for why "
-        "(placeholder DUT, DRAFT spec, no design/comparator.sch yet). This "
-        "record proves the reduced-sub-model `.noise` methodology ported "
-        "from 2AMLogic/sky130-sar-adc runs end to end on this PDK; the "
-        "measured value is not compared against any budget because no "
-        "noise-budget row exists in this repo's target-spec table yet."
+        "- **Netlist provenance**: schematic-derived, reduced sub-model -- the "
+        "tail + input pair + DI-node reset PMOS device lines are taken "
+        "verbatim from `sim/comparator-decision/testbench/comparator_core.spice` "
+        "(itself generated from `design/comparator.sch` by `./design/netlist.sh`), "
+        "with the DI-node PMOS re-emitted diode-connected; see Methodology for "
+        "what the loop break omits."
     )
-    a("- **Netlist provenance**: schematic, placeholder, reduced sub-model (see Methodology)")
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
         f"- **Noise methodology**: `ac-based`, integration bandwidth "
@@ -693,6 +760,380 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 
 
 # ---------------------------------------------------------------------------
+# reset: reset-integrity negative control (issue #24)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. DR-001 Decision 3 derives, from first principles, that a
+# StrongARM-class cross-coupled pair must not be a live positive-feedback
+# loop during the CLK=0 reset phase: if the latch NMOS pair's sources sat at
+# GND while the outputs were held near VDD, every latch NMOS would conduct
+# throughout reset, the loop gain would exceed unity with the inputs still
+# floating, and the "reset" state would be an UNSTABLE equilibrium that any
+# asymmetry can amplify toward either rail before the deliberate decision
+# edge. DR-001 cites sky130-sar-adc's DR-004 Amendment A as same-PDK
+# evidence that this is a real, measurable defect found the hard way there
+# (a reset-integrity negative control failing at 3 of 9 PVT corners, outputs
+# observed separating during the reset window with no input applied), and
+# states the correct reset scheme up front specifically so this repo checks
+# for it BEFORE, not after, being bitten. This sub-command is that check.
+#
+# METHOD -- a negative control, deliberately stacked against the design,
+# paired with a positive control that proves the check can actually fail.
+#
+# Both variants are run at every corner:
+#
+#   AS-DRAWN     design/comparator.sch exactly as committed: the latch NMOS
+#                pair's sources are the precharged internal nodes DIP/DIN.
+#   GND-TIED     the SINGLE-EDIT counterfactual DR-001 Decision 3 argues
+#                against: M_LATN_P and M_LATN_N have their source terminals
+#                moved from DIP/DIN to GND, and nothing else changes. This
+#                is the positive control. Without it the negative control is
+#                vacuous -- a check that cannot be shown to fail on the
+#                defect it screens for is not evidence that the defect is
+#                absent.
+#
+# In both cases CLK is held at 0 for the whole window (reset asserted, never
+# released) and NO differential input is applied (VINP = VINN = VCM). The
+# transient starts from a maximally WRONG initial condition: the outputs
+# pinned at OPPOSITE RAILS and the internal nodes at GND -- exactly the
+# fully-separated state a broken reset would drift into. A sound reset
+# rejects that asymmetry; an unstable one holds or amplifies it.
+#
+# Four things are asserted over the settled part of the window:
+#
+#   1. COLLAPSE     |v(OUTP) - v(OUTN)| decays to ~0. The deliberate initial
+#                   asymmetry is rejected, not amplified.
+#   2. PRECHARGE    OUTP/OUTN (and, where they exist as latch sources,
+#                   DIP/DIN) reach VDD.
+#   3. LATCH OFF    max Vgs over the two cross-coupled latch NMOS is ~0.
+#                   THIS IS THE PRIMARY CRITERION and it is essentially
+#                   threshold-free: DR-001 Decision 3's mechanism is
+#                   literally "precharging the latch NMOS sources to VDD
+#                   alongside the outputs forces every latch NMOS to
+#                   Vgs = 0, so loop gain is exactly zero." Vgs(M_LATN_P) =
+#                   v(OUTN) - v(DIP) and Vgs(M_LATN_N) = v(OUTP) - v(DIN)
+#                   are that mechanism, measured. The GND-tied control puts
+#                   both at ~VDD instead, a ~1.8 V separation -- there is no
+#                   tuning latitude in this criterion.
+#   4. NOT CONDUCTING  |I(VDD)| stays below RESET_IDD_TOL_A.
+#
+# On criterion 4's threshold, stated plainly because it is the one number
+# here that is a judgement call. It is NOT "the supply current is zero": a
+# single-tail dynamic latch with an NMOS tail and a non-zero input common
+# mode has an unavoidable off-state path (VDD -> DI-node reset PMOS ->
+# input pair -> TAIL -> subthreshold tail switch -> GND), and this design
+# measures ~0.2 uA on it. A criterion demanding less than that would not be
+# a stricter test of DR-001's reset scheme, it would just be a test no
+# dynamic latch of this class can pass. RESET_IDD_TOL_A is therefore set
+# above that inherent leakage floor and far below a genuinely conducting
+# latch: the GND-tied positive control, whose latch branches are on at
+# Vgs ~ VDD through 8 um devices, draws orders of magnitude more, and each
+# record reports both numbers side by side so the separation is visible
+# rather than asserted.
+
+RESET_WINDOW_NS = 20.0
+RESET_SETTLE_FRACTION = 0.5    # assert over the final half of the window
+RESET_DIFF_TOL_V = 1e-3        # |OUTP-OUTN| must decay below this
+RESET_PRECHARGE_TOL_V = 10e-3  # output nodes must reach VDD minus this
+RESET_VGS_TOL_V = 10e-3        # latch NMOS Vgs must be at/below this
+RESET_IDD_TOL_A = 1e-6         # |I(VDD)| bound -- see the note above
+
+RESET_VARIANTS = ("as-drawn", "gnd-tied")
+
+
+def _reset_device_block(variant: str) -> str:
+    """The DUT device lines for one reset-check variant.
+
+    `as-drawn` is the committed fragment verbatim. `gnd-tied` re-emits the
+    two cross-coupled latch NMOS with their SOURCE terminal moved from the
+    precharged internal node (DIP/DIN) to GND, changing nothing else -- the
+    minimal counterfactual for DR-001 Decision 3.
+    """
+    if variant == "as-drawn":
+        return _dut_lines()
+    if variant != "gnd-tied":
+        raise ValueError(f"unknown reset variant {variant!r}")
+    rewired = {
+        "XM_LATN_P": ["OUTP", "OUTN", "GND", "GND"],
+        "XM_LATN_N": ["OUTN", "OUTP", "GND", "GND"],
+    }
+    return "\n".join(
+        _dut_device_line(name, nodes=rewired.get(name))
+        for name in _dut_devices()
+    )
+
+
+def _reset_deck(info: pdk.PdkInfo, corner: str, temp_c: float, variant: str, log_name: str) -> str:
+    lines = [
+        f"* comparator-decision reset-integrity check -- variant={variant} "
+        f"corner={corner} temp={temp_c}C supply={VDD}V (issue #24)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        "* CLK held LOW for the entire window: reset asserted, never released.",
+        "Vclk CLK 0 dc 0",
+        f"Vinp VINP 0 dc {VCM}",
+        f"Vinn VINN 0 dc {VCM}",
+        "",
+        "* Deliberately WRONG starting state: outputs pinned at opposite rails,",
+        "* internal nodes at GND. A sound reset scheme must reject it.",
+        ".ic v(OUTP)=0 v(OUTN)={vdd_val} v(DIP)=0 v(DIN)=0 v(TAIL)=0",
+        "",
+        _reset_device_block(variant),
+        "",
+        ".control",
+        f"tran 0.005n {RESET_WINDOW_NS}n uic",
+        f"wrdata {log_name}.csv v(OUTP) v(OUTN) v(DIP) v(DIN) i(Vdd)",
+        ".endc",
+        ".end",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+@dataclass
+class ResetPoint:
+    corner: str
+    temp_c: float
+    variant: str
+    worst_diff_v: float        # worst |OUTP-OUTN| over the settle window
+    min_precharge_v: float     # worst (lowest) of the output nodes
+    max_latch_vgs_v: float     # worst Vgs over the two cross-coupled latch NMOS
+    max_abs_idd_a: float       # worst |I(VDD)| over the settle window
+    log_text: str
+
+    @property
+    def collapse_ok(self) -> bool:
+        return self.worst_diff_v <= RESET_DIFF_TOL_V
+
+    @property
+    def precharge_ok(self) -> bool:
+        return self.min_precharge_v >= VDD - RESET_PRECHARGE_TOL_V
+
+    @property
+    def latch_off_ok(self) -> bool:
+        return self.max_latch_vgs_v <= RESET_VGS_TOL_V
+
+    @property
+    def nonconducting_ok(self) -> bool:
+        return self.max_abs_idd_a <= RESET_IDD_TOL_A
+
+    @property
+    def holds_reset(self) -> bool:
+        """True iff this run holds a sound reset on all four criteria."""
+        return (self.collapse_ok and self.precharge_ok
+                and self.latch_off_ok and self.nonconducting_ok)
+
+    @property
+    def ok(self) -> bool:
+        """Whether this run did what its VARIANT is supposed to do.
+
+        `as-drawn` must hold reset. `gnd-tied` is the positive control: it
+        must NOT hold reset, otherwise the check is not sensitive to the
+        defect it screens for and the negative control proves nothing.
+        """
+        return self.holds_reset if self.variant == "as-drawn" else not self.holds_reset
+
+    @property
+    def verdict(self) -> str:
+        failed = [
+            name for name, good in (
+                ("RESET-NOT-COLLAPSED", self.collapse_ok),
+                ("RESET-NOT-PRECHARGED", self.precharge_ok),
+                ("LATCH-NOT-OFF", self.latch_off_ok),
+                ("RESET-CONDUCTING", self.nonconducting_ok),
+            ) if not good
+        ]
+        state = "HOLDS-RESET" if not failed else "BREAKS-RESET (" + ", ".join(failed) + ")"
+        return f"{state} -> {'as expected' if self.ok else 'UNEXPECTED'}"
+
+
+DEFAULT_RESET_CORNERS = [("tt", 27.0), ("ss", -40.0), ("ff", 125.0), ("ss", 125.0), ("ff", -40.0)]
+
+
+def run_reset_check(
+    points: list[tuple[str, float]] | None = None, quiet: bool = False,
+) -> list[ResetPoint]:
+    info = pdk.resolve_or_raise()
+    points = points or DEFAULT_RESET_CORNERS
+    results: list[ResetPoint] = []
+    settle_start_s = RESET_WINDOW_NS * RESET_SETTLE_FRACTION * 1e-9
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-reset-") as scratch:
+        scratch_dir = Path(scratch)
+        for variant in RESET_VARIANTS:
+            for corner, temp_c in points:
+                safe_t = str(temp_c).replace("-", "neg").replace(".", "p")
+                log_name = f"reset_{variant.replace('-', '_')}_{corner}_{safe_t}c"
+                deck = _reset_deck(info, corner, temp_c, variant, log_name)
+                log_text = _run(deck, scratch_dir, log_name)
+                t, outp, outn, dip, din, idd = toolchain.read_wrdata_csv(
+                    scratch_dir / f"{log_name}.csv", 5)
+                idx = [i for i, tt in enumerate(t) if tt >= settle_start_s]
+                # Vgs of the cross-coupled latch NMOS. In the as-drawn scheme
+                # each source is its own precharged internal node; in the
+                # gnd-tied control both sources are GND (0 V).
+                if variant == "as-drawn":
+                    def latch_vgs(i: int) -> float:
+                        return max(outn[i] - dip[i], outp[i] - din[i])
+                else:
+                    def latch_vgs(i: int) -> float:
+                        return max(outn[i], outp[i])
+                point = ResetPoint(
+                    corner=corner, temp_c=temp_c, variant=variant,
+                    worst_diff_v=max(abs(outp[i] - outn[i]) for i in idx),
+                    min_precharge_v=min(min(outp[i], outn[i]) for i in idx),
+                    max_latch_vgs_v=max(latch_vgs(i) for i in idx),
+                    max_abs_idd_a=max(abs(idd[i]) for i in idx),
+                    log_text=log_text,
+                )
+                results.append(point)
+                if not quiet:
+                    print(
+                        f"  [{variant}] {corner}/{temp_c}C: "
+                        f"|OUTP-OUTN|<={point.worst_diff_v * 1e3:.6g}mV "
+                        f"min(OUT)={point.min_precharge_v:.6g}V "
+                        f"max Vgs(latch)={point.max_latch_vgs_v * 1e3:.6g}mV "
+                        f"|I(VDD)|<={point.max_abs_idd_a:.4g}A -> {point.verdict}"
+                    )
+    return results
+
+
+def write_reset_evidence(
+    points: list[ResetPoint], note: str = "", supersedes: str = "",
+) -> Path:
+    info = pdk.resolve()
+    record_id = evidence.new_record_id()
+    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    corners_dir = EXPERIMENT_DIR / "corners" / record_id
+    corners_dir.mkdir(parents=True, exist_ok=True)
+    for p in points:
+        safe = f"{p.variant.replace('-', '_')}_{p.corner}_{str(p.temp_c).replace('-', 'neg').replace('.', 'p')}c"
+        (corners_dir / f"reset_{safe}.log").write_text(p.log_text)
+
+    as_drawn = [p for p in points if p.variant == "as-drawn"]
+    control = [p for p in points if p.variant == "gnd-tied"]
+    unexpected = [p for p in points if not p.ok]
+    corner_set = sorted({(p.corner, p.temp_c) for p in points}, key=lambda c: (c[0], c[1]))
+
+    lines: list[str] = []
+    a = lines.append
+    a(f"# Record {record_id}")
+    a("")
+    a(f"- **Record ID**: {record_id}")
+    a(CLAIM_TEXT)
+    a(NETLIST_PROVENANCE)
+    a(
+        "- **Corner matrix run**: "
+        + ", ".join(f"{c}/{t}C" for c, t in corner_set)
+        + f" at supply_v=[{VDD}], each run for BOTH variants "
+        f"({len(points)} runs total -- **subset-corner justification**: a "
+        "reset-integrity check is a functional-correctness screen whose "
+        "failure mode is corner-dependent (the same-PDK prior art DR-001 "
+        "Decision 3 cites failed at 3 of 9 corners), so the point set "
+        "deliberately spans both temperature extremes against both the slow "
+        "and the fast process skew, plus the nominal point; it is not the "
+        "full ratified PVT matrix, which stays blocked on target-spec "
+        "ratification)"
+    )
+    a(
+        f"- **Stimulus**: CLK held at 0V for the whole {RESET_WINDOW_NS}ns window "
+        f"(reset asserted, never released); NO differential input "
+        f"(VINP=VINN={VCM}V); `uic` transient from a deliberately WRONG initial "
+        f"condition -- v(OUTP)=0, v(OUTN)={VDD}V (outputs at OPPOSITE RAILS), "
+        f"v(DIP)=v(DIN)=v(TAIL)=0"
+    )
+    a(
+        "- **Variants**: `as-drawn` = `design/comparator.sch` as committed "
+        "(latch NMOS sources are the precharged internal nodes DIP/DIN). "
+        "`gnd-tied` = POSITIVE CONTROL, the single-edit counterfactual DR-001 "
+        "Decision 3 argues against -- M_LATN_P/M_LATN_N sources moved from "
+        "DIP/DIN to GND, nothing else changed. `as-drawn` is expected to hold "
+        "reset; `gnd-tied` is expected to BREAK it. Both expectations are "
+        "graded, because a negative control that cannot be shown to fail on "
+        "the defect it screens for is not evidence that the defect is absent."
+    )
+    a(
+        f"- **Reset-held criteria** (all asserted over the final "
+        f"{int(RESET_SETTLE_FRACTION * 100)}% of the window): "
+        f"(1) collapse -- |v(OUTP)-v(OUTN)| <= {RESET_DIFF_TOL_V * 1e3:g}mV; "
+        f"(2) precharge -- min(OUTP,OUTN) >= VDD-{RESET_PRECHARGE_TOL_V * 1e3:g}mV; "
+        f"(3) latch off -- max Vgs over M_LATN_P/M_LATN_N <= {RESET_VGS_TOL_V * 1e3:g}mV; "
+        f"(4) not conducting -- |I(VDD)| <= {RESET_IDD_TOL_A:g}A"
+    )
+    if note:
+        a(f"- **Note**: {note}")
+    a(
+        f"- **Overall**: {'PASS' if not unexpected else 'FAIL'} "
+        f"({sum(1 for p in as_drawn if p.holds_reset)}/{len(as_drawn)} as-drawn "
+        f"corners hold reset; "
+        f"{sum(1 for p in control if not p.holds_reset)}/{len(control)} "
+        f"positive-control corners correctly break it)"
+    )
+    a("")
+    a("## As-drawn: reset-integrity negative control")
+    a("")
+    hdr = ("| Corner | Temp | worst \\|OUTP-OUTN\\| (mV) | worst min(OUTP,OUTN) (V) "
+           "| worst Vgs(latch NMOS) (mV) | worst \\|I(VDD)\\| (A) | Result |")
+    a(hdr)
+    a("|---|---|---|---|---|---|---|")
+    for p in as_drawn:
+        a(
+            f"| {p.corner} | {p.temp_c}C | {p.worst_diff_v * 1e3:.6g} | "
+            f"{p.min_precharge_v:.6f} | {p.max_latch_vgs_v * 1e3:.6g} | "
+            f"{p.max_abs_idd_a:.4g} | {p.verdict} |"
+        )
+    a("")
+    a("## GND-tied: positive control (expected to BREAK reset)")
+    a("")
+    a(hdr)
+    a("|---|---|---|---|---|---|---|")
+    for p in control:
+        a(
+            f"| {p.corner} | {p.temp_c}C | {p.worst_diff_v * 1e3:.6g} | "
+            f"{p.min_precharge_v:.6f} | {p.max_latch_vgs_v * 1e3:.6g} | "
+            f"{p.max_abs_idd_a:.4g} | {p.verdict} |"
+        )
+    a("")
+    a("## Reading this record")
+    a("")
+    a(
+        "DR-001 Decision 3's mechanism is that precharging the latch NMOS "
+        "pair's own source nodes to VDD alongside the outputs forces every "
+        "latch NMOS to `Vgs = 0`, so the cross-coupled pair's loop gain is "
+        "exactly zero and the reset state is a stable, all-devices-off "
+        "equilibrium. The `Vgs(latch NMOS)` column is that mechanism measured "
+        "directly, and it is the load-bearing criterion here: it is "
+        "essentially threshold-free, because the two variants sit about a "
+        "full supply apart on it."
+    )
+    a("")
+    a(
+        "The `|I(VDD)|` column needs reading with its floor in mind. It is "
+        "not zero even when reset is perfectly held, and cannot be: a "
+        "single-tail dynamic latch with an NMOS tail switch and a non-zero "
+        "input common mode always has an off-state path VDD -> DI-node reset "
+        "PMOS -> input pair -> TAIL -> subthreshold tail switch -> GND. That "
+        "floor is a property of the topology class, not a defect, and it is "
+        "what the as-drawn column reports. The positive control's current is "
+        "the contrast that gives the criterion its meaning."
+    )
+    a("")
+    a(
+        "Note also what the collapse criterion alone would NOT have caught: "
+        "a GND-tied latch can sit at a symmetric point that looks settled on "
+        "the output-difference column while both branches conduct steadily, "
+        "which is precisely why criteria (3) and (4) exist alongside it."
+    )
+    a("")
+    return _finalize_record(
+        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
+        netlist_sha, "reset", supersedes=supersedes,
+    )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -700,7 +1141,7 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "noise"],
+        "mode", nargs="?", choices=["regen", "offset", "noise", "reset"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
@@ -753,6 +1194,13 @@ def main(argv: list[str] | None = None) -> int:
             path = write_noise_evidence(result, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
         return 0
+
+    if args.mode == "reset":
+        points = run_reset_check(quiet=args.quiet)
+        if args.record:
+            path = write_reset_evidence(points, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if all(p.ok for p in points) else 1
 
     return 2
 
