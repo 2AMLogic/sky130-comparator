@@ -26,6 +26,16 @@ issue #2 stays **DRAFT** — these are original engineering-judgment bounds,
 each stating its own basis, not a ratified commitment. A DR is owed the
 first time that table's rows are ratified, changed, or rescoped, not before.
 
+**Update (issue #28,
+[DR-002](decision-records/DR-002-target-spec-ratification.md),
+2026-09-16).** That first time has arrived for three of the table's five
+rows (Offset sigma, Input-referred noise, Kickback), each now ratified
+against a real measurement of this repo's own design; the other two
+(Decision time vs. overdrive, Supply/power) stay DRAFT, explicitly scoped
+as open pending further evidence rather than left silently unaddressed.
+`spec/decision-records/TEMPLATE.md` still does not exist — DR-002, like
+DR-001 before it, is written directly against DR-001's shape.
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar
