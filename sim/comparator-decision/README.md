@@ -1,18 +1,22 @@
-# sim/comparator-decision/ -- regen/offset/noise experiment
+# sim/comparator-decision/ -- regen/offset/noise/reset/kickback experiment
 
 Standalone characterization experiment for a dynamic latched comparator's
 decision behavior: regeneration time vs. differential input (`regen`),
-mismatch-driven offset (`offset`), and input-referred noise (`noise`). Every
+mismatch-driven offset (`offset`), input-referred noise (`noise`), reset
+integrity (`reset`), and input-node kickback disturbance (`kickback`). Every
 stimulus here is an ideal differential DC/pulse source -- there is no CDAC
 array or SAR sequencer dependency, because this repo (`sky130-comparator`)
-has no SAR ADC. This directory implements `spec/porting-plan.md`'s "Next
-steps" item 3.
+has no SAR ADC. `regen`/`offset`/`noise` implement `spec/porting-plan.md`'s
+"Next steps" item 3; `reset` and `kickback` are this repo's own additions
+(issues #24 and #26).
 
 ```sh
 python3 sim/comparator-decision/run.py --check-env
-python3 sim/comparator-decision/run.py regen  --record
-python3 sim/comparator-decision/run.py offset --record --n 16 --seed 1
-python3 sim/comparator-decision/run.py noise  --record
+python3 sim/comparator-decision/run.py regen    --record
+python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
+python3 sim/comparator-decision/run.py noise    --record
+python3 sim/comparator-decision/run.py reset    --record
+python3 sim/comparator-decision/run.py kickback --record
 ```
 
 See `sim/README.md` for the general `sim/` evidence-record and directory
@@ -174,6 +178,44 @@ tail switch -> `GND`), measuring a couple of hundred nA here. That floor is
 a property of the topology class, not a defect; the positive control is what
 gives the criterion its scale.
 
+`kickback` was added by issue #26 and is this repo's own -- an ORIGINAL
+experiment, since no same-PDK standalone kickback prior art exists to port
+(`spec/porting-plan.md`'s "Next steps" item 4):
+
+```sh
+python3 sim/comparator-decision/run.py kickback --record
+```
+
+It measures the voltage disturbance the comparator's own regeneration
+injects back onto its input nodes at the reset->evaluate transition, through
+the input-pair devices' gate-drain parasitic capacitance and the
+common-mode step at `TAIL`. That disturbance is only visible to a real
+driving stage -- an ideal (zero-impedance) voltage source absorbs any
+injected charge with no voltage deviation -- which is exactly why the
+top-level README's target-spec Kickback row states its bound "into a 1 kOhm
+source impedance": the source impedance is what turns injected charge into
+a voltage disturbance at all.
+
+- `VINP`/`VINN` are biased at the existing `VCM` through an explicit 1 kOhm
+  series resistor each (the `loaded` variant), driven by a static 50 mV
+  differential step sized to guarantee a clean decision (matching `regen`'s
+  largest tested overdrive and the target-spec table's own "Decision time
+  vs. overdrive" 50 mV reference point), then the same single
+  reset->evaluate edge `regen`/`reset` already use.
+- The peak absolute deviation of `v(VINP)`/`v(VINN)` from each node's own
+  settled pre-edge value, over the whole window, is the disturbance
+  reported.
+- A **control** variant (`ideal`) drives `VINP`/`VINN` directly from the
+  ideal source (zero source impedance) -- it must collapse to
+  (numerically) zero by construction, the same "must be able to fail" bar
+  `reset`'s own positive control states: a `loaded` reading that cannot be
+  told apart from a broken measurement pipeline is not evidence of
+  anything.
+
+This is a single nominal-corner (`tt`/27C) record, per issue #9's original
+scope note (one nominal-corner record per experiment, not a corner
+campaign) -- a full-corner sweep remains open work.
+
 ## Committed records
 
 Records against **this repo's own design** (`design/comparator.sch`), on the
@@ -218,6 +260,14 @@ so nothing below is a pass/fail grade.
   input-referred noise 0.3158 mV rms, differential estimate 0.4466 mV rms.
   Still the loop-broken lower bound by construction (it excludes the
   regenerative phase) -- see the methodology note above.
+- `kickback` (tt/27C) -- `records/20260916-060139-f1eb978.md`: first-ever
+  measurement, both variants PASS. `loaded` (1 kOhm source impedance, 50 mV
+  overdrive) peaks at **144.60 mV** on `VINP` / 131.07 mV on `VINN`; the
+  `ideal` (zero-impedance) control collapses to exactly 0.0000 mV on both,
+  confirming the deck is isolating a genuine source-impedance-dependent
+  effect rather than a measurement artifact. The mechanism is Miller
+  coupling from the internal precharged nodes (`DIP`/`DIN`) through the
+  input pair's own gate-drain capacitance at the reset->evaluate edge.
 
 For orientation against the **DRAFT, unratified** target-spec table (not a
 grade -- that table sets no binding bound until ratified):
@@ -227,13 +277,16 @@ grade -- that table sets no binding bound until ratified):
 | Offset sigma (3 sigma, input-referred) | <= 15 mV | <= 8 mV | 6.06 mV @ `tt_mm`/27C, N=16 |
 | Input-referred noise (differential) | <= 1.0 mV rms | <= 0.6 mV rms | 0.4466 mV rms @ tt/27C |
 | Decision time @ 50 mV overdrive | <= 1.5 ns | <= 0.8 ns | 0.6775 ns @ tt/27C; 0.6875 ns @ ss/-40C |
-| Kickback | <= 5 mV | <= 2 mV | **not measured** -- no testbench exists |
+| Kickback | <= 5 mV | <= 2 mV | 144.60 mV @ tt/27C, 1 kOhm source, 50 mV overdrive (well above both bounds) |
 | Supply / power | <= 50 uW | <= 20 uW | **not measured** -- no clock-rate assumption ratified |
 
-Two of those five rows have no measurement at all, and the three that do are
-single-corner (or five-corner, for `reset`) results against a table that has
+Only one row now has no measurement at all, and every row that does is a
+single-corner (or five-corner, for `reset`) result against a table that has
 not been ratified. Nothing here closes the gap issue #3's T1 item 5 names:
-a full PVT corner campaign against a *ratified* spec.
+a full PVT corner campaign against a *ratified* spec -- and the kickback
+figure above is new information that the DRAFT bound itself may need
+revisiting once ratification is considered, not a design defect this
+issue's scope asks to fix.
 
 Earlier records (`20260909-*`) characterize the **ported placeholder DUT**,
 not this design. See [The DUT](#the-dut) for why they remain, unedited.
