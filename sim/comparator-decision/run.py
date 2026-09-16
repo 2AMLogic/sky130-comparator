@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Standalone driver for the comparator-decision experiment (issues #9, #24).
+"""Standalone driver for the comparator-decision experiment (issues #9, #24,
+#26).
 
 Exercises the DUT fragment at
 sim/comparator-decision/testbench/comparator_core.spice for its decision
 behavior in isolation: mismatch-driven offset, input-referred noise,
-regeneration time vs. differential input, and reset integrity. No CDAC array
-or SAR sequencer is involved -- every source here is an ideal differential
-DC/pulse stimulus, because this repo has no SAR ADC (spec/porting-plan.md
-"Next steps" item 3).
+regeneration time vs. differential input, reset integrity, and input-node
+kickback disturbance. No CDAC array or SAR sequencer is involved -- every
+source here is an ideal differential DC/pulse stimulus, because this repo has
+no SAR ADC (spec/porting-plan.md "Next steps" item 3).
 
 Since issue #24 that fragment is THIS REPO'S OWN design -- generated from
 design/comparator.sch by ./design/netlist.sh -- not the sky130-sar-adc-ported
@@ -16,10 +17,11 @@ hardcodes the DUT's sizing: the `noise` sub-model is assembled from the
 fragment's own device lines, so it tracks the schematic automatically.
 
     python3 sim/comparator-decision/run.py --check-env
-    python3 sim/comparator-decision/run.py regen  --record
-    python3 sim/comparator-decision/run.py offset --record --n 16 --seed 1
-    python3 sim/comparator-decision/run.py noise  --record
-    python3 sim/comparator-decision/run.py reset  --record
+    python3 sim/comparator-decision/run.py regen    --record
+    python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
+    python3 sim/comparator-decision/run.py noise    --record
+    python3 sim/comparator-decision/run.py reset    --record
+    python3 sim/comparator-decision/run.py kickback --record
 
 Provenance (per sim/comparator-decision/README.md, in full): the bespoke
 regen/offset/noise MEASUREMENT METHODOLOGY below is ported from
@@ -1134,6 +1136,308 @@ def write_reset_evidence(
 
 
 # ---------------------------------------------------------------------------
+# kickback: input-node disturbance from the comparator's own regeneration,
+# through an explicit source impedance (issue #26)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. spec/porting-plan.md's "Next steps" item 4 calls for an
+# ORIGINAL kickback experiment -- unlike regen/offset/noise (ported
+# methodology, issue #9) there is no same-PDK standalone prior art to port
+# for kickback specifically. The top-level README's target-spec table
+# already carries a Kickback row (<= 5 mV disturbance into a 1 kOhm source
+# impedance at the input nodes, single decision edge; stretch <= 2 mV) with
+# an explicit note that no testbench exists yet -- this sub-command is that
+# testbench's first cut.
+#
+# WHAT "KICKBACK" MEANS HERE. The voltage disturbance the comparator's own
+# regeneration injects back onto its input nodes at the reset->evaluate
+# transition, through the input-pair devices' gate-drain/gate-source
+# parasitic capacitance and the common-mode step at TAIL. It is only visible
+# to a real driving stage: an IDEAL (zero-impedance) voltage source absorbs
+# any injected charge with no voltage deviation, which is exactly why the
+# target-spec row's own bound is stated "into a 1 kOhm source impedance" --
+# the source impedance is what turns injected charge into a voltage
+# disturbance at all.
+#
+# METHOD -- two variants of the same reset->evaluate transient, differing
+# only in how VINP/VINN are driven:
+#
+#   LOADED  VINP/VINN are biased through an explicit KICKBACK_RS_OHM series
+#           resistor fed by an ideal DC source, per the target-spec row's own
+#           stated methodology assumption. This is the measurement.
+#   IDEAL   VINP/VINN are driven directly by the ideal DC source (zero source
+#           impedance), everything else unchanged. This is the CONTROL: an
+#           ideal voltage source cannot show a voltage deviation from itself
+#           by construction, so this variant's peak disturbance must
+#           collapse to (numerically) zero. Without it, a `loaded` reading of
+#           (say) 0.000 mV would be indistinguishable between "this design
+#           has no kickback" and "this deck is not actually measuring
+#           anything" -- the same "a negative control that cannot be shown
+#           to fail on the defect it screens for is not evidence the defect
+#           is absent" bar the `reset` sub-command's own record already
+#           states (see KickbackPoint.ok below for exactly what each variant
+#           is graded against).
+#
+# In both variants a single static KICKBACK_VINDIFF_MV differential step is
+# applied ahead of the drive (through the resistor, for `loaded`) -- sized to
+# guarantee a clean, unambiguous decision, matching the `regen` sweep's
+# largest tested overdrive and the target-spec table's own "Decision time vs.
+# overdrive" 50 mV reference point -- then the same single
+# reset(CLK=0, RESET_NS)->evaluate(CLK=VDD) edge the `regen`/`reset` decks
+# already use is run. VINP and VINN are measured across the whole window
+# relative to their own pre-edge (t <= RESET_NS) settled value; the peak
+# absolute deviation from that quiescent point is the disturbance the
+# target-spec row grades.
+
+KICKBACK_RS_OHM = 1000.0  # 1 kOhm source impedance -- the target-spec
+# Kickback row's own stated methodology assumption (see module note above).
+KICKBACK_VINDIFF_MV = 50.0  # matches the `regen` sweep's largest tested
+# overdrive and the target-spec table's own "Decision time vs. overdrive"
+# 50 mV reference point -- sized to guarantee a clean decision edge, not
+# tuned to any particular disturbance figure.
+KICKBACK_VARIANTS = ("loaded", "ideal")
+KICKBACK_SENSITIVITY_MIN_V = 1e-3  # `loaded`'s peak disturbance must exceed
+# this to prove the deck is actually sensitive to the effect it screens for.
+# This design measures peak disturbances two orders of magnitude above this
+# floor (tens of mV) -- the bar is set far below the expected signal, not
+# tuned to it, per the same "must be able to fail" contract `reset`'s
+# positive control already states.
+KICKBACK_IDEAL_TOL_V = 1e-9  # `ideal`'s peak disturbance must be at/below
+# this -- an ideal voltage source cannot show a voltage deviation from
+# itself, so anything above numerical noise here means the deck is not
+# actually isolating the source-impedance-dependent effect.
+
+
+def _kickback_deck(
+    info: pdk.PdkInfo, corner: str, temp_c: float, variant: str, log_name: str,
+) -> str:
+    """Single reset->evaluate transient deck for one (corner, temp,
+    variant) kickback point. `variant` selects how VINP/VINN are driven --
+    see the module note above for `loaded` vs. `ideal`."""
+    if variant not in KICKBACK_VARIANTS:
+        raise ValueError(f"unknown kickback variant {variant!r}")
+    vindiff_v = KICKBACK_VINDIFF_MV / 1000.0
+    period_ns = RESET_NS + RESET_TR_NS + EVALUATE_NS + 10.0
+    rs_shown = KICKBACK_RS_OHM if variant == "loaded" else 0.0
+    lines = [
+        f"* comparator-decision kickback disturbance -- variant={variant} "
+        f"Rs={rs_shown:g}ohm vindiff={KICKBACK_VINDIFF_MV}mV corner={corner} "
+        f"temp={temp_c}C (issue #26)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{EVALUATE_NS}n {period_ns}n)",
+    ]
+    if variant == "loaded":
+        lines += [
+            f"Vsrcp VSRC_P 0 dc {VCM + vindiff_v / 2}",
+            f"Vsrcn VSRC_N 0 dc {VCM - vindiff_v / 2}",
+            f"Rsp VSRC_P VINP {KICKBACK_RS_OHM}",
+            f"Rsn VSRC_N VINN {KICKBACK_RS_OHM}",
+        ]
+    else:
+        lines += [
+            f"Vinp VINP 0 dc {VCM + vindiff_v / 2}",
+            f"Vinn VINN 0 dc {VCM - vindiff_v / 2}",
+        ]
+    lines += [
+        "",
+        _dut_lines(),
+        "",
+        ".control",
+        f"tran 0.005n {RESET_NS + RESET_TR_NS + EVALUATE_NS}n",
+        f"wrdata {log_name}.csv v(CLK) v(VINP) v(VINN) v(OUTP) v(OUTN)",
+        ".endc",
+        ".end",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+@dataclass
+class KickbackPoint:
+    corner: str
+    temp_c: float
+    variant: str
+    quiescent_vinp_v: float
+    quiescent_vinn_v: float
+    peak_dev_vinp_v: float
+    peak_dev_vinn_v: float
+    log_text: str
+
+    @property
+    def peak_dev_v(self) -> float:
+        """Worst of the two input nodes -- the figure the target-spec row's
+        single bound would be graded against, once ratified."""
+        return max(self.peak_dev_vinp_v, self.peak_dev_vinn_v)
+
+    @property
+    def ok(self) -> bool:
+        """Whether this run did what its VARIANT is supposed to do (same
+        shape as ResetPoint.ok). `loaded` must show a disturbance clearly
+        above the numerical floor (sensitivity); `ideal` must collapse to
+        (numerically) zero."""
+        if self.variant == "loaded":
+            return self.peak_dev_v >= KICKBACK_SENSITIVITY_MIN_V
+        return self.peak_dev_v <= KICKBACK_IDEAL_TOL_V
+
+    @property
+    def verdict(self) -> str:
+        state = f"peak={self.peak_dev_v * 1e3:.4f}mV"
+        return f"{state} -> {'as expected' if self.ok else 'UNEXPECTED'}"
+
+
+def run_kickback(
+    corner: str = "tt", temp_c: float = 27.0, quiet: bool = False,
+) -> list[KickbackPoint]:
+    info = pdk.resolve_or_raise()
+    results: list[KickbackPoint] = []
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-kickback-") as scratch:
+        scratch_dir = Path(scratch)
+        for variant in KICKBACK_VARIANTS:
+            log_name = f"kickback_{variant}"
+            deck = _kickback_deck(info, corner, temp_c, variant, log_name)
+            log_text = _run(deck, scratch_dir, log_name)
+            t, clk, vinp, vinn, outp, outn = toolchain.read_wrdata_csv(
+                scratch_dir / f"{log_name}.csv", 5)
+            # Quiescent = each node's own settled value at/before RESET_NS,
+            # i.e. before the reset->evaluate CLK ramp begins.
+            idx_pre = max(i for i, tt in enumerate(t) if tt <= RESET_NS * 1e-9)
+            q_p, q_n = vinp[idx_pre], vinn[idx_pre]
+            peak_p = max(abs(v - q_p) for v in vinp)
+            peak_n = max(abs(v - q_n) for v in vinn)
+            point = KickbackPoint(
+                corner=corner, temp_c=temp_c, variant=variant,
+                quiescent_vinp_v=q_p, quiescent_vinn_v=q_n,
+                peak_dev_vinp_v=peak_p, peak_dev_vinn_v=peak_n,
+                log_text=log_text,
+            )
+            results.append(point)
+            if not quiet:
+                print(
+                    f"  [{variant}] {corner}/{temp_c}C: "
+                    f"peak|VINP-q|={peak_p * 1e3:.4f}mV "
+                    f"peak|VINN-q|={peak_n * 1e3:.4f}mV -> {point.verdict}"
+                )
+    return results
+
+
+def write_kickback_evidence(
+    points: list[KickbackPoint], note: str = "", supersedes: str = "",
+) -> Path:
+    info = pdk.resolve()
+    record_id = evidence.new_record_id()
+    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    corners_dir = EXPERIMENT_DIR / "corners" / record_id
+    corners_dir.mkdir(parents=True, exist_ok=True)
+    for p in points:
+        (corners_dir / f"kickback_{p.variant}.log").write_text(p.log_text)
+
+    loaded = next(p for p in points if p.variant == "loaded")
+    ideal = next(p for p in points if p.variant == "ideal")
+    unexpected = [p for p in points if not p.ok]
+
+    lines: list[str] = []
+    a = lines.append
+    a(f"# Record {record_id}")
+    a("")
+    a(f"- **Record ID**: {record_id}")
+    a(CLAIM_TEXT)
+    a(NETLIST_PROVENANCE)
+    a(
+        f"- **Corner matrix run**: process=['{loaded.corner}'], "
+        f"temperature_c=[{loaded.temp_c}], supply_v=[{VDD}] (1 PVT point, "
+        "both variants -- **subset-corner justification**: this is the "
+        "FIRST kickback measurement this repo has ever made (no same-PDK "
+        "standalone prior art exists to port, per spec/porting-plan.md's "
+        "\"Next steps\" item 4); a single nominal-corner record establishes "
+        "the plumbing and a first-principles figure, per issue #9's "
+        "original scope note (one nominal-corner record per experiment, "
+        "not a corner campaign) -- a full-corner sweep remains open work, "
+        "same as every other post-#24 record in this directory)"
+    )
+    a(
+        f"- **Stimulus**: VINP/VINN biased at VCM={VCM}V +/- "
+        f"{KICKBACK_VINDIFF_MV / 2:g}mV (a static {KICKBACK_VINDIFF_MV:g}mV "
+        "differential step, sized to guarantee a clean decision -- matching "
+        "the `regen` sweep's largest tested overdrive and the target-spec "
+        "table's own \"Decision time vs. overdrive\" 50mV reference point); "
+        f"single reset({RESET_NS}ns, CLK=0)->evaluate(CLK={VDD}V) edge, the "
+        "same stimulus shape `regen`/`reset` already use"
+    )
+    a(
+        "- **Variants**: `loaded` = VINP/VINN fed through an explicit "
+        f"{KICKBACK_RS_OHM:g}ohm series resistor from an ideal DC source -- "
+        "the target-spec Kickback row's own stated methodology assumption, "
+        "and what lets an injected disturbance show up as a voltage instead "
+        "of being absorbed. `ideal` = CONTROL, VINP/VINN driven directly by "
+        "the ideal DC source (zero source impedance) -- must collapse to "
+        "(numerically) zero by construction; anything else would mean the "
+        "deck is not actually isolating the source-impedance-dependent "
+        "effect the `loaded` variant measures."
+    )
+    a(
+        f"- **Sensitivity criteria**: `loaded` peak disturbance must be >= "
+        f"{KICKBACK_SENSITIVITY_MIN_V * 1e3:g}mV (a floor far below the "
+        "measured signal, not a tuned threshold); `ideal` peak disturbance "
+        f"must be <= {KICKBACK_IDEAL_TOL_V * 1e3:g}mV"
+    )
+    if note:
+        a(f"- **Note**: {note}")
+    a(
+        f"- **Overall**: {'PASS' if not unexpected else 'FAIL'} "
+        f"(loaded peak={loaded.peak_dev_v * 1e3:.4f}mV, "
+        f"ideal peak={ideal.peak_dev_v * 1e3:.4f}mV)"
+    )
+    a("")
+    a("## Peak input-node disturbance")
+    a("")
+    a(
+        "| Variant | peak \\|VINP-quiescent\\| (mV) | peak \\|VINN-quiescent\\| "
+        "(mV) | Result |"
+    )
+    a("|---|---|---|---|")
+    for p in points:
+        a(
+            f"| {p.variant} | {p.peak_dev_vinp_v * 1e3:.4f} | "
+            f"{p.peak_dev_vinn_v * 1e3:.4f} | {p.verdict} |"
+        )
+    a("")
+    a("## Reading this record")
+    a("")
+    a(
+        "The mechanism is Miller coupling: the input-pair devices' own "
+        "gate-drain parasitic capacitance couples the internal precharged "
+        "nodes' (DIP/DIN) fast swing at the reset->evaluate transition back "
+        "onto their own gate nodes (VINP/VINN) -- this only shows up as a "
+        "voltage here because those gates are no longer driven by a "
+        "zero-impedance source, exactly the target-spec Kickback row's own "
+        "stated assumption. The peak occurs at the CLK ramp / earliest part "
+        "of regeneration, not deep into the decided state, consistent with "
+        "a charge-injection mechanism at the transition rather than a "
+        "steady-state one."
+    )
+    a("")
+    a(
+        "No claim is made here against the target-spec row's stated "
+        "<=5mV / stretch <=2mV bound (see Claim above): that table is DRAFT "
+        "and unratified, and this repo's first measured figure is well "
+        "above both, at the sizing design/comparator.sch currently carries "
+        "-- a sizing pass driven by the offset/noise/regen-time budget, not "
+        "yet by any kickback bound. That gap is new information this record "
+        "exists to surface, not something this issue's scope asks to close."
+    )
+    a("")
+    return _finalize_record(
+        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
+        netlist_sha, "kickback", supersedes=supersedes,
+    )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1141,7 +1445,7 @@ def write_reset_evidence(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "noise", "reset"],
+        "mode", nargs="?", choices=["regen", "offset", "noise", "reset", "kickback"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
@@ -1199,6 +1503,13 @@ def main(argv: list[str] | None = None) -> int:
         points = run_reset_check(quiet=args.quiet)
         if args.record:
             path = write_reset_evidence(points, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if all(p.ok for p in points) else 1
+
+    if args.mode == "kickback":
+        points = run_kickback(corner=args.corner, temp_c=args.temp, quiet=args.quiet)
+        if args.record:
+            path = write_kickback_evidence(points, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
         return 0 if all(p.ok for p in points) else 1
 

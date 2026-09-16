@@ -1,0 +1,67 @@
+* comparator_core.spice -- THIS REPO'S OWN comparator design.
+*
+* GENERATED FILE -- do not hand-edit. Regenerate with ./design/netlist.sh
+* (see that script for the exact xschem invocation and the post-processing
+* it applies). The source of truth is design/comparator.sch.
+*
+* This file is no longer the sky130-sar-adc-ported PLACEHOLDER DUT it was
+* under issue #9. It is this repo's own design/comparator.sch (issue #24),
+* implementing the topology and reset scheme decided in
+* spec/decision-records/DR-001-comparator-topology.md (issue #21 / PR #22)
+* at a sizing derived first-principles against this repo's own installed
+* sky130 device models. The prior placeholder content remains in git
+* history; records under sim/comparator-decision/records/ written before
+* this change characterize that placeholder, not this design, and say so in
+* their own Claim fields (they are append-only evidence and are never
+* edited -- they simply stop being the freshest evidence).
+*
+* Topology: single-tail, bottom-tail NMOS-input dynamic latch, no static
+* preamp. 11 devices: 1 tail switch NMOS + 2 input-pair NMOS + 2
+* cross-coupled latch NMOS + 2 cross-coupled latch PMOS + 2 output-node PMOS
+* reset/precharge + 2 internal-node PMOS reset/precharge. CLK-gated PMOS
+* precharge of BOTH the differential output nodes (OUTP/OUTN) AND the
+* cross-coupled latch NMOS pair's own source nodes (DIP/DIN) to VDD, per
+* DR-001 Decision 3 -- every latch NMOS is at Vgs = 0 during reset, so the
+* positive-feedback loop is dead and the reset state is a stable,
+* non-conducting equilibrium.
+*
+* Sizing (all L=0.5um; full derivation in design/comparator.sch's own
+* sizing-rationale text block and in DR-001 Amendment 1):
+*   M_TAIL                W=20um   headroom: CLK-gated switch, Ron drop
+*   M_INN, M_INP          W=10um   offset budget: 2*AVT_n^2/(W*L) at 70% of
+*                                  the DRAFT stretch row's variance
+*   M_LATN_P, M_LATN_N    W= 8um   offset budget: remaining 30%
+*   M_LATP_P, M_LATP_N    W=16um   2x latch NMOS -> trip point near VDD/2
+*   M_RST_P,  M_RST_N     W= 8um   reset tau << reset window, min C_out
+*   M_RST_DIP, M_RST_DIN  W= 6um   reset tau << reset window, min C_DI
+*
+* Ports: VDD, GND (auto-tied to node 0 by ngspice's built-in gnd-name
+* recognition), CLK, VINP, VINN, OUTP, OUTN. Internal nodes: TAIL, DIP, DIN.
+* Vin,diff = VINP - VINN > 0 => OUTP settles high.
+*
+* Every device is sky130_fd_pr__{n,p}fet_01v8 (1.8V core flavour, matching
+* this repo's own 1.8V headroom constraint per CLAUDE.md) -- no
+* _g5v0d10v5 or other non-core flavour instances.
+
+XM_TAIL TAIL CLK GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=20 nf=1 ad=5.8 as=5.8 pd=40.58 ps=40.58 nrd=0.0145 nrs=0.0145 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_INN DIP VINN TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1 ad=2.9 as=2.9 pd=20.58 ps=20.58 nrd=0.029 nrs=0.029 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_INP DIN VINP TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1 ad=2.9 as=2.9 pd=20.58 ps=20.58 nrd=0.029 nrs=0.029 sa=0 sb=0
++ sd=0 mult=1 m=1
+XM_LATN_P OUTP OUTN DIP GND sky130_fd_pr__nfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_LATN_N OUTN OUTP DIN GND sky130_fd_pr__nfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_RST_DIP DIP CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6 nf=1 ad=1.74 as=1.74 pd=12.58 ps=12.58 nrd=0.0483333333333333
++ nrs=0.0483333333333333 sa=0 sb=0 sd=0 mult=1 m=1
+XM_RST_DIN DIN CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6 nf=1 ad=1.74 as=1.74 pd=12.58 ps=12.58 nrd=0.0483333333333333
++ nrs=0.0483333333333333 sa=0 sb=0 sd=0 mult=1 m=1
+XM_LATP_P OUTP OUTN VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1 ad=4.64 as=4.64 pd=32.58 ps=32.58 nrd=0.018125 nrs=0.018125
++ sa=0 sb=0 sd=0 mult=1 m=1
+XM_LATP_N OUTN OUTP VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1 ad=4.64 as=4.64 pd=32.58 ps=32.58 nrd=0.018125 nrs=0.018125
++ sa=0 sb=0 sd=0 mult=1 m=1
+XM_RST_P OUTP CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
+XM_RST_N OUTN CLK VDD VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8 nf=1 ad=2.32 as=2.32 pd=16.58 ps=16.58 nrd=0.03625 nrs=0.03625 sa=0
++ sb=0 sd=0 mult=1 m=1
