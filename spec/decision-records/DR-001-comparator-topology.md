@@ -345,3 +345,162 @@ without changing, that expectation.
   step 2, filed as its own follow-up issue once this record merges.
 - **Ratification** — nothing in this record is binding until an operator
   ratification act rules on it; no such issue is filed yet for this record.
+
+---
+
+## Amendment 1 (issue #24, 2026-09-15): the sizing pass closes the `ss`/−40 °C deficit
+
+This amendment is **append-only**, per this repo's evidence convention:
+nothing above it is revised, deleted, or softened. The original probe, the
+original planning convention, and the original −58.5 mV finding all stand
+exactly as recorded — this section reports what happened when the sizing
+pass this record's "Open items" hands the problem to actually ran.
+
+**Status of this amendment**: same as the record it amends — **proposed**,
+ratifying nothing. No target-spec row is set, changed, or scoped here.
+
+**What ran.** `design/comparator.sch` now exists (issue #24), implementing
+this record's Decision §§1–3 unchanged: no static preamp, the same
+11-device single-tail device set, and the same CLK-gated PMOS precharge of
+both the output nodes and the latch NMOS pair's internal source nodes.
+Only the thing this record explicitly left open — the real `W/L` — is
+decided by that work. The sizing, and the reasoning behind each group, is
+in that schematic's own sizing-rationale text block; the summary is:
+
+| Device group | Devices | `W` (µm) | `L` (µm) | Set by |
+|---|---|---|---|---|
+| Tail switch | `M_TAIL` | 20 | 0.5 | headroom (`Ron` drop) |
+| Input pair | `M_INN`, `M_INP` | 10 | 0.5 | offset budget |
+| Cross-coupled NMOS | `M_LATN_P`, `M_LATN_N` | 8 | 0.5 | offset budget |
+| Cross-coupled PMOS | `M_LATP_P`, `M_LATP_N` | 16 | 0.5 | trip point at `VDD`/2 |
+| Output reset PMOS | `M_RST_P`, `M_RST_N` | 8 | 0.5 | reset `τ`, output loading |
+| Internal reset PMOS | `M_RST_DIP`, `M_RST_DIN` | 6 | 0.5 | reset `τ`, `DI` loading |
+
+### 1. Why the original static formula could not simply be re-evaluated
+
+This record's planning formula treats three terms as independently
+budgeted:
+
+```
+V_cm,min = Vth,n + V_ov,in + V_dsat,tail
+```
+
+Once a real circuit is solved, `Vth,in + V_ov,in + V(TAIL)` sums to `V_cm`
+**identically**, by KVL. The "margin" the formula produces is therefore not
+a quantity an operating point can report back: re-running the arithmetic at
+new numbers would not be evidence of anything. What the formula was a proxy
+for, and what a solved operating point *can* answer, are two
+region-of-operation questions:
+
+1. **Is the input pair in saturation, with margin?** An input device that
+   falls into triode stops converting `Vin` into a current difference —
+   which is the comparator's entire mechanism. The margin is
+   `Vds,in − Vdsat,in`, and it must be positive at every corner. This is the
+   real headroom criterion; `V_ov,in` was a stand-in for it.
+2. **Is the tail device in triode?** The formula reserved a full
+   `V_dsat,tail = 125 mV`, which is the correct budget for a *saturated
+   current source*. It is the wrong model for this topology's tail, whose
+   gate is driven by `CLK` rail-to-rail — a switch, not a current source.
+   Whether that 125 mV is genuinely recoverable is a checkable claim, not an
+   assumption, and it is checked below.
+
+Deck: `spec/dr-001-support/sizing_probe.spice` — a self-consistent `.op` on
+the tail + input pair with the `DIP`/`DIN` nodes held by diode-connected
+PMOS loads and `CLK` at `VDD` (steady evaluate bias, tail fully on). Same
+reduced, loop-broken sub-model shape `sim/comparator-decision/run.py`'s
+`noise` sub-command uses, and for the same reason: the full latch has no
+static operating point once regeneration begins. Committed at the `ss`/−40 °C
+point, with the other three corners obtained by substituting the `.lib` and
+`.temp` lines — the same convention `vth_probe.spice` already uses.
+
+### 2. Result: the deficit is closed, and the tail is the reason
+
+| Corner | `V(TAIL)` | `Vth,in` | `V_ov,in` | `Vds,in` | `Vdsat,in` | **saturation margin** |
+|---|---|---|---|---|---|---|
+| `tt` / 27 °C | 28.19 mV | 631.09 mV | 240.72 mV | 213.49 mV | 200.78 mV | **+12.71 mV** |
+| `ss` / 27 °C | 26.31 mV | 646.03 mV | 227.66 mV | 223.60 mV | 193.33 mV | **+30.27 mV** |
+| `tt` / −40 °C | 20.09 mV | 690.23 mV | 189.69 mV | 176.12 mV | 155.72 mV | **+20.40 mV** |
+| `ss` / −40 °C | 18.40 mV | 705.17 mV | 176.43 mV | 188.69 mV | 148.81 mV | **+39.89 mV** |
+
+| Corner | `Vds,tail` | `Vdsat,tail` | triode margin | recovered from the 125 mV reservation |
+|---|---|---|---|---|
+| `tt` / 27 °C | 28.19 mV | 606.77 mV | +578.58 mV | 96.81 mV |
+| `ss` / 27 °C | 26.31 mV | 609.49 mV | +583.18 mV | 98.69 mV |
+| `tt` / −40 °C | 20.09 mV | 498.68 mV | +478.60 mV | 104.91 mV |
+| `ss` / −40 °C | 18.40 mV | 502.30 mV | +483.90 mV | 106.60 mV |
+
+**The tail question is answered decisively.** At every corner the tail sits
+roughly 25× below its own `Vdsat` — 18–28 mV of drop against a 500–610 mV
+saturation boundary. It is in deep triode, i.e. it really is a switch and
+not a current source, and the 125 mV this record reserved for `V_dsat,tail`
+is therefore recoverable: 106.60 mV of it comes back at `ss`/−40 °C. That
+recovered budget is precisely what converts this record's original
+−58.5 mV planning-convention deficit into a positive result. Reading the
+identity at that corner directly: `705.17 + 176.43 + 18.40 = 900.00 mV`, so
+the achieved input-pair overdrive is 176.43 mV — above this record's own
+125 mV planning floor, not 58.5 mV short of a budget.
+
+**So: closed, not accepted as a corner-limited tradeoff.** No reduced
+performance is being documented away at `ss`/−40 °C. The transient evidence
+agrees — `sim/comparator-decision/records/` carries a full `regen` sweep at
+`ss`/−40 °C in which every point resolves, and the reset-integrity check
+holds at that corner too.
+
+### 3. A finding this record did not predict: the binding corner moved
+
+This record expected `ss`/−40 °C to be the hard corner, and said so. At the
+real sizing it is **not** — it has the *largest* input-pair saturation
+margin of the four (+39.89 mV), and `tt`/27 °C has the *smallest*
+(+12.71 mV). This is worth recording rather than glossing, because it is a
+straightforward consequence of something the original single-device probe
+could not see: `Vds,in` is set by where the `DIP`/`DIN` nodes sit, which is
+set by the *load* devices, and cold slows the PMOS load as well as raising
+the NMOS threshold. The two effects move `Vds,in` and `Vdsat,in` in the
+same direction and partly cancel. A single-device probe holding `Vds` at a
+fixed 0.9 V cannot exhibit that cancellation — it is not a flaw in the
+original probe, it is the difference between a device measurement and a
+circuit measurement.
+
+The practical consequence: **a future corner campaign must not assume
+`ss`/−40 °C is the only corner worth checking.** The `tt`/27 °C margin is
+the thin one at this sizing, and it is thin in absolute terms (12.71 mV).
+
+### 4. Scope and limits of this amendment
+
+- The sizing probe is an **operating-point check on a reduced sub-model**,
+  with the `DIP`/`DIN` bias set by diode-connected PMOS stand-ins rather
+  than by the real transient. It answers the region-of-operation question
+  the headroom argument turns on; it is not a transient characterization
+  and the absolute `Vds,in` values depend on that stand-in load.
+- It is **not** the full PVT sweep this record's "Open items" also asks
+  for. Four corners at one supply is not a sigma-adequate or
+  corner-complete characterization, and that item stays **open**, still
+  blocked on the top-level README target-spec table's ratification.
+- The 125 mV/125 mV planning-overdrive convention open item is now
+  **partly answered**: the `V_dsat,tail` half of it was the wrong model for
+  a CLK-gated tail and is recoverable, quantified above. The `V_ov,in` half
+  stands as a reasonable floor — the design clears it at every corner.
+
+### 5. Items this amendment closes, and items it leaves open
+
+**Closed by this amendment:**
+
+- *"Closing the `ss`/−40 °C headroom deficit at real sizing."* Closed, with
+  the mechanism identified (switch-mode tail) and quantified.
+- *"Double-tail topology re-evaluation."* Not needed. The single-tail class,
+  as sized, clears the deficit within itself, so the escalation path this
+  record documented does not have to be taken. It remains documented and
+  available if a future full campaign finds something these four corners do
+  not.
+
+**Still open (unchanged by this amendment):**
+
+- *"A full PVT sweep at the actual sized geometry."* Still open, and now
+  with a sharper reason to run it: §3's finding that the binding corner is
+  not where this record predicted.
+- *"Ratification."* Nothing here is binding. The top-level README's
+  target-spec table remains DRAFT and no ratification issue is filed.
+- Offset, noise and kickback: offset and noise are now **measured** against
+  the real design (`sim/comparator-decision/records/`), but against a DRAFT
+  table, so they substantiate no row. Kickback still has no testbench at
+  all.

@@ -1,0 +1,118 @@
+* DR-001 Amendment 1 support: headroom check at design/comparator.sch's
+* actual sizing (issue #24)
+*
+* WHAT QUESTION THIS ANSWERS. DR-001's own headroom probe
+* (vth_probe.spice, alongside this file) evaluated a STATIC three-term
+* planning formula
+*
+*     V_cm,min = Vth,n + V_ov,in + V_dsat,tail
+*
+* at a representative geometry with both overdrive terms pinned to a
+* deliberately conservative 125 mV planning convention, and found the
+* slow/cold corner NEGATIVE: at ss/-40C, V_cm,min = 958.5 mV against a
+* V_cm of 900 mV, i.e. a -58.5 mV deficit. DR-001's "Open items" hands the
+* job of closing (or explicitly accepting) that deficit to the sizing pass.
+* This deck is that check, at the real sizing.
+*
+* WHY THE STATIC FORMULA CANNOT SIMPLY BE RE-EVALUATED. Once the circuit is
+* actually solved, Vth,in + Vov,in + V(TAIL) sums to V_cm identically, by
+* KVL -- the "margin" the planning formula produced is not a free-standing
+* quantity a circuit solve can report. Re-running the formula at new
+* numbers would therefore be arithmetic, not evidence. The physically
+* meaningful questions a solved operating point CAN answer, and that this
+* deck asks, are the two region-of-operation questions the formula was a
+* proxy for in the first place:
+*
+*   1. IS THE INPUT PAIR IN SATURATION, WITH MARGIN?  An input device that
+*      falls into triode stops converting Vin into a current difference,
+*      which is the whole mechanism of the comparator. The margin is
+*      Vds,in - Vdsat,in, and it must be positive at every corner. This is
+*      the real headroom criterion; the planning formula's V_ov,in term was
+*      a stand-in for it.
+*
+*   2. IS THE TAIL DEVICE IN TRIODE?  DR-001's formula reserved a full
+*      V_dsat,tail = 125 mV for the tail, which is the correct budget for a
+*      SATURATED CURRENT SOURCE. design/comparator.sch's tail is not one:
+*      its gate is driven by CLK full-swing (0 V / VDD), so it is a switch,
+*      and a switch sized for low Ron sits in deep triode with a V(TAIL)
+*      drop far below its own Vdsat. Confirming Vds,tail < Vdsat,tail is
+*      what licenses treating that 125 mV as recoverable rather than spent
+*      -- and it is a claim about the topology's drive condition, checkable
+*      here, not an assumption.
+*
+* SUB-MODEL. Tail + input pair with the DIP/DIN nodes held by
+* diode-connected PMOS loads, CLK at VDD (steady evaluate bias, tail fully
+* on), inputs balanced at V_cm = 0.9 V -- the same reduced, loop-broken
+* shape sim/comparator-decision/run.py's `noise` sub-command uses, and for
+* the same reason: the full latch has no static operating point once
+* regeneration begins. The diode-connected loads stand in for the state of
+* the DIP/DIN nodes shortly after the evaluate edge, while the cross-coupled
+* pairs are still off. Device sizing below is design/comparator.sch's
+* (W_tail = 20um, W_in = 10um, W_rst_int = 6um, all L = 0.5um).
+*
+* This is an operating-point check on a reduced sub-model. It is NOT a
+* transient characterization of the real latch and NOT a PVT campaign --
+* see sim/comparator-decision/records/ for the transient regen and
+* reset-integrity evidence at tt/27C and ss/-40C, and DR-001's still-open
+* "A full PVT sweep" item for the campaign neither of those replaces.
+*
+* Run (repeat per corner by substituting the .lib and .temp lines below --
+* the same convention vth_probe.spice uses):
+*   source sim/env.sh && ngspice -b spec/dr-001-support/sizing_probe.spice
+* As committed: ss / -40C, the corner DR-001 flagged as its worst. The
+* other three DR-001 corners (tt/27C, ss/27C, tt/-40C) are tabulated in
+* DR-001 Amendment 1.
+
+.temp -40
+.lib $PDK_ROOT/$PDK/libs.tech/combined/sky130.lib.spice ss
+
+.param VDD=1.8
+.param VCM=0.9
+
+Vdd  VDD  0  dc {VDD}
+Vclk CLK  0  dc {VDD}
+Vinp VINP 0  dc {VCM}
+Vinn VINN 0  dc {VCM}
+
+XM_TAIL    TAIL CLK  GND  GND sky130_fd_pr__nfet_01v8 L=0.5 W=20 nf=1
+XM_INN     DIP  VINN TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1
+XM_INP     DIN  VINP TAIL GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1
+XM_RST_DIP DIP  DIP  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6  nf=1
+XM_RST_DIN DIN  DIN  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6  nf=1
+
+.control
+op
+
+echo "--- node voltages ---"
+print v(TAIL) v(DIP) v(DIN)
+
+echo "--- input device M_INP (W=10um/L=0.5um): saturation margin ---"
+let vgs_in   = v(VINP) - v(TAIL)
+let vth_in   = @m.xm_inp.msky130_fd_pr__nfet_01v8[vth]
+let vov_in   = vgs_in - vth_in
+let vds_in   = v(DIN) - v(TAIL)
+let vdsat_in = @m.xm_inp.msky130_fd_pr__nfet_01v8[vdsat]
+let satmar   = vds_in - vdsat_in
+print vgs_in
+print vth_in
+print vov_in
+print vds_in
+print vdsat_in
+echo "saturation margin Vds,in - Vdsat,in (must be > 0):"
+print satmar
+print @m.xm_inp.msky130_fd_pr__nfet_01v8[id]
+
+echo "--- tail device M_TAIL (W=20um/L=0.5um): triode confirmation ---"
+let vds_tail   = v(TAIL)
+let vdsat_tail = @m.xm_tail.msky130_fd_pr__nfet_01v8[vdsat]
+let trimar     = vdsat_tail - vds_tail
+print vds_tail
+print vdsat_tail
+echo "triode margin Vdsat,tail - Vds,tail (must be > 0 => switch, not current source):"
+print trimar
+echo "DR-001's planning convention reserved 125mV for Vdsat,tail; recovered:"
+let recovered = 0.125 - vds_tail
+print recovered
+.endc
+
+.end
