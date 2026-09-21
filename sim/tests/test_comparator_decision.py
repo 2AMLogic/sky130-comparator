@@ -1,5 +1,6 @@
 """Unit tests for sim/comparator-decision/run.py's `kickback` deck-builder
-and result-grading logic (issue #26).
+and result-grading logic (issue #26), plus the `_noise_deck` soft-clock
+node handling added by DR-003 (issue #30).
 
 Construction/import-level coverage only -- no ngspice/PDK invocation, same
 level `regen`/`offset`/`reset` are exercised at today (none of those three
@@ -134,6 +135,49 @@ class TestKickbackPointOk(unittest.TestCase):
     def test_peak_dev_v_is_worst_of_the_two_nodes(self):
         point = self._point("loaded", peak_p=0.05, peak_n=0.12)
         self.assertAlmostEqual(point.peak_dev_v, 0.12)
+
+
+class TestNoiseDeckSoftClock(unittest.TestCase):
+    """`_noise_deck()` -- the DR-003 soft-clock node (issue #30).
+
+    Since DR-003 the committed DUT fragment drives XM_TAIL's gate from the
+    internal soft-clock node CLKT (via the R_CLKS + M_CLKCAP shaper) rather
+    than from CLK directly. The loop-broken noise sub-model still re-emits
+    the tail verbatim, so the deck MUST bias CLKT at the same steady VDD
+    evaluate level Vclkfix gives CLK -- without that line the tail gate
+    would float and the sub-model's DC solve would be garbage.
+    """
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+
+    def test_noise_deck_biases_the_soft_clock_node(self):
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        self.assertIn("Vclkfix CLK 0 dc", deck)
+        self.assertIn("Vclkfixt CLKT 0 dc", deck)
+
+    def test_noise_deck_re_emits_tail_verbatim_with_clkt_gate(self):
+        # The tail is re-emitted verbatim from the committed fragment, whose
+        # XM_TAIL line carries CLKT as its gate node since DR-003 -- so the
+        # emitted deck's own device line must show that same CLKT gate, and
+        # it must match the fragment's XM_TAIL byte-for-byte.
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        tail_line = cd_run._dut_device_line("XM_TAIL")
+        joined = " ".join(tail_line.split())
+        deck_joined = " ".join(deck.split())
+        self.assertIn(joined, deck_joined)
+        self.assertTrue(joined.split()[2] == "CLKT",
+                        "fragment XM_TAIL gate node should be CLKT since DR-003")
+
+    def test_noise_deck_omits_the_clock_shaper_devices(self):
+        # R_CLKS and M_CLKCAP shape the CLOCK EDGE; the noise sub-model is
+        # DC-biased at steady evaluate, where the shaper has no role. The
+        # deck must therefore not accidentally drag in netlist lines the
+        # sub-model's provenance says it does not include.
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        self.assertNotIn("R_CLKS", deck)
+        self.assertNotIn("M_CLKCAP", deck)
+        self.assertNotIn("XM_CLKCAP", deck)
 
 
 if __name__ == "__main__":

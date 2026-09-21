@@ -11,13 +11,16 @@ Topology and reset scheme per spec/decision-records/DR-001-comparator-topology.m
 (issue #21 / PR #22); this schematic implements that decision, it does not
 re-open it.
 
-11 devices, exactly the DR-001 device set:
-  1 tail switch NMOS              M_TAIL
-  2 input-pair NMOS               M_INN, M_INP
-  2 cross-coupled latch NMOS      M_LATN_P, M_LATN_N
-  2 cross-coupled latch PMOS      M_LATP_P, M_LATP_N
-  2 output-node reset PMOS        M_RST_P,  M_RST_N
-  2 internal-node reset PMOS      M_RST_DIP, M_RST_DIN
+13 devices -- the 11-device DR-001 set plus the 2-device slew-shaper
+DR-003 (issue #30, kickback mitigation) hangs off the clock port:
+  1 tail switch NMOS         M_TAIL              (gate at CLKT, see below)
+  2 input-pair NMOS          M_INN, M_INP
+  2 cross-coupled latch NMOS M_LATN_P, M_LATN_N
+  2 cross-coupled latch PMOS M_LATP_P, M_LATP_N
+  2 output-node reset PMOS   M_RST_P,  M_RST_N       (gates at CLKT)
+  2 internal-node reset PMOS M_RST_DIP, M_RST_DIN     (gates at CLKT)
+  1 poly clock resistor      R_CLKS   (CLK -> CLKT, res_high_po)
+  1 clock MOS capacitor      M_CLKCAP (CLKT -> GND, nfet_01v8)
 
 Reset (CLK=0): all four reset PMOS conduct, precharging BOTH the differential
 output nodes (OUTP/OUTN) AND the cross-coupled latch NMOS pair's own source
@@ -28,13 +31,23 @@ the reset state is a stable, all-devices-off equilibrium with no VDD->GND
 path -- DR-001 Decision 3.  This is the property the reset-integrity negative
 control (sim/comparator-decision/run.py reset) exists to verify.
 
-Evaluate (CLK=VDD): reset PMOS off, tail switch on; the input pair discharges
-DIP/DIN at rates set by VINN/VINP, the latch NMOS pair's sources fall, the
-loop gain rises through unity and the pair regenerates to the rails.
+Evaluate (CLK rising): the soft-clock network R_CLKS + M_CLKCAP forms the
+internal node CLKT (tau ~ 250 ps), and ALL five clocked gates -- the tail
+switch and the four reset PMOS -- are driven by CLKT, not by CLK itself.
+The whole evaluate onset (precharge release + tail turn-on together) is
+therefore slew-limited to that RC rather than to the testbench's 100 ps
+ramp: the DIP/DIN collapse that couples through the input pair's Cgd into
+VINP/VINN is stretched, and the peak input disturbance falls with it.
+Reset (CLK low) rests identically to DR-001's scheme: CLKT discharges to
+GND through R_CLKS, so every gate sits exactly where the DR-001 design put
+it -- the reset-integrity property is unchanged, and only the TRANSITION
+is shaped.  See the DR-003 block below for why this, and not the other
+candidate mitigations, is what this schematic carries.
 
 Ports (flat, top level -- drop-in DUT fragment for
 sim/comparator-decision/testbench/comparator_core.spice):
-  VDD, GND, CLK, VINP, VINN, OUTP, OUTN.     Internal nodes: TAIL, DIP, DIN.
+  VDD, GND, CLK, VINP, VINN, OUTP, OUTN.     Internal nodes: TAIL, DIP,
+  DIN, CLKT.
 Polarity: Vin,diff = VINP - VINN > 0  =>  OUTP settles high.
   (VINP drives M_INP, whose drain is DIN; DIN falls faster, M_LATN_N turns on
    first and pulls OUTN down, leaving OUTP at VDD.)
@@ -57,9 +70,11 @@ under spec/dr-001-support/.
   cross-coupled PMOS    M_LATP_P, M_LATP_N        16     0.5     trip point
   output reset PMOS     M_RST_P, M_RST_N           8     0.5     reset tau / C_out
   internal reset PMOS   M_RST_DIP, M_RST_DIN       6     0.5     reset tau / C_DI
-                                            total W = 116 um
+  clock shaper R        R_CLKS                    --    1.75    kickback (DR-003)
+  clock shaper C        M_CLKCAP                  20     0.5     kickback (DR-003)
+                                            total W = 136.15 um
 
-L = 0.5um, common to all 11 devices.  Not minimum L (0.15um): Pelgrom matching
+L = 0.5um, common to all 12 MOSFETs.  Not minimum L (0.15um): Pelgrom matching
 improves as 1/sqrt(W*L), so L is the cheaper of the two area axes for the
 offset-critical devices (it costs gm linearly but buys matching as sqrt(L)),
 and at 0.15um the DIBL-driven output conductance degrades the cross-coupled
@@ -130,9 +145,18 @@ C {sky130_fd_pr/pfet_01v8.sym} 450 200 0 0 {name=M_LATP_P L=0.5 W=16 nf=1 model=
 C {sky130_fd_pr/pfet_01v8.sym} 600 200 0 0 {name=M_LATP_N L=0.5 W=16 nf=1 model=pfet_01v8}
 C {sky130_fd_pr/pfet_01v8.sym} 750 200 0 0 {name=M_RST_P L=0.5 W=8 nf=1 model=pfet_01v8}
 C {sky130_fd_pr/pfet_01v8.sym} 900 200 0 0 {name=M_RST_N L=0.5 W=8 nf=1 model=pfet_01v8}
+C {sky130_fd_pr/res_high_po_0p35.sym} 0 -150 0 0 {name=R_CLKS L=1.75 mult=1 model=res_high_po_0p35 spiceprefix=X}
+C {lab_wire.sym} 0 -120 0 0 {name=l_clks_p lab=CLKT}
+C {lab_wire.sym} -20 -150 0 0 {name=l_clks_b lab=GND}
+C {lab_wire.sym} 0 -180 0 0 {name=l_clks_m lab=CLK}
+C {sky130_fd_pr/nfet_01v8.sym} 150 -150 0 0 {name=M_CLKCAP L=0.5 W=20 nf=1 model=nfet_01v8}
+C {lab_wire.sym} 170 -180 0 0 {name=l_clkcap_d lab=GND}
+C {lab_wire.sym} 130 -150 0 0 {name=l_clkcap_g lab=CLKT}
+C {lab_wire.sym} 170 -120 0 0 {name=l_clkcap_s lab=GND}
+C {lab_wire.sym} 170 -150 0 0 {name=l_clkcap_b lab=GND}
 
 C {lab_wire.sym} 20 -30 0 0 {name=l_tail_d lab=TAIL}
-C {lab_wire.sym} -20 0 0 0 {name=l_tail_g lab=CLK}
+C {lab_wire.sym} -20 0 0 0 {name=l_tail_g lab=CLKT}
 C {lab_wire.sym} 20 30 0 0 {name=l_tail_s lab=GND}
 C {lab_wire.sym} 20 0 0 0 {name=l_tail_b lab=GND}
 
@@ -157,12 +181,12 @@ C {lab_wire.sym} 620 30 0 0 {name=l_latnn_s lab=DIN}
 C {lab_wire.sym} 620 0 0 0 {name=l_latnn_b lab=GND}
 
 C {lab_wire.sym} 170 230 0 0 {name=l_rstdip_d lab=DIP}
-C {lab_wire.sym} 130 200 0 0 {name=l_rstdip_g lab=CLK}
+C {lab_wire.sym} 130 200 0 0 {name=l_rstdip_g lab=CLKT}
 C {lab_wire.sym} 170 170 0 0 {name=l_rstdip_s lab=VDD}
 C {lab_wire.sym} 170 200 0 0 {name=l_rstdip_b lab=VDD}
 
 C {lab_wire.sym} 320 230 0 0 {name=l_rstdin_d lab=DIN}
-C {lab_wire.sym} 280 200 0 0 {name=l_rstdin_g lab=CLK}
+C {lab_wire.sym} 280 200 0 0 {name=l_rstdin_g lab=CLKT}
 C {lab_wire.sym} 320 170 0 0 {name=l_rstdin_s lab=VDD}
 C {lab_wire.sym} 320 200 0 0 {name=l_rstdin_b lab=VDD}
 
@@ -177,11 +201,95 @@ C {lab_wire.sym} 620 170 0 0 {name=l_latpn_s lab=VDD}
 C {lab_wire.sym} 620 200 0 0 {name=l_latpn_b lab=VDD}
 
 C {lab_wire.sym} 770 230 0 0 {name=l_rstp_d lab=OUTP}
-C {lab_wire.sym} 730 200 0 0 {name=l_rstp_g lab=CLK}
+C {lab_wire.sym} 730 200 0 0 {name=l_rstp_g lab=CLKT}
 C {lab_wire.sym} 770 170 0 0 {name=l_rstp_s lab=VDD}
 C {lab_wire.sym} 770 200 0 0 {name=l_rstp_b lab=VDD}
 
 C {lab_wire.sym} 920 230 0 0 {name=l_rstn_d lab=OUTN}
-C {lab_wire.sym} 880 200 0 0 {name=l_rstn_g lab=CLK}
+C {lab_wire.sym} 880 200 0 0 {name=l_rstn_g lab=CLKT}
 C {lab_wire.sym} 920 170 0 0 {name=l_rstn_s lab=VDD}
 C {lab_wire.sym} 920 200 0 0 {name=l_rstn_b lab=VDD}
+T {KICKBACK MITIGATION (issue #30, DR-003) -- a 2-device slew-shaper (poly
+resistor R_CLKS + MOS capacitor M_CLKCAP) on the clock port: the internal
+node CLKT drives ALL five clocked gates, stretching the evaluate onset.
+
+The problem: DR-002 ratified the Kickback row (<= 5 mV disturbance into a
+1 kOhm source impedance, stretch <= 2 mV, single decision edge) and measured
+this design at 144.60 mV peak (sim/comparator-decision/records/
+20260916-060139-f1eb978.md, tt/27C, 50 mV overdrive) -- ~29x the target.
+Waveform decomposition of that measurement: the transition first kicks TAIL
+upward through the tail switch's gate capacitance (+38 mV pin lobe via the
+input pair's Cgs), then DIP/DIN -- precharged to VDD -- collapse through the
+input pair, the fast first phase of that collapse driving a -145 uA
+displacement spike into each pin through the input device's own Cgd, with
+the peak arriving right at the END of the 100 ps CLK ramp.
+
+What makes 5 mV hard here: the dominant charge keeps flowing past the end
+of the ramp, so every CLK-correlated compensation is mistimed; and the
+collapse rate is set by the tail switch + input pair conductance, so any
+rate-based reduction trades roughly 1:1 into decision time.  Measured
+candidates, all against this exact design (scratch-deck series, tt/27C
+unless noted; full table in DR-003):
+
+  - Reset-switch resizing (M_RST_DIP/DIN 6 um, M_RST_P/N 8 um, all -> 1 um):
+    the spike is UNCHANGED (-146 mV) -- reset PMOS channel injection is not
+    the mechanism.
+  - Input-pair shrink (W_in 10 -> 5 um): kickback tracks roughly W
+    (-93 mV); 29x is unreachable without destroying the ratified offset
+    row's matching budget (sigma ~ 1/sqrt(W*L)).
+  - Feedthrough-cancellation caps CLK->VINP/VINN: 4 fF leaves -104 mV,
+    8 fF overshoots to +166 mV -- no value cancels both lobes because the
+    trailing charge arrives after the compensation ends.  It would also
+    re-inject on every falling edge of every later cycle.
+  - Input isolation switches (4-deep min-width always-on NMOS stack per
+    side, W = 0.42 um): the pin DISTURBANCE met the bound (-2.71 mV @ tt,
+    -3.67 @ ff/125C, -1.65 @ ss/-40C) but the design was REJECTED on two
+    measured regressions: (a) regeneration time 0.68 -> 3.80 ns @ 50 mV
+    (the chain's ~RC hangover suppresses the input pair's Vgs during the
+    decision edge, and the 3-deep variant breaches the 5 mV bound at
+    ff/125C: -5.10 mV), and (b) the RATIFIED Input-referred-noise row's
+    own methodology (loop-broken sub-model, input referred over
+    1 kHz-1 GHz through the ideal AC source) measures 17.53 mV
+    differential through the chain's ~132 MHz input pole, vs the ratified
+    <= 1 mV bound and the pre-mitigation 0.4466 mV -- a regression the
+    issue's no-regression acceptance criterion excludes outright.
+
+The chosen mechanism -- direction 3 of DR-002's candidate list
+(bootstrapped/slew-limited clocking), applied to the WHOLE evaluate onset:
+R_CLKS (res_high_po_0p35, L = 1.75 um, ~2.4 kOhm) from CLK to CLKT, and
+M_CLKCAP (nfet_01v8, W = 20 um, L = 0.5 um, ~100 fF, gate at CLKT, all
+other terminals at GND) clamp CLKT, giving tau ~ 0.25 ns; the five clocked
+gates (M_TAIL, M_RST_DIP, M_RST_DIN, M_RST_P, M_RST_N) all moved from CLK
+to CLKT, so precharge release and tail turn-on slew TOGETHER.  Softening
+both halves of the onset removes the reset-channel-injection overshoot of
+DIP/DIN (their rise above VDD before collapse) and slows the collision
+that lags it.  Probe-measured, same deck shape as the graded one:
+
+    peak |VIN-pin disturbance|     regen @ 50 mV   (probe refs)
+    tt/27C   -85.2 mV (-41%)         1.18 ns   (pre: 144.6 mV / 0.68 ns)
+    ss/-40C  -79.8                   1.19 ns
+    ff/125C  -86.4                   1.17 ns   (all < the DRAFT row's
+                                                1.5 ns target)
+
+What this design does NOT claim: full compliance.  The ratified <= 5 mV
+bound is still missed by ~17x; the stretch bound further.  The measured
+candidates above bound what the DR-001 topology (single-tail dynamic
+latch, no static preamp, 7 flat ports) can reach without regressing a
+ratified row; the ~1:1 rate/decision-time elasticity and the isolation
+chain's noise-pole failure mean closing the remaining gap requires the
+topology class DR-001 explicitly scoped OUT (a preamplifier or double-tail
+isolation in front of the latch) -- follow-on work, named in DR-003 with
+these numbers.
+
+Consequences stated plainly: the shaped transition opens a ~250 ps window
+where the tail sinks while the precharge PMOS are not yet fully off
+(brief contention current, unmeasured -- the Supply/power row is open);
+tau drifts with PVT (R and C each ~ +/-15-20%), so the trade floats with
+it -- the probe matrix above brackets that spread.  The noise and offset
+methodologies see no structural change: the noise sub-model re-emits the
+tail with its gate on the steady CLKT node (see run.py), and the offset/
+regen benches drive CLK from ideal sources exactly as before.
+
+Full decision record: spec/decision-records/DR-003-kickback-slew-limited-clock.md
+Post-mitigation evidence: sim/comparator-decision/records/ (kickback re-run,
+offset/noise regressions) -- issue #30.} -60 -1520 0 0 0.28 0.28 {}

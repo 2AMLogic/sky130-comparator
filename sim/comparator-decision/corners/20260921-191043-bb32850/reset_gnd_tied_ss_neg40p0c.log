@@ -1,0 +1,44 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision reset-integrity check -- variant=gnd-tied corner=ss temp=-40.0c supply=1.8v (issue #24)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+Operating point simulation skipped by 'uic',
+  now using transient initial conditions.
+ Reference value :  5.00000e-14
+ Reference value :  7.20655e-10
+ Reference value :  7.35655e-10
+ Reference value :  7.55655e-10
+ Reference value :  7.80655e-10
+ Reference value :  8.00655e-10
+ Reference value :  8.20655e-10
+ Reference value :  8.40655e-10
+ Reference value :  1.96066e-09
+ Reference value :  3.04066e-09
+ Reference value :  4.54066e-09
+ Reference value :  6.13566e-09
+ Reference value :  7.44066e-09
+ Reference value :  8.72566e-09
+ Reference value :  8.98066e-09
+ Reference value :  9.00566e-09
+ Reference value :  9.03066e-09
+ Reference value :  9.04566e-09
+ Reference value :  9.06566e-09
+ Reference value :  1.03157e-08
+ Reference value :  1.03357e-08
+ Reference value :  1.03557e-08
+ Reference value :  1.03757e-08
+ Reference value :  1.03957e-08
+ Reference value :  1.04207e-08
+ Reference value :  1.37057e-08
+ Reference value :  1.63757e-08
+No. of Data Rows : 4019
+Note: Simulation executed from .control section 
