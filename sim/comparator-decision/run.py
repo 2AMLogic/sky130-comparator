@@ -82,7 +82,25 @@ VCM = VDD / 2  # 0.9V common-mode input.
 RESET_NS = 5.0  # reset (CLK=0) duration before the single evaluate edge.
 RESET_TR_NS = 0.1  # clock edge rise/fall time.
 DECIDE_THRESHOLD_V = 0.5 * VDD  # |v(outp)-v(outn)| crossing this = "decided"
-PICKOFF_NS = 0.3  # time after evaluate-start used as the offset pick-off
+PICKOFF_NS = 1.0
+# 0.3 ns until DR-003 (issue #30). The pick-off point is a METHODOLOGY
+# constant: it must land in the linear, mid-separation window of
+# |OUTP-OUTN|, wherever the design's evaluate onset puts that window. The
+# pre-DR-003 design's ~100 ps onset put it at 0.3 ns (gain 5.8156 V/V,
+# record 20260916-003531-52eb9b2). The DR-003 soft-clock shaper stretches
+# the whole onset, and 0.3 ns fell into the shaped dead zone -- the
+# calibration gain collapsed 5.8156 -> 0.0021 V/V and the record minted
+# that way (20260921-192020-bb32850, superseded) measured onset-latency
+# dispersion, not offset. 1.0 ns re-anchors the statistic into the
+# post-shaper separation's linear window (ideal-device gains: 0.3 ns ->
+# 0.0021, 0.8 -> 9.4, 1.0 -> 13.2, 1.2 -> 26.8 V/V). The record's own
+# Methodology line prints this constant, so every record states which
+# pick-off point produced it.
+# The DR-002-ratified Offset row's bounds -- recorded here so the record
+# states its own comparison against the ratified row (values cite DR-002
+# Decision 1: target <= 15 mV 3-sigma, stretch <= 8 mV 3-sigma, input-referred).
+OFFSET_TARGET_MV = 15.0
+OFFSET_STRETCH_MV = 8.0  # time after evaluate-start used as the offset pick-off
 # point -- see the `offset` subcommand's methodology comment below.
 NOISE_FSTART_HZ = 1e3
 NOISE_FSTOP_HZ = 1e9
@@ -96,15 +114,17 @@ PROCESS_CORNERS = ["tt", "ss", "ff", "sf", "fs"]
 # here still substantiates no spec ROW. Both halves of that have to be said,
 # and said the same way in every record this driver writes. ---
 CLAIM_TEXT = (
-    "- **Claim**: None -- the top-level README's target-spec table is DRAFT and "
-    "unratified (spec/README.md), so no row exists here to substantiate or "
-    "fail. What this record DOES characterize, unlike every record written "
-    "before issue #24, is **this repo's own comparator**: "
-    "`design/comparator.sch`, the DR-001 topology at a sizing derived from "
-    "this PDK's own mismatch models (see that schematic's sizing-rationale "
-    "block and DR-001 Amendment 1). The DRAFT table's rows are quoted in the "
-    "analysis below for orientation only -- as the design intent this sizing "
-    "pass aimed at, never as a pass/fail grade against a ratified bound."
+    "- **Claim**: None by itself -- top-level README target-spec rows are "
+    "graded by their ratifying decision record, and per DR-002 (2026-09-16, "
+    "merged) the Offset sigma, Input-referred noise, and Kickback rows are "
+    "RATIFIED while Decision time vs. overdrive and Supply/power stay "
+    "DRAFT/OPEN. What this record characterizes is **this repo's own "
+    "comparator**: `design/comparator.sch`, the DR-001 topology plus the "
+    "DR-003 soft-clock shaper on the clock port, at a sizing derived from "
+    "this PDK's own "
+    "mismatch models (see the schematic's sizing-rationale block, DR-001 "
+    "Amendment 1, and DR-003). Any statement about a ratified row's compliance "
+    "made below cites the bound and the number side by side."
 )
 NETLIST_PROVENANCE = (
     "- **Netlist provenance**: schematic-derived "
@@ -363,7 +383,7 @@ def write_regen_evidence(
 #     Monte Carlo record in this repo uses (sim/README.md).
 
 VINDIFF_GAIN_CAL_MV = [1, 2, 5, 10]
-PICKOFF_TSTOP_NS = RESET_NS + RESET_TR_NS + 1.5
+PICKOFF_TSTOP_NS = RESET_NS + RESET_TR_NS + 2.5
 
 
 def _pickoff_deck(
@@ -560,6 +580,26 @@ def write_offset_evidence(
         f"{max(result.draws_offset_v) * 1000:.4f} |"
     )
     a("")
+    a(
+        f"- **Ratified bound comparison (DR-002)**: the Offset sigma row is "
+        f"RATIFIED at <= {OFFSET_TARGET_MV:g} mV, 3-sigma (target) / "
+        f"<= {OFFSET_STRETCH_MV:g} mV, 3-sigma (stretch), input-referred. "
+        f"This record's N={result.n} estimated stdev "
+        f"{draws_stdev * 1000:.4f} mV gives 3-sigma = "
+        f"{3 * draws_stdev * 1000:.4f} mV, which "
+        f"{'clears' if 3 * draws_stdev * 1000 <= OFFSET_TARGET_MV else 'DOES NOT clear'} "
+        f"the target bound"
+        + (
+            f" and {'clears' if 3 * draws_stdev * 1000 <= OFFSET_STRETCH_MV else 'DOES NOT yet clear'} "
+            f"the stretch bound."
+            if 3 * draws_stdev * 1000 <= OFFSET_TARGET_MV else
+            " -- new information for the decision records to weigh, never "
+            "silently superseding DR-002's disposition."
+        )
+        + " N=16 is sized for distribution shape, not a yield-fraction claim "
+        "(see the Statistical convention above)."
+    )
+    a("")
     a("## Negative control (mismatch-disabled, same seed sequence)")
     a("")
     negctrl_mean = statistics.fmean(result.negctrl_offset_v) if result.negctrl_offset_v else float("nan")
@@ -603,6 +643,12 @@ def write_offset_evidence(
 # rms_differential = sqrt(2) * rms_single_ended -- applied here as a named,
 # flagged approximation, not re-derived from scratch.
 
+# The DR-002-ratified Input-referred noise row's bounds -- recorded here so
+# the record states its own comparison against the ratified row (values cite
+# DR-002 Decision 2: target <= 1.0 mV rms, stretch <= 0.6 mV rms, differential).
+NOISE_TARGET_MV = 1.0
+NOISE_STRETCH_MV = 0.6
+
 VBIAS_NOTE = (
     "reduced sub-model of the INTEGRATION phase: tail + input pair, with the "
     "DI-node precharge PMOS pair diode-connected (self-biased) as the loads "
@@ -622,6 +668,7 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         "",
         "Vdd VDD 0 dc {vdd_val}",
         "Vclkfix CLK 0 dc {vdd_val}",
+        "Vclkfixt CLKT 0 dc {vdd_val}",
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
@@ -631,6 +678,14 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         # drain). The cross-coupled latch pairs and the output-node reset
         # PMOS are omitted: that is the loop break. Sizing therefore tracks
         # design/comparator.sch automatically; it is not transcribed here.
+        # Since DR-003 (issue #30) XM_TAIL's gate terminal is the internal
+        # soft-clock node CLKT (the schematic drives all five clocked gates
+        # through the R_CLKS + M_CLKCAP shaper), the Vclkfix-style steady
+        # source below biases CLKT to the same VDD steady-evaluate level
+        # the deck has always assumed -- no structural change to the model.
+        # The shaper itself (R_CLKS / M_CLKCAP) is a transition-shaping
+        # network and carries no steady-state role in this DC-biased
+        # sub-model; it is not re-emitted, same as before the mitigation.
         _dut_device_line("XM_TAIL"),
         _dut_device_line("XM_INN"),
         _dut_device_line("XM_INP"),
@@ -716,8 +771,9 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
         "tail + input pair + DI-node reset PMOS device lines are taken "
         "verbatim from `sim/comparator-decision/testbench/comparator_core.spice` "
         "(itself generated from `design/comparator.sch` by `./design/netlist.sh`), "
-        "with the DI-node PMOS re-emitted diode-connected; see Methodology for "
-        "what the loop break omits."
+        "with the DI-node PMOS re-emitted diode-connected and the tail's "
+        "DR-003 soft-clock gate node (CLKT) held at the same steady VDD "
+        "evaluate bias; see Methodology for what the loop break omits."
     )
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
@@ -753,6 +809,22 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
         "- **Data provenance**: model-card-monte-carlo (sky130A BSIM4 device "
         "noise models via ngspice's `.noise` analysis; no literature/foundry-doc "
         "noise figure used)"
+    )
+    a(
+        f"- **Ratified bound comparison (DR-002)**: the Input-referred noise "
+        f"row is RATIFIED at <= {NOISE_TARGET_MV:g} mV rms differential "
+        f"(target) / <= {NOISE_STRETCH_MV:g} mV rms (stretch). This record's "
+        f"{result.differential_rms_v * 1000:.4f} mV rms differential estimate "
+        f"(a LOWER BOUND, see Methodology) "
+        f"{'clears' if result.differential_rms_v * 1000 <= NOISE_TARGET_MV else 'DOES NOT clear'} "
+        f"the target bound"
+        + (
+            f" and {'clears' if result.differential_rms_v * 1000 <= NOISE_STRETCH_MV else 'DOES NOT yet clear'} "
+            f"the stretch bound."
+            if result.differential_rms_v * 1000 <= NOISE_TARGET_MV else
+            " -- new information for the decision records to weigh, never "
+            "silently superseding DR-002's disposition."
+        )
     )
     a("")
     return _finalize_record(
@@ -1189,7 +1261,12 @@ def write_reset_evidence(
 # absolute deviation from that quiescent point is the disturbance the
 # target-spec row grades.
 
-KICKBACK_RS_OHM = 1000.0  # 1 kOhm source impedance -- the target-spec
+KICKBACK_RS_OHM = 1000.0
+# The DR-002-ratified Kickback row's bounds -- recorded here so the record
+# states its own comparison against the ratified row (values cite DR-002
+# Decision 4: target <= 5 mV, stretch <= 2 mV, into 1 kOhm, single edge).
+KICKBACK_TARGET_MV = 5.0
+KICKBACK_STRETCH_MV = 2.0  # 1 kOhm source impedance -- the target-spec
 # Kickback row's own stated methodology assumption (see module note above).
 KICKBACK_VINDIFF_MV = 50.0  # matches the `regen` sweep's largest tested
 # overdrive and the target-spec table's own "Decision time vs. overdrive"
@@ -1350,14 +1427,14 @@ def write_kickback_evidence(
     a(
         f"- **Corner matrix run**: process=['{loaded.corner}'], "
         f"temperature_c=[{loaded.temp_c}], supply_v=[{VDD}] (1 PVT point, "
-        "both variants -- **subset-corner justification**: this is the "
-        "FIRST kickback measurement this repo has ever made (no same-PDK "
-        "standalone prior art exists to port, per spec/porting-plan.md's "
-        "\"Next steps\" item 4); a single nominal-corner record establishes "
-        "the plumbing and a first-principles figure, per issue #9's "
-        "original scope note (one nominal-corner record per experiment, "
-        "not a corner campaign) -- a full-corner sweep remains open work, "
-        "same as every other post-#24 record in this directory)"
+        "both variants -- **subset-corner justification**: this record "
+        "re-measures the SAME single nominal corner (tt/27C, 1 kOhm, "
+        "50 mV overdrive) issue #26's kickback record "
+        "(20260916-060139-f1eb978, the pre-mitigation measurement DR-002's "
+        "Kickback disposition cites) used, so the before/after comparison "
+        "DR-002 asked for is direct and like-for-like per issue #30's "
+        "acceptance criteria -- a full-corner kickback sweep remains open "
+        "work exactly as DR-002 already flags it)"
     )
     a(
         f"- **Stimulus**: VINP/VINN biased at VCM={VCM}V +/- "
@@ -1409,26 +1486,45 @@ def write_kickback_evidence(
     a("## Reading this record")
     a("")
     a(
-        "The mechanism is Miller coupling: the input-pair devices' own "
-        "gate-drain parasitic capacitance couples the internal precharged "
-        "nodes' (DIP/DIN) fast swing at the reset->evaluate transition back "
-        "onto their own gate nodes (VINP/VINN) -- this only shows up as a "
-        "voltage here because those gates are no longer driven by a "
-        "zero-impedance source, exactly the target-spec Kickback row's own "
-        "stated assumption. The peak occurs at the CLK ramp / earliest part "
-        "of regeneration, not deep into the decided state, consistent with "
-        "a charge-injection mechanism at the transition rather than a "
-        "steady-state one."
+        "Measured against the DR-003 soft-clock shaper "
+        "(design/comparator.sch after issue #30's mitigation: the poly "
+        "resistor R_CLKS and MOS capacitor M_CLKCAP form the internal node "
+        "CLKT, tau ~ 250 ps, and CLKT -- not CLK -- drives all five clocked "
+        "gates, so the whole evaluate onset is slew-limited): the raw "
+        "kickback mechanism -- the input-pair devices' own gate-drain "
+        "parasitic capacitance coupling the internal precharged nodes' "
+        "(DIP/DIN) fast swing at the reset->evaluate transition back onto "
+        "the VINP/VINN gate nodes -- is unchanged in kind, but its SOURCE "
+        "amplitude now scales with the shaped (slower) DIP/DIN collapse "
+        "rate instead of the testbench's 100 ps ramp transient. The "
+        "`loaded` figure below includes both the positive (tail-switch "
+        "gate-capacitance) and negative (DIP/DIN collapse) lobes the "
+        "same way the pre-mitigation record did. The `ideal` control "
+        "still collapses to (numerically) zero by construction, so the "
+        "deck continues to isolate a genuine source-impedance-dependent "
+        "effect."
     )
     a("")
     a(
-        "No claim is made here against the target-spec row's stated "
-        "<=5mV / stretch <=2mV bound (see Claim above): that table is DRAFT "
-        "and unratified, and this repo's first measured figure is well "
-        "above both, at the sizing design/comparator.sch currently carries "
-        "-- a sizing pass driven by the offset/noise/regen-time budget, not "
-        "yet by any kickback bound. That gap is new information this record "
-        "exists to surface, not something this issue's scope asks to close."
+        f"- **Ratified bound comparison (DR-002)**: the Kickback row is "
+        f"RATIFIED at <= {KICKBACK_TARGET_MV:g} mV disturbance into "
+        f"1 kOhm source impedance (target, single decision edge) / "
+        f"<= {KICKBACK_STRETCH_MV:g} mV (stretch). This record's "
+        f"`loaded` peak figure of {loaded.peak_dev_v * 1000:.4f} mV "
+        f"{'MEETS' if loaded.peak_dev_v * 1000 <= KICKBACK_TARGET_MV else 'DOES NOT yet meet'} "
+        f"the target bound"
+        + (
+            f" and {'MEETS' if loaded.peak_dev_v * 1000 <= KICKBACK_STRETCH_MV else 'DOES NOT yet meet'} "
+            f"the stretch bound."
+            if loaded.peak_dev_v * 1000 <= KICKBACK_TARGET_MV else
+            " -- the DR-002 non-compliance finding stands; this figure is "
+            "honest partial-improvement information for the decision "
+            "records to weigh, never silently superseding DR-002's "
+            "disposition."
+        )
+        + " The comparison holds for the single tt/27C PVT point this "
+        "record runs (see Corner matrix run above); kickback PVT coverage "
+        "remains open work per DR-002."
     )
     a("")
     return _finalize_record(

@@ -44,8 +44,10 @@ trap 'rm -rf "${SCRATCH}"' EXIT
 
 # NOTE: xschem 3.4.7 exits 10 on a SUCCESSFUL batch netlist-and-quit run
 # (-q), not 0, so its status is not usable as a success signal here. The
-# checks below (netlist exists, and has exactly the 11 device lines the
-# DR-001 device set calls for) are what actually gate this script.
+# checks below (netlist exists, and has exactly the 12 MOSFET device
+# lines the DR-001 device set plus the DR-003 soft-clock shaper calls
+# for, and one XR_ resistor line for that shaper) are what actually gate
+# this script.
 xschem -n -q -x \
   --rcfile "${PDK_ROOT}/${PDK}/libs.tech/xschem/xschemrc" \
   "${SCH}" -o "${SCRATCH}" >/dev/null || true
@@ -60,8 +62,13 @@ grep -v '^\*\*' "${RAW}" | grep -v '^\.end[[:space:]]*$' \
   | sed -e '/./,$!d' > "${DEVICES}"
 
 N_DEV="$(grep -c '^XM_' "${DEVICES}" || true)"
-if [[ "${N_DEV}" -ne 11 ]]; then
-  echo "netlist.sh: expected 11 device lines (DR-001 device set), got ${N_DEV}" >&2
+if [[ "${N_DEV}" -ne 12 ]]; then
+  echo "netlist.sh: expected 12 MOSFET device lines (DR-001 device set + DR-003 clock shaper cap), got ${N_DEV}" >&2
+  exit 1
+fi
+N_RES="$(grep -c '^XR_' "${DEVICES}" || true)"
+if [[ "${N_RES}" -ne 1 ]]; then
+  echo "netlist.sh: expected 1 resistor line (DR-003 clock shaper), got ${N_RES}" >&2
   exit 1
 fi
 
@@ -85,14 +92,21 @@ cat > "${NEW}" <<'HEADER'
 * edited -- they simply stop being the freshest evidence).
 *
 * Topology: single-tail, bottom-tail NMOS-input dynamic latch, no static
-* preamp. 11 devices: 1 tail switch NMOS + 2 input-pair NMOS + 2
-* cross-coupled latch NMOS + 2 cross-coupled latch PMOS + 2 output-node PMOS
-* reset/precharge + 2 internal-node PMOS reset/precharge. CLK-gated PMOS
-* precharge of BOTH the differential output nodes (OUTP/OUTN) AND the
-* cross-coupled latch NMOS pair's own source nodes (DIP/DIN) to VDD, per
-* DR-001 Decision 3 -- every latch NMOS is at Vgs = 0 during reset, so the
-* positive-feedback loop is dead and the reset state is a stable,
-* non-conducting equilibrium.
+* preamp. 13 devices, 12 of them MOSFETs: the 11-device DR-001 set (1 tail switch NMOS + 2
+* input-pair NMOS + 2 cross-coupled latch NMOS + 2 cross-coupled latch
+* PMOS + 2 output-node PMOS reset/precharge + 2 internal-node PMOS
+* reset/precharge) plus M_CLKCAP, the DR-003 (issue #30) soft-clock
+* shaper's MOS capacitor. One resistor: R_CLKS, the shaper's poly resistor
+* (res_high_po), from CLK to CLKT. CLK-gated PMOS precharge of BOTH the
+* differential output nodes (OUTP/OUTN) AND the cross-coupled latch NMOS
+* pair's own source nodes (DIP/DIN) to VDD, per DR-001 Decision 3 -- every
+* latch NMOS is at Vgs = 0 during reset, so the positive-feedback loop is
+* dead and the reset state is a stable, non-conducting equilibrium. The
+* DR-003 shaper (R_CLKS x M_CLKCAP, tau ~ 250 ps) drives ALL five clocked
+* gates (M_TAIL + the four reset PMOS) from CLKT instead of CLK: the
+* evaluate onset is slew-limited, which is what reduces the input kickback
+* DR-002's ratified row bounds (144.60 mV pre-mitigation); reset-state DC
+* is identical to DR-001 since CLKT discharges to GND through R_CLKS.
 *
 * Sizing (all L=0.5um; full derivation in design/comparator.sch's own
 * sizing-rationale text block and in DR-001 Amendment 1):
@@ -103,9 +117,12 @@ cat > "${NEW}" <<'HEADER'
 *   M_LATP_P, M_LATP_N    W=16um   2x latch NMOS -> trip point near VDD/2
 *   M_RST_P,  M_RST_N     W= 8um   reset tau << reset window, min C_out
 *   M_RST_DIP, M_RST_DIN  W= 6um   reset tau << reset window, min C_DI
+*   R_CLKS (res_high_po_0p35, L=1.75um, ~2.4kohm) + M_CLKCAP (W=20um):
+*                             DR-003 soft-clock shaper, tau ~ 0.25 ns
 *
 * Ports: VDD, GND (auto-tied to node 0 by ngspice's built-in gnd-name
-* recognition), CLK, VINP, VINN, OUTP, OUTN. Internal nodes: TAIL, DIP, DIN.
+* recognition), CLK, VINP, VINN, OUTP, OUTN. Internal nodes: TAIL, DIP,
+* DIN, CLKT.
 * Vin,diff = VINP - VINN > 0 => OUTP settles high.
 *
 * Every device is sky130_fd_pr__{n,p}fet_01v8 (1.8V core flavour, matching
