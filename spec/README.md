@@ -50,10 +50,16 @@ gap-to-T1 tracker (#3) from the start rather than added retroactively.
 
 ## Gap-to-T1 tracker
 
-#3 tracks this block's gap to T1 sim-validated / bronze per the
-klayout-tools design-evidence ladder — a 10-item checklist, every item
-honestly unchecked as of this pass (0/10; no schematic, layout, or `sim/`
-tree exists yet).
+The **verdict of record** for this block's gap to T1 is the graded
+manifest, not a hand-read checklist: `manifests/sky130-comparator.json`,
+graded by `klt signoff --manifest` into the committed evidence record
+`manifests/t1-signoff-report.json` (issue #31), with CI re-grading on
+every push. As of this writing every T1 item renders `unmet`/`no_evidence`
+— an honest machine-readable statement of the gap (and of the T2+ ladder
+this repo has no mechanism to check). Tracker issue #3 points at that
+manifest rather than maintaining its own duplicate checkbox list; its
+edit history and `## Verified corrections` preserve the per-item
+engineering context behind the rows.
 
 ## Porting plan
 

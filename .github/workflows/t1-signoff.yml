@@ -1,0 +1,43 @@
+# T1 signoff gate (issue #31).
+#
+# Re-runs `klt signoff --manifest` against the committed block manifest so
+# the block's T1 state is graded mechanically on every push instead of
+# hand-read from prose, and so a manifest citing an artifact that has since
+# changed (stale/unreadable/wrong-kind) FAILS here rather than rotting.
+# "T1 not reached yet" is this block's honest state and does NOT fail this
+# workflow -- the gate's rules are recorded in scripts/check-t1-signoff.py.
+#
+# The klt install is pinned to the version that graded the committed
+# evidence record (manifests/t1-signoff-report.json). Upgrade deliberately:
+# bump the pin, re-run the regeneration command from manifests/README.md,
+# and commit the refreshed record in the same change.
+
+name: t1-signoff
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install klt (pinned; see manifests/README.md)
+        run: python -m pip install "klayout-tools==0.5.0"
+
+      - name: Gate selftest (hermetic; proves the rot detector bites)
+        run: python3 scripts/check-t1-signoff.py selftest
+
+      - name: Re-run T1 signoff against the committed manifest
+        run: python3 scripts/check-t1-signoff.py gate

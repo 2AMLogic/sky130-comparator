@@ -9,8 +9,10 @@ This doc is meant to be followed from a shell on a machine that already has
 the xschem/ngspice/volare binaries installed — a from-scratch build/install
 recipe for those three tools is out of scope here (see "Toolchain versions"
 below for what to do if one is genuinely missing). There is no `layout/`
-tree or `klt` (klayout-tools) integration in this repo yet, so unlike its
-two sibling docs below, this one has no layout/DRC/LVS section.
+tree in this repo yet, so this doc still has no layout/DRC/LVS-pass section
+like its sibling docs; there is, however, `klt` (klayout-tools) integration
+now — the T1 signoff manifest and its CI gate (issue #31), see
+"Signoff tooling (klt)" below.
 
 **Provenance**: this document's structure is adapted from
 `2AMLogic/sky130-sar-adc`'s and `2AMLogic/sky130-bandgap`'s own
@@ -39,6 +41,30 @@ ngspice --version   # -> ngspice-46 : Circuit level simulation program ...
 volare --version    # -> Volare v0.20.6 ...
 python3 --version   # -> Python 3.12.3
 ```
+
+## Signoff tooling (klt, recorded 2026-09-21)
+
+The T1 signoff manifest (issue #31) is graded by
+[`klt`](https://github.com/2AMLogic/klayout-tools)'s `klt signoff
+--manifest`, driven by the CI gate
+`.github/workflows/t1-signoff.yml`:
+
+| Tool | Version | Install path |
+| --- | --- | --- |
+| klt (klayout-tools) | `0.5.0` | `/home/ubuntu/.local/bin/klt` (`uv tool install klayout-tools`) |
+
+```sh
+klt --version       # -> klt 0.5.0 ...
+```
+
+The install is pinned the same way in CI (`klayout-tools==0.5.0`) so the
+committed evidence record (`manifests/t1-signoff-report.json`) and every
+re-grade are produced by the same grader build. Because klt 0.5.0 ships a
+pre-item-11 checklist, signoff runs pass `--tiers-doc
+manifests/design-evidence-tiers.md` — a vendored, pinned copy of the
+klayout-tools checklist doc — see `manifests/README.md` for the
+regeneration command, the pin policy, and the honest all-`unmet` current
+verdict.
 
 `sim/toolchain.json` is the machine-checked pin this repo's harness actually
 enforces (`sim/harness/toolchain.py`'s `check_env()`, driven by
