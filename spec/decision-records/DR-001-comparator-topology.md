@@ -8,7 +8,13 @@
 - **Decided by**: Builder agent, issue #21
 - **Supersedes**: none — first decision record in this repo
   (`spec/decision-records/` did not exist before this PR).
-- **Superseded by**: (none while this record stands)
+- **Superseded by**: partially — [DR-004](DR-004-comparator-preamp-supersession.md)
+  (2026-09-22, issue #34) supersedes Decision 1 ("No static preamp") and
+  replaces Decision 2's double-tail exclusion grounds with measured ones;
+  every other clause of this record (supply-flavour scoping, sizing
+  discipline, Decision 3's reset property — carried onto DR-004's latch
+  stage) stands. The decided text below is unchanged; read it against
+  DR-004's supersession scope.
 - **Related**: #21 (this issue), #3 (gap-to-T1 tracker — this record answers
   porting-plan "Next steps" item 1), `spec/porting-plan.md` ("Next steps" §1,
   the source of this issue's scope), `README.md`'s target-specification

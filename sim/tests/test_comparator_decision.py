@@ -1,6 +1,8 @@
 """Unit tests for sim/comparator-decision/run.py's `kickback` deck-builder
-and result-grading logic (issue #26), plus the `_noise_deck` soft-clock
-node handling added by DR-003 (issue #30).
+and result-grading logic (issue #26), the `_noise_deck` sub-model shape
+(re-derived onto the DR-004 static preamp by issue #34), and the
+`_reset_device_block` gnd-tied counterfactual (re-derived onto the
+steering pair by issue #34).
 
 Construction/import-level coverage only -- no ngspice/PDK invocation, same
 level `regen`/`offset`/`reset` are exercised at today (none of those three
@@ -137,47 +139,83 @@ class TestKickbackPointOk(unittest.TestCase):
         self.assertAlmostEqual(point.peak_dev_v, 0.12)
 
 
-class TestNoiseDeckSoftClock(unittest.TestCase):
-    """`_noise_deck()` -- the DR-003 soft-clock node (issue #30).
+class TestNoiseDeckPreampSubModel(unittest.TestCase):
+    """`_noise_deck()` -- the DR-004 static-preamp sub-model (issue #34).
 
-    Since DR-003 the committed DUT fragment drives XM_TAIL's gate from the
-    internal soft-clock node CLKT (via the R_CLKS + M_CLKCAP shaper) rather
-    than from CLK directly. The loop-broken noise sub-model still re-emits
-    the tail verbatim, so the deck MUST bias CLKT at the same steady VDD
-    evaluate level Vclkfix gives CLK -- without that line the tail gate
-    would float and the sub-model's DC solve would be garbage.
+    Since DR-004 the committed DUT is a continuously-biased preamplifier
+    ahead of the clocked latch, and the loop-broken noise sub-model is that
+    REAL static stage re-emitted verbatim: preamp tail, input pair, both
+    poly loads, and both OUT1 absorber caps. Everything past the preamp
+    outputs (steering pair, latch tail, cross-coupled PMOS, reset PMOS,
+    and the DR-003 shaper) is the loop break and must be absent; and
+    because the sub-model now contains no clocked device at all, the
+    pre-DR-004 Vclkfix/Vclkfixt steady-bias lines must be gone too.
     """
 
     def setUp(self):
         self.info = FakePdkInfo()
 
-    def test_noise_deck_biases_the_soft_clock_node(self):
+    def test_noise_deck_re_emits_preamp_stage_verbatim(self):
         deck = cd_run._noise_deck(self.info, "tt", 27.0)
-        self.assertIn("Vclkfix CLK 0 dc", deck)
-        self.assertIn("Vclkfixt CLKT 0 dc", deck)
-
-    def test_noise_deck_re_emits_tail_verbatim_with_clkt_gate(self):
-        # The tail is re-emitted verbatim from the committed fragment, whose
-        # XM_TAIL line carries CLKT as its gate node since DR-003 -- so the
-        # emitted deck's own device line must show that same CLKT gate, and
-        # it must match the fragment's XM_TAIL byte-for-byte.
-        deck = cd_run._noise_deck(self.info, "tt", 27.0)
-        tail_line = cd_run._dut_device_line("XM_TAIL")
-        joined = " ".join(tail_line.split())
         deck_joined = " ".join(deck.split())
-        self.assertIn(joined, deck_joined)
-        self.assertTrue(joined.split()[2] == "CLKT",
-                        "fragment XM_TAIL gate node should be CLKT since DR-003")
+        for name in ("XM_PTAIL", "XM_PINN", "XM_PINP",
+                     "XR_LP", "XR_LN", "XM_C1P", "XM_C1N"):
+            joined = " ".join(cd_run._dut_device_line(name).split())
+            self.assertIn(joined, deck_joined,
+                          f"{name} should be re-emitted verbatim")
 
-    def test_noise_deck_omits_the_clock_shaper_devices(self):
-        # R_CLKS and M_CLKCAP shape the CLOCK EDGE; the noise sub-model is
-        # DC-biased at steady evaluate, where the shaper has no role. The
-        # deck must therefore not accidentally drag in netlist lines the
-        # sub-model's provenance says it does not include.
+    def test_noise_deck_omits_everything_past_the_preamp_outputs(self):
+        # The loop break: no latch, no steering, no reset, no shaper.
         deck = cd_run._noise_deck(self.info, "tt", 27.0)
-        self.assertNotIn("R_CLKS", deck)
-        self.assertNotIn("M_CLKCAP", deck)
-        self.assertNotIn("XM_CLKCAP", deck)
+        for absent in ("XM_STN_P", "XM_STN_N", "XM_TAIL2",
+                       "XM_LATP_P", "XM_LATP_N", "XM_RST_P", "XM_RST_N",
+                       "XR_CLKS", "XM_CLKCAP"):
+            self.assertNotIn(absent, deck,
+                             f"{absent} is past the loop break and must be omitted")
+
+    def test_noise_deck_needs_no_steady_clock_bias(self):
+        # The pre-DR-004 sub-model had to bias CLK/CLKT at VDD to hold the
+        # dynamic tail on; the static preamp has no clocked device, so those
+        # lines are gone.
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        self.assertNotIn("Vclkfix", deck)
+
+    def test_noise_deck_measures_at_the_preamp_outputs(self):
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        self.assertIn("noise v(outp1,outn1) Vinp", deck)
+        self.assertIn("print v(TAILP) v(OUTP1) v(OUTN1)", deck)
+
+
+class TestResetDeviceBlockGndTied(unittest.TestCase):
+    """`_reset_device_block()` -- the DR-004 gnd-tied counterfactual
+    (issue #34): the steering pair's SOURCE terminals move from the floated
+    internal node TAIL2 to GND, nothing else changes."""
+
+    def test_as_drawn_is_the_fragment_verbatim(self):
+        self.assertEqual(cd_run._reset_device_block("as-drawn"),
+                         cd_run._dut_lines())
+
+    def test_gnd_tied_moves_only_the_steering_sources(self):
+        block = cd_run._reset_device_block("gnd-tied")
+        lines = [" ".join(l.split()) for l in block.splitlines() if l.strip()]
+        by_name = {l.split()[0]: l for l in lines}
+        # The steering pair: same drains and gates, sources (and bulks) at GND.
+        self.assertTrue(by_name["XM_STN_P"].split()[1:5] ==
+                        ["OUTP", "OUTP1", "GND", "GND"])
+        self.assertTrue(by_name["XM_STN_N"].split()[1:5] ==
+                        ["OUTN", "OUTN1", "GND", "GND"])
+        # Every other device is re-emitted verbatim from the fragment.
+        for name, line in by_name.items():
+            if name in ("XM_STN_P", "XM_STN_N"):
+                continue
+            self.assertEqual(line, " ".join(cd_run._dut_device_line(name).split()))
+        # Same instance count as the committed fragment -- a single-edit
+        # counterfactual, not a rebuild.
+        self.assertEqual(len(by_name), len(cd_run._dut_devices()))
+
+    def test_unknown_variant_raises(self):
+        with self.assertRaises(ValueError):
+            cd_run._reset_device_block("bogus")
 
 
 if __name__ == "__main__":

@@ -44,10 +44,12 @@ trap 'rm -rf "${SCRATCH}"' EXIT
 
 # NOTE: xschem 3.4.7 exits 10 on a SUCCESSFUL batch netlist-and-quit run
 # (-q), not 0, so its status is not usable as a success signal here. The
-# checks below (netlist exists, and has exactly the 12 MOSFET device
-# lines the DR-001 device set plus the DR-003 soft-clock shaper calls
-# for, and one XR_ resistor line for that shaper) are what actually gate
-# this script.
+# checks below (netlist exists, and has exactly the 13 MOSFET device
+# lines the DR-004 preamp+latch device set (preamp tail + input pair +
+# latch tail + steering pair + cross-coupled PMOS + two output reset
+# PMOS + the two OUT1 absorber caps + the DR-003 soft-clock shaper cap)
+# calls for, and three XR_ resistor lines: the shaper plus the two
+# preamp poly loads) are what actually gate this script.
 xschem -n -q -x \
   --rcfile "${PDK_ROOT}/${PDK}/libs.tech/xschem/xschemrc" \
   "${SCH}" -o "${SCRATCH}" >/dev/null || true
@@ -62,13 +64,13 @@ grep -v '^\*\*' "${RAW}" | grep -v '^\.end[[:space:]]*$' \
   | sed -e '/./,$!d' > "${DEVICES}"
 
 N_DEV="$(grep -c '^XM_' "${DEVICES}" || true)"
-if [[ "${N_DEV}" -ne 12 ]]; then
-  echo "netlist.sh: expected 12 MOSFET device lines (DR-001 device set + DR-003 clock shaper cap), got ${N_DEV}" >&2
+if [[ "${N_DEV}" -ne 13 ]]; then
+  echo "netlist.sh: expected 13 MOSFET device lines (DR-004 preamp+latch set + OUT1 caps incl. DR-003 clock shaper cap), got ${N_DEV}" >&2
   exit 1
 fi
 N_RES="$(grep -c '^XR_' "${DEVICES}" || true)"
-if [[ "${N_RES}" -ne 1 ]]; then
-  echo "netlist.sh: expected 1 resistor line (DR-003 clock shaper), got ${N_RES}" >&2
+if [[ "${N_RES}" -ne 3 ]]; then
+  echo "netlist.sh: expected 3 resistor lines (DR-003 clock shaper + two preamp poly loads), got ${N_RES}" >&2
   exit 1
 fi
 
@@ -91,38 +93,50 @@ cat > "${NEW}" <<'HEADER'
 * their own Claim fields (they are append-only evidence and are never
 * edited -- they simply stop being the freshest evidence).
 *
-* Topology: single-tail, bottom-tail NMOS-input dynamic latch, no static
-* preamp. 13 devices, 12 of them MOSFETs: the 11-device DR-001 set (1 tail switch NMOS + 2
-* input-pair NMOS + 2 cross-coupled latch NMOS + 2 cross-coupled latch
-* PMOS + 2 output-node PMOS reset/precharge + 2 internal-node PMOS
-* reset/precharge) plus M_CLKCAP, the DR-003 (issue #30) soft-clock
-* shaper's MOS capacitor. One resistor: R_CLKS, the shaper's poly resistor
-* (res_high_po), from CLK to CLKT. CLK-gated PMOS precharge of BOTH the
-* differential output nodes (OUTP/OUTN) AND the cross-coupled latch NMOS
-* pair's own source nodes (DIP/DIN) to VDD, per DR-001 Decision 3 -- every
-* latch NMOS is at Vgs = 0 during reset, so the positive-feedback loop is
-* dead and the reset state is a stable, non-conducting equilibrium. The
-* DR-003 shaper (R_CLKS x M_CLKCAP, tau ~ 250 ps) drives ALL five clocked
-* gates (M_TAIL + the four reset PMOS) from CLKT instead of CLK: the
-* evaluate onset is slew-limited, which is what reduces the input kickback
-* DR-002's ratified row bounds (144.60 mV pre-mitigation); reset-state DC
-* is identical to DR-001 since CLKT discharges to GND through R_CLKS.
+* Topology: static preamplifier + dynamic StrongARM-class latch per
+* DR-004 (issue #34) -- the DR-001-supersession topology-class change
+* that closes the kickback gap DR-003 documented. 16 devices: a
+* continuously-biased preamp (M_PTAIL, a gate-at-VDD NMOS current source;
+* input pair M_PINN/M_PINP; poly loads R_LP/R_LN ~45kohm) whose outputs
+* OUTP1/OUTN1 sit at a static ~0.85 V common mode and carry the
+* differential with ~13x gain, ahead of a clocked latch (strong tail
+* switch M_TAIL2 + steering pair M_STN_P/M_STN_N gated by the preamp
+* outputs + cross-coupled PMOS M_LATP_P/M_LATP_N + output reset PMOS
+* M_RST_P/M_RST_N), plus the OUT1 absorber caps M_C1P/M_C1N (nfet MOS
+* caps at the preamp outputs, absorbing the steering pair's gate kick).
+* CLK-gated PMOS precharge of the differential output
+* nodes to VDD: during reset every latch PMOS sits at Vgs = 0 exactly, so
+* the cross-coupled loop is dead and the reset state is a stable,
+* non-conducting equilibrium -- DR-001 Decision 3's property on the latch
+* stage. The steering pair's gates sit at the static preamp common mode
+* and M_TAIL2 is off in reset, so no supply path exists. The DR-003
+* shaper (R_CLKS x M_CLKCAP, tau ~ 250 ps) drives the latch tail and both
+* reset PMOS from CLKT: the evaluate onset stays slew-limited. The
+* preamp's channels are ALWAYS formed (static bias) -- the input-pin
+* channel-formation transient that dominated the dynamic-input variants
+* (single-tail AND double-tail; measured ladder in DR-004) does not exist
+* in this class, and the latch's kickback arrives at the preamp outputs,
+* divided by the preamp's gain and absorbed by the OUTx1 node before the
+* pins.
 *
 * Sizing (all L=0.5um; full derivation in design/comparator.sch's own
-* sizing-rationale text block and in DR-001 Amendment 1):
-*   M_TAIL                W=20um   headroom: CLK-gated switch, Ron drop
-*   M_INN, M_INP          W=10um   offset budget: 2*AVT_n^2/(W*L) at 70% of
-*                                  the DRAFT stretch row's variance
-*   M_LATN_P, M_LATN_N    W= 8um   offset budget: remaining 30%
-*   M_LATP_P, M_LATP_N    W=16um   2x latch NMOS -> trip point near VDD/2
+* sizing-rationale text block and in DR-004):
+*   M_PTAIL               W=0.42um static current ~25uA total (supply row)
+*   M_PINN, M_PINP        W=10um   offset budget: 2*AVT_n^2/(W*L) (as
+*                                  DR-001 Amd 1 -- the lever unchanged)
+*   R_LP, R_LN            L=33um   gain A~13, output CM ~0.85V
+*   M_C1P, M_C1N          W=40um   kickback: absorb the steering gate kick
+*   M_TAIL2               W= 8um   output descent + regeneration speed
+*   M_STN_P, M_STN_N      W= 8um   steer strength / offset (2nd, /A)
+*   M_LATP_P, M_LATP_N    W=16um   trip point near VDD/2 (as DR-001 Amd 1)
 *   M_RST_P,  M_RST_N     W= 8um   reset tau << reset window, min C_out
-*   M_RST_DIP, M_RST_DIN  W= 6um   reset tau << reset window, min C_DI
 *   R_CLKS (res_high_po_0p35, L=1.75um, ~2.4kohm) + M_CLKCAP (W=20um):
 *                             DR-003 soft-clock shaper, tau ~ 0.25 ns
 *
 * Ports: VDD, GND (auto-tied to node 0 by ngspice's built-in gnd-name
-* recognition), CLK, VINP, VINN, OUTP, OUTN. Internal nodes: TAIL, DIP,
-* DIN, CLKT.
+* recognition), CLK, VINP, VINN, OUTP, OUTN -- UNCHANGED from every prior
+* revision (the preamp is internally biased; no new port).
+* Internal nodes: TAILP, OUTP1, OUTN1, TAIL2, CLKT.
 * Vin,diff = VINP - VINN > 0 => OUTP settles high.
 *
 * Every device is sky130_fd_pr__{n,p}fet_01v8 (1.8V core flavour, matching

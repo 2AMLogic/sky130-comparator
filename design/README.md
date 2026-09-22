@@ -12,97 +12,110 @@ Nothing else lives here yet — see [What is not here](#what-is-not-here).
 
 ## The design
 
-A **single-tail, bottom-tail NMOS-input dynamic latch with no static
-preamp**, 13 devices: 12 MOSFETs, all `sky130_fd_pr__{n,p}fet_01v8` (the
-1.8 V core flavour — the only complementary pair sky130 ships, per the
-top-level `README.md`'s "Supply / power" row), plus one `res_high_po` poly
-resistor. The 11-device MOSFET core is DR-001's topology+reset set
-unchanged; the extra MOSFET (`M_CLKCAP`) and the poly resistor (`R_CLKS`)
-are the DR-003 soft-clock shaper (issue #30) that hangs off the clock port
-to reduce input kickback.
+A **static resistive-load NMOS preamplifier ahead of a clocked
+StrongARM-class latch**, 16 devices: 13 MOSFETs, all
+`sky130_fd_pr__{n,p}fet_01v8` (the 1.8 V core flavour — the only
+complementary pair sky130 ships, per the top-level `README.md`'s
+"Supply / power" row), plus three `res_high_po` poly resistors (the two
+preamp loads and the DR-003 shaper resistor).
 
-The topology and the reset scheme are not this schematic's choices to make:
-they were decided, with evidence, in
-[`spec/decision-records/DR-001-comparator-topology.md`](../spec/decision-records/DR-001-comparator-topology.md)
-(issue #21). This schematic implements that decision. The kickback
-mitigation approach (slew-limiting the evaluate onset, rather than the
-other candidate families DR-002 listed) IS this design's own measured
-choice — recorded in
-[`spec/decision-records/DR-003-kickback-slew-limited-clock.md`](../spec/decision-records/DR-003-kickback-slew-limited-clock.md)
-with the rejected alternatives' numbers. The sizing, which DR-001
-explicitly left open, is below (see [Sizing](#sizing)).
+The topology class is this schematic's own measured choice, recorded in
+[`spec/decision-records/DR-004-comparator-preamp-supersession.md`](../spec/decision-records/DR-004-comparator-preamp-supersession.md)
+(issue #34): it supersedes DR-001's "No static preamp" ruling (with the
+four-corner headroom evidence DR-001 asked a supersession to carry) after
+DR-003's measured option table showed the kickback gap unclosable inside
+the single-tail class. The double-tail route was evaluated first and
+measured still ~1:1 kickback/speed elastic (committed probe deck under
+`spec/dr-004-support/`). DR-001's Decision §3 reset property is carried
+onto the latch stage unchanged in mechanism; DR-003's soft-clock shaper
+stays on the clock port. The sizing, which DR-001 explicitly left open
+and DR-004 re-derived against the noise lever, is below (see
+[Sizing](#sizing)).
 
 ```
- CLK ──[R_CLKS]── CLKT ──[M_CLKCAP]── GND      DR-003 soft-clock shaper,
+                  VDD (static bias: M_PTAIL gate at VDD)
+                   │
+                 M_PTAIL                the PREAMP: always on,
+                   │                    ~22 µA/side, gain A ≈ 13–18 V/V,
+                 TAILP                  output CM ≈ 1.1–1.25 V
+              M_PINN  M_PINP            (gates VINN / VINP)
+                   │      │
+     R_LP ── OUTN1        OUTP1 ── R_LN (poly loads to VDD, ~30 kΩ)
+     M_C1N ── GND          GND ── M_C1P (absorber MOS caps at OUTx1)
+
+ CLK ──[R_CLKS]── CLKT ──[M_CLKCAP]── GND   DR-003 soft-clock shaper,
                                             τ = R·C ≈ 250 ps; CLKT drives
-                VDD                          ALL five clocked gates below
+                VDD                        the latch tail + reset PMOS
      ┌───────┬───┴───┬───────┬───────┐
-   M_RST_DIP │     M_LATP_P  │   M_RST_P      (precharge PMOS gated by
-     │     M_RST_DIN │   M_LATP_N  │            CLKT, except the cross-
-     │       │       │       │     │             coupled latch PMOS,
-    DIP     DIN    OUTP    OUTN    ┘             gated by the opposite
-     │       │       │       │                   output)
-     │       │    M_LATN_P M_LATN_N            cross-coupled latch NMOS,
-     │       │       │       │                 sources on DIP / DIN
-     └───────┼───────┘       │
-             └───────────────┘
-    M_INN (gate VINN) drain DIP  ┐
-    M_INP (gate VINP) drain DIN  ┘ sources both on TAIL
-                 TAIL
-                   │
-                M_TAIL (gate CLKT)
-                   │
-                  GND
+   M_LATP_P │       │       │   M_RST_P   (cross-coupled latch PMOS,
+     │    M_LATP_N  │       │     │        gated by the opposite
+     │       │       │       │   M_RST_N   output; reset PMOS gated by
+   OUTP    OUTN     OUTN    OUTP           CLKT)
+     │       │       │       │
+   M_STN_P (gate OUTP1)   M_STN_N (gate OUTN1)   steering pair, sources
+              │                │                  on TAIL2
+              └────── TAIL2 ───┘
+                       │
+                  M_TAIL2 (gate CLKT)
+                       │
+                      GND
 ```
 
 **Ports** — flat, top level, so the netlist drops straight into the
 testbench harness as a DUT fragment: `VDD`, `GND`, `CLK`, `VINP`, `VINN`,
-`OUTP`, `OUTN`. Internal nodes: `TAIL`, `DIP`, `DIN`, and `CLKT` — the
-DR-003 soft-clock node: `R_CLKS` from `CLK` to `CLKT`, `M_CLKCAP` from
-`CLKT` to `GND`, τ ≈ 250 ps, and **all five clocked gates (the tail switch
-plus the four precharge PMOS) connect to `CLKT`, not `CLK`**, so the whole
-evaluate onset together — precharge release and tail turn-on — is
-slew-limited by that RC rather than by the 100 ps edge the testbench
-drives. Reset rests identically to DR-001's scheme: `CLKT` discharges to
-`GND` through `R_CLKS`, so during `CLK = 0` every gate sits exactly where
-the pre-DR-003 design put it.
+`OUTP`, `OUTN` — **unchanged from every prior revision** (the preamp is
+internally biased; no new port). Internal nodes: `TAILP`, `OUTP1`, `OUTN1`,
+`TAIL2`, and `CLKT` — the DR-003 soft-clock node: `R_CLKS` from `CLK` to
+`CLKT`, `M_CLKCAP` from `CLKT` to `GND`, τ ≈ 250 ps, driving the latch
+tail and the two output precharge PMOS so the evaluate onset stays
+slew-limited. Reset rests exactly as DR-003 left it: `CLKT` discharges to
+`GND` through `R_CLKS`.
 
 **Polarity**: `Vin,diff = VINP − VINN > 0` ⇒ `OUTP` settles high. (`VINP`
-drives `M_INP`, whose drain is `DIN`; `DIN` falls faster, `M_LATN_N` turns
-on first and pulls `OUTN` down, leaving `OUTP` at `VDD`.)
+drives `M_PINP`, whose drain `OUTP1` falls; `M_STN_P` (gate `OUTP1`)
+weakens, `OUTP` is kept high by `M_LATP_P` (gate `OUTN`) while `M_STN_N`
+(gate `OUTN1`, the higher static gate) pulls `OUTN` down.)
 
-**Reset** (`CLK = 0`): all four reset PMOS conduct, precharging **both** the
-output nodes **and** the latch NMOS pair's own source nodes `DIP`/`DIN` to
-`VDD`. Every latch NMOS is then at `Vgs = 0` exactly, so the
-positive-feedback loop's gain is zero and reset is a stable, all-devices-off
-state. This is DR-001 Decision §3, and it is verified rather than assumed —
-see [Verification](#verification).
+**Reset** (`CLK = 0`, `CLKT = 0`): the reset PMOS precharge `OUTP`/`OUTN`
+to `VDD` — which are also the cross-coupled PMOS pair's gates, so every
+latch PMOS sits at `Vgs = 0` exactly, the loop's gain is zero, and reset
+is a stable, all-devices-off state: DR-001 Decision §3's mechanism carried
+onto this latch stage. The steering pair's gates sit at the preamp's
+static CM but `M_TAIL2` is off, so no supply path exists (`TAIL2` floats
+to ~the steering Vth and conduction self-limits). The preamp never
+resets — it is statically biased at all times, which is the point. This
+is verified rather than assumed — see [Verification](#verification).
 
-**Evaluate** (`CLK = VDD`): reset PMOS off, tail switch on; the input pair
-discharges `DIP`/`DIN` at rates set by the inputs, the latch NMOS sources
-fall, loop gain rises through unity, and the pair regenerates to the rails.
+**Evaluate** (`CLK = VDD`, shaped): `M_TAIL2` grounds `TAIL2`; the
+steering pair — carrying the preamp's differential since long before the
+edge — discharges the precharged outputs with an `A·Vin` head start
+already present, and the PMOS latch regenerates.
 
 ## Sizing
 
-All devices `L = 0.5 µm`.
+All MOSFETs `L = 0.5 µm`.
 
 | Device group | Devices | `W` (µm) | Set by |
 |---|---|---|---|
-| Tail switch | `M_TAIL` | 20 | headroom — `Ron` drop at the worst corner |
-| Input pair | `M_INN`, `M_INP` | 10 | offset budget (Pelgrom, 70 % of the variance) |
-| Cross-coupled NMOS | `M_LATN_P`, `M_LATN_N` | 8 | offset budget (remaining 30 %) |
-| Cross-coupled PMOS | `M_LATP_P`, `M_LATP_N` | 16 | `2 × W_latn` ⇒ trip point near `VDD`/2 |
+| Preamp tail | `M_PTAIL` | 0.8 | static current (~22 µA/side; the class's supply cost) |
+| Preamp input pair | `M_PINN`, `M_PINP` | 13 | offset budget (Pelgrom) + the noise lever |
+| Preamp loads | `R_LP`, `R_LN` (`res_high_po_0p35`, L = 22 µm ≈ 30 kΩ solved) | — | gain `A = gm·R` ≈ 13–18 V/V; output CM ≈ 1.1–1.25 V |
+| OUT1 absorber caps | `M_C1P`, `M_C1N` | 40 | kickback: absorb the steering gate kick at the preamp outputs |
+| Latch steering pair | `M_STN_P`, `M_STN_N` | 8 | steer strength / offset (2nd, referred ÷`A`) |
+| Latch tail | `M_TAIL2` | 8 | output descent + regeneration speed |
+| Cross-coupled PMOS | `M_LATP_P`, `M_LATP_N` | 16 | trip point near `VDD`/2 (as DR-001 Amd 1) |
 | Output reset PMOS | `M_RST_P`, `M_RST_N` | 8 | reset `τ` ≪ reset window, minimise `C_out` |
-| Internal reset PMOS | `M_RST_DIP`, `M_RST_DIN` | 6 | reset `τ` ≪ reset window, minimise `C_DI` |
-| Clock shaper resistor | `R_CLKS` (`res_high_po_0p35`, L = 1.75 µm ≈ 2.4 kΩ) | — | kickback (DR-003): `τ = R·C` shapes the evaluate onset |
-| Clock shaper MOS cap | `M_CLKCAP` | 20 | kickback (DR-003): gate on `CLKT`, d/s/b and bulk at `GND`, ~100 fF |
+| Clock shaper resistor | `R_CLKS` (`res_high_po_0p35`, L = 1.75 µm) | — | kickback (DR-003): `τ = R·C` shapes the evaluate onset |
+| Clock shaper MOS cap | `M_CLKCAP` | 20 | kickback (DR-003): gate on `CLKT`, d/s/b at `GND`, ~100 fF |
 
 The full derivation is in `comparator.sch`'s own sizing-rationale text block
 (read it in xschem, or just read the `.sch` file — it is plain text), in
-[DR-001 Amendment 1](../spec/decision-records/DR-001-comparator-topology.md),
-and, for the two shaper devices, in
-[DR-003](../spec/decision-records/DR-003-kickback-slew-limited-clock.md).
-The load-bearing pieces, in brief:
+[DR-001 Amendment 1](../spec/decision-records/DR-001-comparator-topology.md)
+(the offset-budget lever), [DR-003](../spec/decision-records/DR-003-kickback-slew-limited-clock.md)
+(the two shaper devices), and
+[DR-004](../spec/decision-records/DR-004-comparator-preamp-supersession.md)
+(the preamp sizing and its measured headroom/noise/speed evidence,
+`spec/dr-004-support/`). The load-bearing pieces, in brief:
 
 - **The offset budget comes from this PDK's own mismatch model, not from
   literature and not from a sibling repo.** The only local-mismatch term
@@ -113,12 +126,23 @@ The load-bearing pieces, in brief:
   subcircuits — on this PDK, local mismatch *is* threshold mismatch, which
   is why the budget has no `Vov`-dependent term to trade against.
   `spec/dr-001-support/avt_probe.py` confirms this empirically.
-- **The tail is a switch, not a current source.** Its gate swings rail to
-  rail with `CLK`, so it sits in deep triode (18–28 mV of drop against a
-  500–610 mV `Vdsat`, across all four DR-001 corners). That is what recovers
-  the 125 mV DR-001's planning convention had reserved for `V_dsat,tail`,
-  and it is what closes the −58.5 mV `ss`/−40 °C deficit DR-001 flagged as
-  this sizing pass's job.
+- **The preamp tail is a gate-at-supply switch-like source, not a cascode.**
+  `M_PTAIL`'s gate sits at `VDD` permanently, and it rests in deep triode
+  (0.13–0.18 V of drop against a 0.54–0.65 V `Vdsat`, across the four
+  DR-004 probe corners) — DR-001 Amd 1's "a switch-like tail's `Vdsat`
+  budget is recoverable" finding, transferred to this always-on tail.
+- **The preamp stack is SHORTER than what it replaced.** Because the load
+  is a resistor hanging from the rail, the input pair's saturation margin
+  (`Vds,in − Vdsat,in`) is +0.88…+1.01 V at every probed corner
+  (`spec/dr-004-support/preamp_op_probe.spice`) — the headroom clause
+  DR-004 supersedes is answered with DR-001's own four-corner discipline.
+- **The 13 µm input pair and ~30 kΩ loads are a noise/speed/kickback
+  coupled choice, not independent knobs.** The first-cut sizing
+  (10 µm / 45 kΩ / ~12 µA per side) measured 0.72 mV input-referred noise
+  — inside the ratified 1.0 mV target but over the 0.6 mV stretch bound;
+  the committed sizing closes both (0.5704 mV) at unchanged kickback
+  margin. Any future re-tuning must re-measure all three rows together
+  (DR-004 Consequence 3).
 - **The shaper's `τ` is the kickback/decision-time trade, not a matching
   number.** DR-003's measured series (probe-grade, all against this exact
   design) showed the DIP/DIN collapse rate {EM} the source of the kickback
@@ -156,7 +180,8 @@ mismatch):
 The script runs the xschem netlister, strips xschem's `**`-prefixed wrapper
 comments and the trailing `.end`, and prepends a provenance header; every
 device line is passed through byte-for-byte as the netlister emitted it. It
-asserts that exactly 12 MOSFET device lines plus one `XR_` resistor line
+asserts that exactly 13 MOSFET device lines plus three `XR_` resistor lines
+(the DR-004 preamp+latch set, the two preamp loads, and the DR-003 shaper)
 came out, so a schematic edit that accidentally drops or duplicates a
 device fails loudly instead of silently netlisting.
 
@@ -192,14 +217,17 @@ figure below are same-corner (`tt`/27 °C, 50 mV overdrive) before/after
 points of exactly this experiment.
 
 `reset` is the one worth knowing about: it is a reset-integrity **negative
-control** paired with a **positive control**. DR-001 Decision §3 derives
-that a latch whose NMOS sources sit at `GND` during reset leaves the
-feedback loop live and the reset state unstable, and cites same-PDK prior
-art where exactly that defect was found the hard way, after the fact, at 3
-of 9 corners. So `reset` starts the transient from a deliberately wrong
-state — outputs pinned at *opposite rails* — and checks the design rejects
-it; and it runs the same check against the `GND`-tied counterfactual to
-prove the check can actually detect the defect it screens for.
+control** paired with a **positive control**. DR-001 Decision §3's
+mechanism (a cross-coupled pair whose gate AND source sit at the same rail
+during reset has exactly zero loop gain) is carried by the DR-004 latch
+stage onto its PMOS pair — the precharged outputs ARE the pair's gates. So
+`reset` starts the transient from a deliberately wrong state — outputs
+pinned at *opposite rails* — and checks the design rejects it; and it runs
+the same check against the `GND`-tied counterfactual (the steering pair's
+sources moved from the floated `TAIL2` node to `GND`, nothing else) to
+prove the check can actually detect the defect it screens for. The supply
+criterion's floor is the preamp's own static current (~42–68 µA across the
+matrix), not leakage — the record states this.
 
 ## What is not here
 
@@ -207,18 +235,26 @@ prove the check can actually detect the defect it screens for.
 - **No xschem symbol** (`comparator.sym`) and no testbench schematics. The
   simulation harness consumes the flat netlist fragment directly, so nothing
   needs a symbol yet; add one when a schematic instantiates this block.
-- **No kickback PVT sweep, and no full compliance.** The kickback testbench
-  itself exists (issue #26) and DR-002 ratified the row against its
-  144.60 mV `tt`/27 °C measurement; the DR-003 pass-1 shaper brings that to
-  85.71 mV at the same point ({EM} still ~17× the 5 mV target, so the row
-  stays annotated non-compliant in the top-level README). What remains open,
-  by DR-003's own record: kickback PVT coverage (the graded record is
-  single-corner, like-for-like with the DR-002 citation; DR-003's probe
-  matrix brackets `ss`/`ff` at ~80–86 mV), and closing the rest of the gap
-  {EM} measured candidates that reach 5 mV all regress a ratified row or
-  the draft decision-time row, and the route that does not needs the
-  preamplifier/double-tail class DR-001 explicitly scoped out.
-- **No ratified spec to grade against.** The top-level `README.md`'s
-  target-spec table is DRAFT, so the records above substantiate no spec row;
-  they are quoted against the DRAFT rows only as design intent. DR-001 is
-  itself still *proposed*, not ratified.
+- **No full kickback PVT campaign.** The DR-004 topology pass measured
+  three graded PVT anchors (`tt`/27 °C, `ss`/−40 °C, `ff`/125 °C: 1.89 /
+  1.86 / 1.77 mV — all inside both the ratified 5 mV target and the 2 mV
+  stretch bound), but the `sf`/`fs` skews, a supply sweep, and
+  layout-stage re-verification remain open (DR-004 Open items), and the
+  stretch margin is thin (1.06–1.13×).
+- **The sub-mV overdrive regression at `ss`/−40 °C.** The DR-004 design
+  does not resolve a 0.5 mV differential at that corner within any
+  measured window (400 ns probe: 11.7 mV separation), where the DR-001
+  design resolved it in 2.56 ns. The Decision-time row's bounds are stated
+  at 50 mV overdrive and sub-mV decisions sit below the design's own
+  ~1.8 mV offset floor in practice — but the trade is recorded, not
+  hidden (DR-004 Consequence 4 / Open items).
+- **The Supply/power row needs re-anchoring.** The preamp class costs
+  ~51–55 µA static plus ~344–564 µA during evaluate (measured,
+  `spec/dr-004-support/evaluate_idd_probe.spice`) — ~95 µW static at
+  1.8 V against the DRAFT row's 50 µW figure. DR-004 deliberately changes
+  no bound; the re-anchoring is an open ratification decision.
+- **No ratified spec beyond DR-002's three rows.** The top-level
+  `README.md`'s Decision-time and Supply/power rows are DRAFT, so those
+  records substantiate no spec row; they are quoted against the DRAFT rows
+  only as design intent. DR-004, like DR-001 and DR-003 before it, is
+  *proposed* pending PR merge.

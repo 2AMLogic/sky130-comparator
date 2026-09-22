@@ -82,20 +82,24 @@ VCM = VDD / 2  # 0.9V common-mode input.
 RESET_NS = 5.0  # reset (CLK=0) duration before the single evaluate edge.
 RESET_TR_NS = 0.1  # clock edge rise/fall time.
 DECIDE_THRESHOLD_V = 0.5 * VDD  # |v(outp)-v(outn)| crossing this = "decided"
-PICKOFF_NS = 1.0
-# 0.3 ns until DR-003 (issue #30). The pick-off point is a METHODOLOGY
-# constant: it must land in the linear, mid-separation window of
-# |OUTP-OUTN|, wherever the design's evaluate onset puts that window. The
-# pre-DR-003 design's ~100 ps onset put it at 0.3 ns (gain 5.8156 V/V,
-# record 20260916-003531-52eb9b2). The DR-003 soft-clock shaper stretches
-# the whole onset, and 0.3 ns fell into the shaped dead zone -- the
-# calibration gain collapsed 5.8156 -> 0.0021 V/V and the record minted
-# that way (20260921-192020-bb32850, superseded) measured onset-latency
-# dispersion, not offset. 1.0 ns re-anchors the statistic into the
-# post-shaper separation's linear window (ideal-device gains: 0.3 ns ->
-# 0.0021, 0.8 -> 9.4, 1.0 -> 13.2, 1.2 -> 26.8 V/V). The record's own
-# Methodology line prints this constant, so every record states which
-# pick-off point produced it.
+PICKOFF_NS = 0.65
+# 0.3 ns until DR-003 (issue #30), 1.0 ns until DR-004 (issue #34). The
+# pick-off point is a METHODOLOGY constant: it must land in the linear,
+# mid-separation window of |OUTP-OUTN|, wherever the design's evaluate
+# onset puts that window. The pre-DR-003 design's ~100 ps onset put it at
+# 0.3 ns (gain 5.8156 V/V, record 20260916-003531-52eb9b2). The DR-003
+# soft-clock shaper stretched the onset and 0.3 ns fell into the shaped
+# dead zone (the superseded record 20260921-192020-bb32850 measured onset
+# latency dispersion, not offset); 1.0 ns re-anchored it for the DR-003
+# design (ideal-device gains 0.8 -> 9.4, 1.0 -> 13.2 V/V). The DR-004
+# preamp makes the whole decision so much faster that at 1.0 ns every
+# calibration input is rail-saturated (1 mV -> 0.74 V, 10 mV -> 1.48 V,
+# gain fit garbage), so it re-anchors again to 0.65 ns -- measured
+# calibration line: 1 mV -> 68.1 mV, 2 -> 135.5, 5 -> 329.5, 10 -> 639.3
+# (6% top-to-bottom compression, mid-separation window, and past the
+# shaper's onset the DR-003 incident established must be cleared). The
+# record's own Methodology line prints this constant, so every record
+# states which pick-off point produced it.
 # The DR-002-ratified Offset row's bounds -- recorded here so the record
 # states its own comparison against the ratified row (values cite DR-002
 # Decision 1: target <= 15 mV 3-sigma, stretch <= 8 mV 3-sigma, input-referred).
@@ -119,12 +123,13 @@ CLAIM_TEXT = (
     "merged) the Offset sigma, Input-referred noise, and Kickback rows are "
     "RATIFIED while Decision time vs. overdrive and Supply/power stay "
     "DRAFT/OPEN. What this record characterizes is **this repo's own "
-    "comparator**: `design/comparator.sch`, the DR-001 topology plus the "
-    "DR-003 soft-clock shaper on the clock port, at a sizing derived from "
-    "this PDK's own "
-    "mismatch models (see the schematic's sizing-rationale block, DR-001 "
-    "Amendment 1, and DR-003). Any statement about a ratified row's compliance "
-    "made below cites the bound and the number side by side."
+    "comparator**: `design/comparator.sch`, the DR-004 static-preamplifier + "
+    "StrongARM-latch topology (superseding DR-001's no-preamp scoping) with "
+    "the DR-003 soft-clock shaper still on the clock port, at a sizing "
+    "derived from this PDK's own mismatch models (see the schematic's "
+    "sizing-rationale block, DR-001 Amendment 1, DR-003, and DR-004). Any "
+    "statement about a ratified row's compliance made below cites the bound "
+    "and the number side by side."
 )
 NETLIST_PROVENANCE = (
     "- **Netlist provenance**: schematic-derived "
@@ -620,19 +625,29 @@ def write_offset_evidence(
 # ---------------------------------------------------------------------------
 #
 # Methodology (ported from 2AMLogic/sky130-sar-adc, see README.md): the full
-# latch has no stable small-signal operating point once regeneration begins
-# (the cross-coupled pair is a positive-feedback loop), so a direct `.noise`
-# analysis on the full comparator_core.spice fragment is not meaningful.
-# Instead this uses a REDUCED sub-model: the tail + input pair, with the
-# devices on the input pair's own drain nodes (DIP/DIN) DIODE-CONNECTED
-# (self-biased) so the stage finds its own DC bias point, and with the
-# positive-feedback cross-coupling removed entirely. This is a standard
-# "break the loop for small-signal analysis" technique (generic
-# circuit-analysis practice, not specific to any implementation) -- it
-# measures the INTEGRATION phase only (tail on, input pair saturated,
-# discharging DIP/DIN) and, per the port source's own DR-004, is a
-# deliberate LOWER BOUND: it excludes the cross-coupled latch pair's own
-# regenerative-phase noise contribution.
+# comparator has no stable small-signal operating point once regeneration
+# begins (the cross-coupled pair is a positive-feedback loop), so a direct
+# `.noise` analysis on the full comparator_core.spice fragment is not
+# meaningful. Instead this uses a REDUCED sub-model. Since DR-004 (issue
+# #34) the DUT is a static preamplifier ahead of the clocked latch, and the
+# reduced sub-model is simply the PREAMP ITSELF, verbatim from the
+# committed fragment: preamp tail (gate at VDD), input pair, both poly
+# loads, and both OUT1 absorber MOS caps. Unlike every earlier revision of
+# this sub-model -- which had to proxy the integration phase of a dynamic
+# input stage with diode-connected stand-in loads -- this is a REAL static
+# stage: it holds its own DC operating point continuously, exactly as the
+# committed design does, so the `.noise` linearization happens at the
+# actual always-on bias. The loop break is the omission of everything past
+# the preamp outputs (steering pair, latch tail, cross-coupled PMOS, reset
+# PMOS): the latch has no steady small-signal state during regeneration,
+# and its noise contribution referred to the input is divided by the
+# preamp's gain (~13 V/V at the nominal sizing) -- the same division that
+# demotes the steering pair's Vth mismatch to a second-order offset term.
+# The steering pair's GATE capacitance at OUTx1 is likewise omitted from
+# the sub-model's AC load (the absorber caps, which dominate that node's
+# capacitance, are included); both omissions are stated here so the record
+# inherits them. This remains a deliberate LOWER BOUND on the true
+# regeneration-inclusive noise, per the port source's own DR-004.
 #
 # The AC stimulus is single-ended (Vinp gets AC=1, Vinn stays pure DC), and
 # ngspice's `inoise_total` (referred back through Vinp) is reported as a
@@ -650,11 +665,14 @@ NOISE_TARGET_MV = 1.0
 NOISE_STRETCH_MV = 0.6
 
 VBIAS_NOTE = (
-    "reduced sub-model of the INTEGRATION phase: tail + input pair, with the "
-    "DI-node precharge PMOS pair diode-connected (self-biased) as the loads "
-    "on the input pair's own drain nodes DIP/DIN, and the cross-coupled latch "
-    "pairs omitted because they are off (Vgs ~ 0) until regeneration begins; "
-    "CLK held at VDD (steady evaluate bias, tail on); noise taken at v(DIP,DIN)"
+    "reduced sub-model of the DR-004 static preamplifier: preamp tail "
+    "(gate at VDD) + input pair + both poly loads + both OUT1 absorber MOS "
+    "caps, all re-emitted verbatim from the committed fragment; everything "
+    "past the preamp outputs (steering pair, latch tail, cross-coupled "
+    "PMOS, reset PMOS) omitted -- that is the loop break. Unlike the "
+    "pre-DR-004 integration-phase proxy (diode-connected stand-in loads on "
+    "a dynamic input stage), this stage holds its own real continuous DC "
+    "operating point; noise taken at v(OUTP1,OUTN1)"
 )
 
 
@@ -667,30 +685,25 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         f".param vdd_val = {VDD}",
         "",
         "Vdd VDD 0 dc {vdd_val}",
-        "Vclkfix CLK 0 dc {vdd_val}",
-        "Vclkfixt CLKT 0 dc {vdd_val}",
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
         # Built from the committed DUT fragment's OWN device lines (issue
-        # #24) -- tail + input pair verbatim, and the DI-node reset PMOS
-        # pair re-emitted diode-connected (gate moved from CLK to its own
-        # drain). The cross-coupled latch pairs and the output-node reset
-        # PMOS are omitted: that is the loop break. Sizing therefore tracks
-        # design/comparator.sch automatically; it is not transcribed here.
-        # Since DR-003 (issue #30) XM_TAIL's gate terminal is the internal
-        # soft-clock node CLKT (the schematic drives all five clocked gates
-        # through the R_CLKS + M_CLKCAP shaper), the Vclkfix-style steady
-        # source below biases CLKT to the same VDD steady-evaluate level
-        # the deck has always assumed -- no structural change to the model.
-        # The shaper itself (R_CLKS / M_CLKCAP) is a transition-shaping
-        # network and carries no steady-state role in this DC-biased
-        # sub-model; it is not re-emitted, same as before the mitigation.
-        _dut_device_line("XM_TAIL"),
-        _dut_device_line("XM_INN"),
-        _dut_device_line("XM_INP"),
-        _dut_device_line("XM_RST_DIP", nodes=["DIP", "DIP", "VDD", "VDD"]),
-        _dut_device_line("XM_RST_DIN", nodes=["DIN", "DIN", "VDD", "VDD"]),
+        # #24): the DR-004 preamp stage verbatim -- tail, input pair, poly
+        # loads, absorber caps -- with everything past the preamp outputs
+        # omitted (the loop break; see the methodology note above). Sizing
+        # therefore tracks design/comparator.sch automatically; it is not
+        # transcribed here. The preamp contains no clocked device, so no
+        # CLK/CLKT steady-bias source is needed (the pre-DR-004 sub-model's
+        # Vclkfix/Vclkfixt lines existed to bias the omitted-from-latch
+        # tail's soft-clock gate; that device is no longer in the sub-model).
+        _dut_device_line("XM_PTAIL"),
+        _dut_device_line("XM_PINN"),
+        _dut_device_line("XM_PINP"),
+        _dut_device_line("XR_LP"),
+        _dut_device_line("XR_LN"),
+        _dut_device_line("XM_C1P"),
+        _dut_device_line("XM_C1N"),
         "",
         ".control",
         # sim/spiceinit sets 'option klu' repo-wide for corner-sweep speed,
@@ -698,8 +711,8 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         # to SPARSE for this invocation only.
         "option sparse",
         "op",
-        "print v(TAIL) v(DIP) v(DIN)",
-        f"noise v(dip,din) Vinp dec 20 {NOISE_FSTART_HZ:g} {NOISE_FSTOP_HZ:g} 20",
+        "print v(TAILP) v(OUTP1) v(OUTN1)",
+        f"noise v(outp1,outn1) Vinp dec 20 {NOISE_FSTART_HZ:g} {NOISE_FSTOP_HZ:g} 20",
         "print inoise_total onoise_total",
         ".endc",
         ".end",
@@ -711,9 +724,9 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
 class NoiseResult:
     single_ended_rms_v: float
     differential_rms_v: float
-    op_tail_v: float
-    op_dip_v: float
-    op_din_v: float
+    op_tailp_v: float
+    op_outp1_v: float
+    op_outn1_v: float
     log_text: str
     corner: str
     temp_c: float
@@ -726,26 +739,26 @@ def run_noise(corner: str = "tt", temp_c: float = 27.0, quiet: bool = False) -> 
         deck = _noise_deck(info, corner, temp_c)
         log_text = _run(deck, scratch_dir, "noise")
 
-    op_tail = op_dip = op_din = float("nan")
+    op_tailp = op_outp1 = op_outn1 = float("nan")
     single_ended = float("nan")
     for line in log_text.splitlines():
         s = line.strip()
-        if s.startswith("v(tail)"):
-            op_tail = float(s.split("=")[1])
-        elif s.startswith("v(dip)"):
-            op_dip = float(s.split("=")[1])
-        elif s.startswith("v(din)"):
-            op_din = float(s.split("=")[1])
+        if s.startswith("v(tailp)"):
+            op_tailp = float(s.split("=")[1])
+        elif s.startswith("v(outp1)"):
+            op_outp1 = float(s.split("=")[1])
+        elif s.startswith("v(outn1)"):
+            op_outn1 = float(s.split("=")[1])
         elif s.startswith("inoise_total"):
             single_ended = float(s.split("=")[1])
     differential = single_ended * (2 ** 0.5)
     if not quiet:
-        print(f"  op: TAIL={op_tail:.4f}V DIP={op_dip:.4f}V DIN={op_din:.4f}V")
+        print(f"  op: TAILP={op_tailp:.4f}V OUTP1={op_outp1:.4f}V OUTN1={op_outn1:.4f}V")
         print(f"  inoise_total (single-ended) = {single_ended * 1000:.4f} mV rms")
         print(f"  differential estimate (x sqrt(2)) = {differential * 1000:.4f} mV rms")
     return NoiseResult(
         single_ended_rms_v=single_ended, differential_rms_v=differential,
-        op_tail_v=op_tail, op_dip_v=op_dip, op_din_v=op_din,
+        op_tailp_v=op_tailp, op_outp1_v=op_outp1, op_outn1_v=op_outn1,
         log_text=log_text, corner=corner, temp_c=temp_c,
     )
 
@@ -768,12 +781,12 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     a(CLAIM_TEXT)
     a(
         "- **Netlist provenance**: schematic-derived, reduced sub-model -- the "
-        "tail + input pair + DI-node reset PMOS device lines are taken "
+        "DR-004 preamplifier stage's device lines (tail, input pair, poly "
+        "loads, OUT1 absorber caps) are taken "
         "verbatim from `sim/comparator-decision/testbench/comparator_core.spice` "
-        "(itself generated from `design/comparator.sch` by `./design/netlist.sh`), "
-        "with the DI-node PMOS re-emitted diode-connected and the tail's "
-        "DR-003 soft-clock gate node (CLKT) held at the same steady VDD "
-        "evaluate bias; see Methodology for what the loop break omits."
+        "(itself generated from `design/comparator.sch` by `./design/netlist.sh`); "
+        "everything past the preamp outputs is the loop break; "
+        "see Methodology for what that omits."
     )
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
@@ -793,8 +806,8 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     a("")
     a("| Quantity | Value | Corner condition |")
     a("|---|---|---|")
-    a(f"| Op point: v(TAIL) | {result.op_tail_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
-    a(f"| Op point: v(DIP)=v(DIN) | {result.op_dip_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
+    a(f"| Op point: v(TAILP) | {result.op_tailp_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
+    a(f"| Op point: v(OUTP1)=v(OUTN1) | {result.op_outp1_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
     a(
         f"| Single-ended input-referred noise (`inoise_total`, referred through Vinp) | "
         f"{result.single_ended_rms_v * 1000:.4f} mV rms | {result.corner}/{result.temp_c}C/{VDD}V |"
@@ -856,15 +869,18 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 #
 # Both variants are run at every corner:
 #
-#   AS-DRAWN     design/comparator.sch exactly as committed: the latch NMOS
-#                pair's sources are the precharged internal nodes DIP/DIN.
-#   GND-TIED     the SINGLE-EDIT counterfactual DR-001 Decision 3 argues
-#                against: M_LATN_P and M_LATN_N have their source terminals
-#                moved from DIP/DIN to GND, and nothing else changes. This
-#                is the positive control. Without it the negative control is
-#                vacuous -- a check that cannot be shown to fail on the
-#                defect it screens for is not evidence that the defect is
-#                absent.
+#   AS-DRAWN     design/comparator.sch exactly as committed: the latch
+#                steering pair's sources are the floated internal node
+#                TAIL2 (cut off in reset because M_TAIL2 is off and TAIL2
+#                floats to ~the steering gates' Vth).
+#   GND-TIED     the SINGLE-EDIT counterfactual (the same shape DR-001
+#                Decision 3 argued against for its own latch's
+#                source-precharge scheme): M_STN_P and M_STN_N have their
+#                source terminals moved from TAIL2 to GND, and nothing
+#                else changes. This is the positive control. Without it the
+#                negative control is vacuous -- a check that cannot be
+#                shown to fail on the defect it screens for is not
+#                evidence that the defect is absent.
 #
 # In both cases CLK is held at 0 for the whole window (reset asserted, never
 # released) and NO differential input is applied (VINP = VINN = VCM). The
@@ -877,40 +893,48 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 #
 #   1. COLLAPSE     |v(OUTP) - v(OUTN)| decays to ~0. The deliberate initial
 #                   asymmetry is rejected, not amplified.
-#   2. PRECHARGE    OUTP/OUTN (and, where they exist as latch sources,
-#                   DIP/DIN) reach VDD.
-#   3. LATCH OFF    max Vgs over the two cross-coupled latch NMOS is ~0.
+#   2. PRECHARGE    OUTP/OUTN reach VDD.
+#   3. LATCH OFF    max |Vgs| over the two cross-coupled latch PMOS is ~0.
 #                   THIS IS THE PRIMARY CRITERION and it is essentially
-#                   threshold-free: DR-001 Decision 3's mechanism is
-#                   literally "precharging the latch NMOS sources to VDD
-#                   alongside the outputs forces every latch NMOS to
-#                   Vgs = 0, so loop gain is exactly zero." Vgs(M_LATN_P) =
-#                   v(OUTN) - v(DIP) and Vgs(M_LATN_N) = v(OUTP) - v(DIN)
-#                   are that mechanism, measured. The GND-tied control puts
-#                   both at ~VDD instead, a ~1.8 V separation -- there is no
-#                   tuning latitude in this criterion.
+#                   threshold-free: the DR-004 latch stage keeps DR-001
+#                   Decision 3's mechanism on the (now PMOS) cross-coupled
+#                   pair -- precharging the outputs to VDD puts every latch
+#                   PMOS's gate AND source at VDD, so Vgs = 0 exactly and
+#                   the loop gain is zero. |Vgs(M_LATP_P)| = VDD - v(OUTN)
+#                   and |Vgs(M_LATP_N)| = VDD - v(OUTP) are that mechanism,
+#                   measured. (In this topology the pair's gates ARE the
+#                   precharged outputs, so criteria 2 and 3 read the same
+#                   node pair through equal tolerances -- they coincide
+#                   numerically by construction; the GND-tied control
+#                   separates them from criterion 4's axis instead.) The
+#                   GND-tied control puts both at ~VDD - 0.2 V, a ~1.6 V
+#                   separation -- there is no tuning latitude here either.
 #   4. NOT CONDUCTING  |I(VDD)| stays below RESET_IDD_TOL_A.
 #
 # On criterion 4's threshold, stated plainly because it is the one number
-# here that is a judgement call. It is NOT "the supply current is zero": a
-# single-tail dynamic latch with an NMOS tail and a non-zero input common
-# mode has an unavoidable off-state path (VDD -> DI-node reset PMOS ->
-# input pair -> TAIL -> subthreshold tail switch -> GND), and this design
-# measures ~0.2 uA on it. A criterion demanding less than that would not be
-# a stricter test of DR-001's reset scheme, it would just be a test no
-# dynamic latch of this class can pass. RESET_IDD_TOL_A is therefore set
-# above that inherent leakage floor and far below a genuinely conducting
-# latch: the GND-tied positive control, whose latch branches are on at
-# Vgs ~ VDD through 8 um devices, draws orders of magnitude more, and each
-# record reports both numbers side by side so the separation is visible
-# rather than asserted.
+# here that is a judgement call. It is NOT "the supply current is zero":
+# since DR-004 (issue #34) the design carries a CONTINUOUSLY-BIASED
+# PREAMPLIFIER, whose static current (~23-38 uA across the five
+# reset-matrix corners, measured) flows at all times including reset --
+# that is the class-defining supply cost of the preamp topology, not a
+# defect. On top of it there is an unavoidable small off-state path (VDD ->
+# output reset PMOS -> steering pair, whose gates sit at the preamp's
+# static output common mode -> TAIL2 -> subthreshold latch tail -> GND),
+# self-limiting because TAIL2 floats up until the steering pair's Vgs
+# falls to ~Vth (measured TAIL2 ~0.6-0.9 V at settle). RESET_IDD_TOL_A is
+# therefore set well above that inherent floor and far below a genuinely
+# conducting latch: the GND-tied positive control, whose steering branches
+# are pinned on at Vgs ~ the preamp common mode through 8 um devices,
+# draws ~1.0-1.2 mA across the same five corners (measured) -- a >5x
+# separation on BOTH sides, and each record reports both numbers side by
+# side so the separation is visible rather than asserted.
 
 RESET_WINDOW_NS = 20.0
 RESET_SETTLE_FRACTION = 0.5    # assert over the final half of the window
 RESET_DIFF_TOL_V = 1e-3        # |OUTP-OUTN| must decay below this
 RESET_PRECHARGE_TOL_V = 10e-3  # output nodes must reach VDD minus this
-RESET_VGS_TOL_V = 10e-3        # latch NMOS Vgs must be at/below this
-RESET_IDD_TOL_A = 1e-6         # |I(VDD)| bound -- see the note above
+RESET_VGS_TOL_V = 10e-3        # cross-coupled latch PMOS |Vgs| at/below this
+RESET_IDD_TOL_A = 2e-4         # |I(VDD)| bound -- see the note above
 
 RESET_VARIANTS = ("as-drawn", "gnd-tied")
 
@@ -919,17 +943,21 @@ def _reset_device_block(variant: str) -> str:
     """The DUT device lines for one reset-check variant.
 
     `as-drawn` is the committed fragment verbatim. `gnd-tied` re-emits the
-    two cross-coupled latch NMOS with their SOURCE terminal moved from the
-    precharged internal node (DIP/DIN) to GND, changing nothing else -- the
-    minimal counterfactual for DR-001 Decision 3.
+    latch steering pair with their SOURCE terminal moved from the floated
+    internal node TAIL2 to GND, changing nothing else -- the minimal
+    counterfactual for the DR-004 latch stage's reset scheme (the same
+    counterfactual shape DR-001 Decision 3 established against its own
+    latch's source precharge: pin the cross-coupled pair's current-source
+    node where the reset scheme floats it away from, and the loop must
+    conduct).
     """
     if variant == "as-drawn":
         return _dut_lines()
     if variant != "gnd-tied":
         raise ValueError(f"unknown reset variant {variant!r}")
     rewired = {
-        "XM_LATN_P": ["OUTP", "OUTN", "GND", "GND"],
-        "XM_LATN_N": ["OUTN", "OUTP", "GND", "GND"],
+        "XM_STN_P": ["OUTP", "OUTP1", "GND", "GND"],
+        "XM_STN_N": ["OUTN", "OUTN1", "GND", "GND"],
     }
     return "\n".join(
         _dut_device_line(name, nodes=rewired.get(name))
@@ -952,14 +980,17 @@ def _reset_deck(info: pdk.PdkInfo, corner: str, temp_c: float, variant: str, log
         f"Vinn VINN 0 dc {VCM}",
         "",
         "* Deliberately WRONG starting state: outputs pinned at opposite rails,",
-        "* internal nodes at GND. A sound reset scheme must reject it.",
-        ".ic v(OUTP)=0 v(OUTN)={vdd_val} v(DIP)=0 v(DIN)=0 v(TAIL)=0",
+        "* latch internal nodes at GND; the preamp's static nodes start near",
+        "* their own DC bias (uic defaults unspecified nodes to 0, and the",
+        "* preamp's R*C settle from 0 would eat most of the window).",
+        ".ic v(OUTP)=0 v(OUTN)={vdd_val} v(TAIL2)=0 v(CLKT)=0"
+        " v(TAILP)=0.2 v(OUTP1)=1.2 v(OUTN1)=1.2",
         "",
         _reset_device_block(variant),
         "",
         ".control",
         f"tran 0.005n {RESET_WINDOW_NS}n uic",
-        f"wrdata {log_name}.csv v(OUTP) v(OUTN) v(DIP) v(DIN) i(Vdd)",
+        f"wrdata {log_name}.csv v(OUTP) v(OUTN) v(TAIL2) i(Vdd)",
         ".endc",
         ".end",
     ]
@@ -1041,18 +1072,17 @@ def run_reset_check(
                 log_name = f"reset_{variant.replace('-', '_')}_{corner}_{safe_t}c"
                 deck = _reset_deck(info, corner, temp_c, variant, log_name)
                 log_text = _run(deck, scratch_dir, log_name)
-                t, outp, outn, dip, din, idd = toolchain.read_wrdata_csv(
-                    scratch_dir / f"{log_name}.csv", 5)
+                t, outp, outn, tail2, idd = toolchain.read_wrdata_csv(
+                    scratch_dir / f"{log_name}.csv", 4)
                 idx = [i for i, tt in enumerate(t) if tt >= settle_start_s]
-                # Vgs of the cross-coupled latch NMOS. In the as-drawn scheme
-                # each source is its own precharged internal node; in the
-                # gnd-tied control both sources are GND (0 V).
-                if variant == "as-drawn":
-                    def latch_vgs(i: int) -> float:
-                        return max(outn[i] - dip[i], outp[i] - din[i])
-                else:
-                    def latch_vgs(i: int) -> float:
-                        return max(outn[i], outp[i])
+                # |Vgs| of the cross-coupled latch PMOS. Both variants'
+                # sources sit at VDD (the rail), gates at the opposite
+                # output: |Vgs| = VDD - v(gate), worst device = the lower
+                # output node. In the as-drawn scheme the outputs are
+                # precharged to VDD so this is ~0; the gnd-tied control's
+                # steering pair drags an output down so it grows to ~VDD.
+                def latch_vgs(i: int) -> float:
+                    return VDD - min(outp[i], outn[i])
                 point = ResetPoint(
                     corner=corner, temp_c=temp_c, variant=variant,
                     worst_diff_v=max(abs(outp[i] - outn[i]) for i in idx),
@@ -1116,25 +1146,33 @@ def write_reset_evidence(
         f"(reset asserted, never released); NO differential input "
         f"(VINP=VINN={VCM}V); `uic` transient from a deliberately WRONG initial "
         f"condition -- v(OUTP)=0, v(OUTN)={VDD}V (outputs at OPPOSITE RAILS), "
-        f"v(DIP)=v(DIN)=v(TAIL)=0"
+        f"v(TAIL2)=v(CLKT)=0, with the preamp's static nodes (TAILP, OUTP1, "
+        f"OUTN1) started near their own DC bias"
     )
     a(
         "- **Variants**: `as-drawn` = `design/comparator.sch` as committed "
-        "(latch NMOS sources are the precharged internal nodes DIP/DIN). "
-        "`gnd-tied` = POSITIVE CONTROL, the single-edit counterfactual DR-001 "
-        "Decision 3 argues against -- M_LATN_P/M_LATN_N sources moved from "
-        "DIP/DIN to GND, nothing else changed. `as-drawn` is expected to hold "
-        "reset; `gnd-tied` is expected to BREAK it. Both expectations are "
-        "graded, because a negative control that cannot be shown to fail on "
-        "the defect it screens for is not evidence that the defect is absent."
+        "(the latch steering pair's sources are the floated internal node "
+        "TAIL2, cut off in reset because M_TAIL2 is off and TAIL2 floats to "
+        "~the steering gates' Vth). "
+        "`gnd-tied` = POSITIVE CONTROL, the single-edit counterfactual -- "
+        "M_STN_P/M_STN_N sources moved from TAIL2 to GND, nothing else "
+        "changed (the same counterfactual shape DR-001 Decision 3 established "
+        "for its own latch's source-precharge scheme). `as-drawn` is expected "
+        "to hold reset; `gnd-tied` is expected to BREAK it. Both expectations "
+        "are graded, because a negative control that cannot be shown to fail "
+        "on the defect it screens for is not evidence that the defect is "
+        "absent."
     )
     a(
         f"- **Reset-held criteria** (all asserted over the final "
         f"{int(RESET_SETTLE_FRACTION * 100)}% of the window): "
         f"(1) collapse -- |v(OUTP)-v(OUTN)| <= {RESET_DIFF_TOL_V * 1e3:g}mV; "
         f"(2) precharge -- min(OUTP,OUTN) >= VDD-{RESET_PRECHARGE_TOL_V * 1e3:g}mV; "
-        f"(3) latch off -- max Vgs over M_LATN_P/M_LATN_N <= {RESET_VGS_TOL_V * 1e3:g}mV; "
-        f"(4) not conducting -- |I(VDD)| <= {RESET_IDD_TOL_A:g}A"
+        f"(3) latch off -- max |Vgs| over M_LATP_P/M_LATP_N <= {RESET_VGS_TOL_V * 1e3:g}mV "
+        f"(= VDD - min(OUTP,OUTN): the pair's gates ARE the outputs); "
+        f"(4) not conducting -- |I(VDD)| <= {RESET_IDD_TOL_A:g}A (the floor "
+        f"under this bound is the DR-004 preamp's OWN static current, "
+        f"~23-38uA across this matrix -- not leakage)"
     )
     if note:
         a(f"- **Note**: {note}")
@@ -1149,7 +1187,7 @@ def write_reset_evidence(
     a("## As-drawn: reset-integrity negative control")
     a("")
     hdr = ("| Corner | Temp | worst \\|OUTP-OUTN\\| (mV) | worst min(OUTP,OUTN) (V) "
-           "| worst Vgs(latch NMOS) (mV) | worst \\|I(VDD)\\| (A) | Result |")
+           "| worst \\|Vgs\\| (latch PMOS) (mV) | worst \\|I(VDD)\\| (A) | Result |")
     a(hdr)
     a("|---|---|---|---|---|---|---|")
     for p in as_drawn:
@@ -1173,24 +1211,31 @@ def write_reset_evidence(
     a("## Reading this record")
     a("")
     a(
-        "DR-001 Decision 3's mechanism is that precharging the latch NMOS "
-        "pair's own source nodes to VDD alongside the outputs forces every "
-        "latch NMOS to `Vgs = 0`, so the cross-coupled pair's loop gain is "
-        "exactly zero and the reset state is a stable, all-devices-off "
-        "equilibrium. The `Vgs(latch NMOS)` column is that mechanism measured "
+        "DR-001 Decision 3's mechanism -- precharging the cross-coupled "
+        "pair's gate AND source nodes to the same rail forces `Vgs = 0`, so "
+        "the loop gain is exactly zero and reset is a stable equilibrium -- "
+        "is carried by the DR-004 latch stage on its (now PMOS) pair: the "
+        "outputs ARE the pair's gates and are precharged with their sources "
+        "to VDD. The `|Vgs| (latch PMOS)` column is that mechanism measured "
         "directly, and it is the load-bearing criterion here: it is "
-        "essentially threshold-free, because the two variants sit about a "
-        "full supply apart on it."
+        "essentially threshold-free, because the two variants sit most of a "
+        "supply apart on it. In this topology it numerically coincides with "
+        "the precharge criterion (same node pair, same tolerance) -- stated "
+        "rather than hidden; the criteria that carry independent information "
+        "are the collapse and current columns."
     )
     a("")
     a(
         "The `|I(VDD)|` column needs reading with its floor in mind. It is "
-        "not zero even when reset is perfectly held, and cannot be: a "
-        "single-tail dynamic latch with an NMOS tail switch and a non-zero "
-        "input common mode always has an off-state path VDD -> DI-node reset "
-        "PMOS -> input pair -> TAIL -> subthreshold tail switch -> GND. That "
-        "floor is a property of the topology class, not a defect, and it is "
-        "what the as-drawn column reports. The positive control's current is "
+        "not zero even when reset is perfectly held, and cannot be: since "
+        "DR-004 the design carries a continuously-biased preamplifier whose "
+        "static current (~23-38 uA across this matrix) flows during reset "
+        "too -- the class-defining supply cost of the preamp topology -- on "
+        "top of a small self-limiting off-state path (VDD -> reset PMOS -> "
+        "steering pair -> floated TAIL2 -> subthreshold latch tail -> GND; "
+        "TAIL2 settles ~0.6-0.9 V, at the steering pair's Vth). That floor "
+        "is a property of the topology class, not a defect, and it is what "
+        "the as-drawn column reports. The positive control's ~1.0-1.2 mA is "
         "the contrast that gives the criterion its meaning."
     )
     a("")
@@ -1486,23 +1531,23 @@ def write_kickback_evidence(
     a("## Reading this record")
     a("")
     a(
-        "Measured against the DR-003 soft-clock shaper "
-        "(design/comparator.sch after issue #30's mitigation: the poly "
-        "resistor R_CLKS and MOS capacitor M_CLKCAP form the internal node "
-        "CLKT, tau ~ 250 ps, and CLKT -- not CLK -- drives all five clocked "
-        "gates, so the whole evaluate onset is slew-limited): the raw "
-        "kickback mechanism -- the input-pair devices' own gate-drain "
-        "parasitic capacitance coupling the internal precharged nodes' "
-        "(DIP/DIN) fast swing at the reset->evaluate transition back onto "
-        "the VINP/VINN gate nodes -- is unchanged in kind, but its SOURCE "
-        "amplitude now scales with the shaped (slower) DIP/DIN collapse "
-        "rate instead of the testbench's 100 ps ramp transient. The "
-        "`loaded` figure below includes both the positive (tail-switch "
-        "gate-capacitance) and negative (DIP/DIN collapse) lobes the "
-        "same way the pre-mitigation record did. The `ideal` control "
-        "still collapses to (numerically) zero by construction, so the "
-        "deck continues to isolate a genuine source-impedance-dependent "
-        "effect."
+        "Measured against the DR-004 static-preamp design (issue #34: a "
+        "continuously-biased preamplifier ahead of the StrongARM latch, "
+        "with DR-003's soft-clock shaper still on the clock port driving "
+        "the latch tail and reset PMOS, tau ~ 250 ps). The raw mechanism "
+        "the pre-DR-004 designs suffered -- a DYNAMIC input pair's own "
+        "channel formation and internal-node collapse coupling back onto "
+        "the VINP/VINN gate nodes through the input devices' "
+        "gate parasitics -- is removed at the root in this class: the "
+        "preamp's channels are always formed (Vgs constant, zero "
+        "formation charge at the edge), and whatever the latch kicks "
+        "back arrives at the preamp OUTPUT nodes, where the absorber "
+        "caps (M_C1P/M_C1N) sink it before the pins. The residual "
+        "`loaded` figure below is what survives that isolation, measured "
+        "end to end through the target-spec row's own 1 kOhm source "
+        "impedance. The `ideal` control still collapses to (numerically) "
+        "zero by construction, so the deck continues to isolate a genuine "
+        "source-impedance-dependent effect."
     )
     a("")
     a(

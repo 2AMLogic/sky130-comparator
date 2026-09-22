@@ -1,0 +1,55 @@
+* DR-004 support: evaluate-phase supply current of the committed design
+* (issue #34)
+*
+* WHAT QUESTION THIS ANSWERS. The DR-004 class change (a continuously
+* biased preamplifier, and a latch whose steering gates stay DC-biased
+* after regeneration) gives the comparator a NONZERO supply current in
+* BOTH phases -- the class-defining cost the still-DRAFT Supply/power row
+* must be re-anchored around. This deck measures both numbers at the
+* solved transient, from the same reset->evaluate stimulus shape the
+* `regen` bench uses:
+*
+*   - reset-phase current     settled i(Vdd) with CLK low (the preamp's
+*                             static current + self-limited off-state path)
+*   - evaluate-phase current  settled i(Vdd) well after regeneration
+*                             (preamp + the winning latch branch's static
+*                             path: VDD -> ON cross-coupled PMOS -> ON
+*                             steering device -> TAIL2 -> ON latch tail ->
+*                             GND -- the StrongARM-class evaluate current,
+*                             present for as long as CLK is high)
+*
+* Both are reported per corner; the average-power figure a duty-cycled
+* clock would see is I_reset*(1-D) + I_eval*D at duty cycle D, stated here
+* so DR-004's Supply-row consequence can cite measured numbers rather
+* than an unquantified "contention window" (the shape DR-003 Consequence 5
+* had to leave at that).
+*
+* Run (repeat per corner by substituting the .lib and .temp lines):
+*   source sim/env.sh && ngspice -b spec/dr-004-support/evaluate_idd_probe.spice
+* As committed: ff/125C (the leakage-worst corner). tt/27C and ss/-40C are
+* tabulated in DR-004.
+
+.temp 125
+.lib $PDK_ROOT/$PDK/libs.tech/combined/sky130.lib.spice ff
+
+.param VDD=1.8
+.param VCM=0.9
+
+Vdd VDD 0 dc {VDD}
+Vclk CLK 0 PULSE(0 {VDD} 5n 0.1n 0.1n 40n 90n)
+Vinp VINP 0 dc {VCM} ac 0
+Vinn VINN 0 dc {VCM}
+
+.include sim/comparator-decision/testbench/comparator_core.spice
+
+.control
+tran 0.05n 45n
+* reset-phase current: average over the settled last 2 ns before the edge
+let idd_all = -i(Vdd)
+meas tran idd_reset AVG idd_all FROM=3n TO=5n
+* evaluate-phase current: average over the post-regeneration window
+meas tran idd_eval  AVG idd_all FROM=25n TO=40n
+print idd_reset idd_eval
+.endc
+
+.end
