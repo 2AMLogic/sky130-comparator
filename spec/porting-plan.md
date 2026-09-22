@@ -39,6 +39,16 @@ testbenches.
   (single-tail dynamic latch, no static preamp) and its noise-budget
   measurement methodology.
 
+**Findings routing (rule 9, issue #36).** Findings about the consumer's
+comparator block are filed on **that repo's tracker**, not accumulated
+here — the worked pattern is
+[`sky130-sar-adc#346`](https://github.com/2AMLogic/sky130-sar-adc/issues/346)
+(this canary's kickback decomposition, filed there per `CLAUDE.md`'s
+cross-pollination protocol). This inventory records what exists there so
+it does not re-derive it; it is not a place to park defects in someone
+else's block. The consumer's requirement rows against this block live in
+[`spec/consumers.md`](consumers.md).
+
 ### What transfers nearly whole (methodology and harness, not numbers)
 
 - **The bespoke-driver pattern itself.** `sky130-sar-adc`'s

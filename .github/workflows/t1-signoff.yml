@@ -41,3 +41,10 @@ jobs:
 
       - name: Re-run T1 signoff against the committed manifest
         run: python3 scripts/check-t1-signoff.py gate
+
+      # Rule-9 integrator view (issue #36): stdlib-only, no klt needed.
+      - name: Integrator-view selftest (hermetic)
+        run: python3 scripts/check-integrator-view.py selftest
+
+      - name: Validate manifests/integrator-view.json
+        run: python3 scripts/check-integrator-view.py gate

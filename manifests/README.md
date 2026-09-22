@@ -13,6 +13,7 @@ move.
 | `sky130-comparator.json` | The block manifest — `block` (the fleet roll-up's identity for this repo), `kind`, and per-T1-item evidence citations. Grader contract: `klayout-tools` `docs/cli/signoff.md` → "Tier-verdict report". |
 | `design-evidence-tiers.md` | **Vendored copy** of `2AMLogic/klayout-tools`'s checklist doc, pinned at klayout-tools commit `31a3e3c` (byte-for-byte: SHA-256 `c7a1e7e10627fae396007e0ff951734f37d95028b8f49f2e21e802e9f552f318`, MIT-licensed). The pinned extra copy exists because the newest released klt (0.5.0) ships a pre-item-11 checklist (10 items), while the checklist grew an eleventh item — "Power delivery (structural)" — on 2026-09-17 (klayout-tools #2025) and refined its grading rules through klayout-tools #31a3e3c (2026-09-21). `--tiers-doc` grades against this pinned copy so item 11 renders a row, as issue #31 requires. |
 | `t1-signoff-report.json` | The committed **evidence record**: byte-for-byte `klt signoff --manifest` JSON output as of the pinned klt version below. This is the single row-per-item verdict (`met`/`unmet` plus per-item `reason`) the tracker (issue #3) points at. |
+| `integrator-view.json` | The **rule-9 integrator view** (issue #36): what a full-chip integrator takes, as structured data at a fixed path — top cell, port list, netlist path (with its regeneration command), GDS path, measured area, maturity rung, provenance. Honest nulls (`"not yet produced"` notes) where the artifact does not exist yet (GDS, area today); the maturity rung always agrees with `t1-signoff-report.json`'s graded verdict. Consumers and their requirement rows live in [`spec/consumers.md`](../spec/consumers.md); this file is the data half of that record. |
 
 ## The current verdict, honestly
 
@@ -86,6 +87,19 @@ deliberately, regenerate the record in the same change (see above), and
 note that klt versions newer than the vendored doc's item list will
 report `build_t1_item_count`/`graded_by_build` disclosures rather than
 fail.
+
+## The integrator-view gate (issue #36)
+
+`scripts/check-integrator-view.py` is the rot gate for
+`integrator-view.json`, and runs in the same CI workflow (selftest first,
+then the live gate). It fails on a missing required key, on any non-null
+cited path that does not exist in-tree (a stale netlist/GDS/schematic
+reference — the view must never point an integrator at a vanished file),
+and on a `maturity_rung` that disagrees with `t1-signoff-report.json`'s
+graded `tier`. Honest nulls (`gds`, `measured_area`) are accepted only
+with their "not yet produced" notes; when layout lands and the fields
+flip to real values, the same existence check applies. The gate is
+stdlib-only Python and needs no klt install.
 
 ## Fleet context
 
