@@ -228,6 +228,38 @@ This is a single nominal-corner (`tt`/27C) record, per issue #9's original
 scope note (one nominal-corner record per experiment, not a corner
 campaign) -- a full-corner sweep remains open work.
 
+`noise-tran` was added by issue #41 and is this repo's own -- the
+**regeneration-inclusive** input-referred noise measurement the `noise`
+sub-command's loop-broken AC sub-model deliberately is not:
+
+```sh
+python3 sim/comparator-decision/run.py noise-tran --record --n 128
+```
+
+ngspice-46 has no device-noise-enabled transient analysis (`trnoise()`
+exists only on independent sources), so the measurement injects
+equivalent noise sources into the FULL committed fragment and measures
+the decision-relevant dispersion they produce: per-side TRNOISE sources
+at the comparator inputs (carrying the AC `noise` sub-command's preamp
+input-referred rms) and in series with the steering gates (carrying a
+new steering+tail AC sub-model's gate-referred rms, biased at the
+preamp's own static output common mode), all propagated through the real
+clocked evaluate trajectory. Two statistics come out: a pick-off Monte
+Carlo at `Vindiff=0` (the primary figure, with a bootstrap 95% CI) and a
+pair-symmetric decision-transition cross-check at +/-{0.75, 1.5} sigma
+(whose agreement with the pick-off figure is the evidence that the
+regenerative phase adds no material noise term beyond the injected
+device noise). Injection rms is calibrated empirically against this
+ngspice build's TRNOISE semantics (std ~= 0.86 x na measured; the record
+states achieved-vs-target directly), and the update interval is 0.37 ns
+-- NOT the 0.5 ns Nyquist interval, whose update grid coincides exactly
+with the reset->evaluate edge and collapses the transient solver's
+timestep (observed on ngspice-46; a per-deck retry at a perturbed
+interval covers other pathological coincidences). Modeling boundaries
+are stated in each record: the cross-coupled PMOS pair's noise during
+exponential separation (divided by the growing regenerative gain) and
+the reset PMOS (off in evaluate) are the residual omissions.
+
 ## Committed records
 
 Records against **this repo's own design** (`design/comparator.sch`), on the
@@ -330,6 +362,38 @@ a fresh record set at the new sizing, all against the DUT fragment as of
   is UNRESOLVED; a dedicated 400 ns probe confirms it never regenerates at
   that corner, recorded as a DR-004 consequence and open item, while the
   50 mV point resolves in 0.3575 ns).
+
+### DR-005 campaign records (issue #41 -- full-corner Monte Carlo + PVT)
+
+All at the same DR-004 topology (netlist-identical, campaign commit
+`e23c509`), same seed-1 methodology, same pinning:
+
+- `offset` four-corner mismatch sweep -- `records/20260922-173622-e23c509.md`
+  (`ss_mm`: **1.8244 mV**), `.../20260922-174326-e23c509.md` (`ff_mm`:
+  **1.5954 mV**), `.../20260922-174831-e23c509.md` (`sf_mm`: **1.6706
+  mV**), `.../20260922-175152-e23c509.md` (`fs_mm`: **1.8218 mV**) --
+  N=16/seed-1/27C each, every same-seed negative control stdev == 0
+  exactly. Corner ranking is inside the N=16 relative SE; `ss_mm` is
+  nominally binding.
+- `offset` N=200 campaigns -- `tt_mm` and the nominally binding `ss_mm`,
+  stated 95% CI on the stdev, records named in DR-005.
+- `regen` PVT completion -- `records/20260922-175252-e23c509.md`
+  (`ff`/125C: **0.4975 ns** @ 50 mV, 8/8), `.../20260922-175425-e23c509.md`
+  (`sf`/-40C: **0.3475 ns**, 8/8), `.../20260922-175554-e23c509.md`
+  (`sf`/125C: **0.4725 ns**, 8/8), `.../20260922-175734-e23c509.md`
+  (`fs`/-40C: **0.3725 ns**, 8/8), `.../20260922-175918-e23c509.md`
+  (`fs`/125C: **0.5375 ns**, 8/8) -- the worst point of the whole
+  seven-corner set clears the stretch bound with 1.49x margin, which is
+  what ratifies the Decision-time row (DR-005).
+- `kickback` skew corners -- `records/20260922-180026-e23c509.md`
+  (`sf`/-40C: **2.0208 mV**), `.../20260922-180157-e23c509.md`
+  (`sf`/125C: **1.7837 mV**), `.../20260922-180319-e23c509.md`
+  (`fs`/-40C: **1.8408 mV**), `.../20260922-180425-e23c509.md`
+  (`fs`/125C: **1.6091 mV**) -- every `ideal` control collapses to
+  0.0000 mV. Note `sf`/-40C breaches the 2 mV stretch figure by 1%
+  (target still cleared 2.5x); recorded, not legislated (DR-005).
+- `noise-tran` regeneration-inclusive noise -- `tt`/27C, `ss`/-40C,
+  `ff`/125C anchors, records named in DR-005.
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder
