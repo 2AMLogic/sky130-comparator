@@ -359,6 +359,12 @@ class TestPairSigmaEstimator(unittest.TestCase):
         est = cd_run.pair_sigma_mv(0.5, 64, 64, 0, 64)
         self.assertNotEqual(est, est)  # NaN
 
+    def test_all_unresolved_pair_is_nan(self):
+        # p+ == p- (e.g. every run below the corner's resolvable-overdrive
+        # floor) makes arg exactly 0.5 and probit 0 -- no sigma information.
+        est = cd_run.pair_sigma_mv(0.5, 0, 64, 0, 64)
+        self.assertNotEqual(est, est)  # NaN
+
     def test_probit_inverts_norm_cdf(self):
         for x in (-2.0, -0.5, 0.0, 0.37, 1.3, 2.7):
             self.assertAlmostEqual(cd_run._norm_cdf(cd_run._probit(cd_run._norm_cdf(x))), cd_run._norm_cdf(x), places=9)

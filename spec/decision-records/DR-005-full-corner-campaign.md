@@ -58,10 +58,15 @@ regenerative phase).
    relative SE (~18%), so no corner separates from the pack; the
    nominally binding corner is `ss_mm`. O(100s)-draw campaigns at both
    `tt_mm` and the nominally binding `ss_mm` (N=200, seed 1) replace the
-   N=16 relative-SE caveat with a stated 95% CI and a yield-fraction
-   statement. No bound changes: every corner and both large-N runs
-   clear the 3σ target (≤ 15 mV) and stretch (≤ 8 mV) bounds with
-   3σ ≈ 5.3–5.6 mV.
+   N=16 relative-SE caveat with a stated 95% CI: `tt_mm` σ = 2.1854 mV
+   (CI [1.9707, 2.4001], `records/20260922-191034-e23c509.md`), `ss_mm`
+   σ = 2.2353 mV (CI [2.0157, 2.4549], `records/20260922-202434-e026012.md`)
+   — both 3σ ≈ 6.6–6.7 mV, clearing the stretch bound (≤ 8 mV) with an
+   implied per-side yield > 99.96% against it (8 mV / σ ≈ 3.6σ). No bound
+   changes. The N=200 estimates sit ~22% above the N=16 figures the row
+   previously quoted — the small-sample estimates landed low, exactly the
+   tightness gap DR-002's Open items flagged; the README row now quotes
+   the N=200 numbers.
 3. **Input-referred noise stays RATIFIED with its regeneration-inclusive
    evidence in place.** The `noise-tran` measurement at `tt`/27 °C,
    `ss`/−40 °C, and `ff`/125 °C (the anchor pair the kickback and
