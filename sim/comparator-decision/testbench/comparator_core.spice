@@ -19,9 +19,9 @@
 * DR-004 (issue #34) -- the DR-001-supersession topology-class change
 * that closes the kickback gap DR-003 documented. 16 devices: a
 * continuously-biased preamp (M_PTAIL, a gate-at-VDD NMOS current source;
-* input pair M_PINN/M_PINP; poly loads R_LP/R_LN ~45kohm) whose outputs
-* OUTP1/OUTN1 sit at a static ~0.85 V common mode and carry the
-* differential with ~13x gain, ahead of a clocked latch (strong tail
+* input pair M_PINN/M_PINP; poly loads R_LP/R_LN ~30kohm) whose outputs
+* OUTP1/OUTN1 sit at a static ~1.1-1.25 V common mode and carry the
+* differential with ~13-18x gain, ahead of a clocked latch (strong tail
 * switch M_TAIL2 + steering pair M_STN_P/M_STN_N gated by the preamp
 * outputs + cross-coupled PMOS M_LATP_P/M_LATP_N + output reset PMOS
 * M_RST_P/M_RST_N), plus the OUT1 absorber caps M_C1P/M_C1N (nfet MOS
@@ -43,10 +43,9 @@
 *
 * Sizing (all L=0.5um; full derivation in design/comparator.sch's own
 * sizing-rationale text block and in DR-004):
-*   M_PTAIL               W=0.42um static current ~25uA total (supply row)
-*   M_PINN, M_PINP        W=10um   offset budget: 2*AVT_n^2/(W*L) (as
-*                                  DR-001 Amd 1 -- the lever unchanged)
-*   R_LP, R_LN            L=33um   gain A~13, output CM ~0.85V
+*   M_PTAIL               W=0.8um  static current ~44uA total (supply row)
+*   M_PINN, M_PINP        W=13um   offset budget + noise lever (DR-004)
+*   R_LP, R_LN            L=22um   gain A~13-18, output CM ~1.1-1.25V
 *   M_C1P, M_C1N          W=40um   kickback: absorb the steering gate kick
 *   M_TAIL2               W= 8um   output descent + regeneration speed
 *   M_STN_P, M_STN_N      W= 8um   steer strength / offset (2nd, /A)
