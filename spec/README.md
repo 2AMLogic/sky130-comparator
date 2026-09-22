@@ -13,9 +13,8 @@ the table in the top-level README, ratified via a decision record).
 A decision record is required whenever a value or approach in the
 top-level README's target-spec table is **set, changed, or scoped** — not
 for routine design/sim work that merely targets the existing table. To
-write one: copy `decision-records/TEMPLATE.md` (create it, mirroring
-[`sky130-bandgap/spec/decision-records/TEMPLATE.md`](https://github.com/2AMLogic/sky130-bandgap/tree/main/spec/decision-records),
-if no template exists yet in this repo) to `decision-records/DR-NNN-<slug>.md`
+write one: copy [`decision-records/TEMPLATE.md`](decision-records/TEMPLATE.md)
+to `decision-records/DR-NNN-<slug>.md`
 (next unused `NNN`, one decision per record), fill it in, and commit it
 alongside the spec change it justifies. Never edit a ratified record after
 the fact — if a decision changes, supersede it with a new `DR-NNN` that says
@@ -33,8 +32,18 @@ rows (Offset sigma, Input-referred noise, Kickback), each now ratified
 against a real measurement of this repo's own design; the other two
 (Decision time vs. overdrive, Supply/power) stay DRAFT, explicitly scoped
 as open pending further evidence rather than left silently unaddressed.
-`spec/decision-records/TEMPLATE.md` still does not exist — DR-002, like
-DR-001 before it, is written directly against DR-001's shape.
+`spec/decision-records/TEMPLATE.md` did not exist when DR-002 was
+written — like DR-001 before it, DR-002 is written directly against
+DR-001's shape.
+
+**Update (issue #33, 2026-09-22).** DR-003 was the third record written
+that way, which is the trigger `spec/README.md` had named twice for
+codifying the shape. It now exists:
+[`decision-records/TEMPLATE.md`](decision-records/TEMPLATE.md), mirrored
+from `sky130-bandgap`'s template. The three existing records conform to
+it — each also carries permissible extensions the template does not
+mandate (`Supersedes`/`Superseded by`/`Related` bullets, `## Open items`;
+DR-001 an `### Amendment`), which stay as-is.
 
 ## Review bar
 
