@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "block": "sky130-comparator",
+  "kind": "analog",
+  "top_cell": {
+    "name": "comparator",
+    "source": "design/comparator.sch",
+    "note": "xschem top-level schematic; netlisted FLAT (no .subckt wrapper) by design/netlist.sh"
+  },
+  "ports": [
+    {
+      "name": "VDD",
+      "direction": "power",
+      "type": "supply",
+      "note": "1.8 V core supply (nfet_01v8/pfet_01v8 flavour)"
+    },
+    {
+      "name": "GND",
+      "direction": "power",
+      "type": "supply",
+      "note": "ground"
+    },
+    {
+      "name": "CLK",
+      "direction": "input",
+      "type": "clock",
+      "note": "not a bare StrongARM clock port: the DR-003 soft-clock shaper (R_CLKS x M_CLKCAP, tau ~ 250 ps) forms internal node CLKT driving all five clocked gates, so the evaluate onset is slew-limited by that RC rather than by the external ramp rate"
+    },
+    {
+      "name": "VINP",
+      "direction": "input",
+      "type": "analog",
+      "note": "differential input, true side; Vindiff = VINP - VINN > 0 settles OUTP high"
+    },
+    {
+      "name": "VINN",
+      "direction": "input",
+      "type": "analog",
+      "note": "differential input, complement side"
+    },
+    {
+      "name": "OUTP",
+      "direction": "output",
+      "type": "digital",
+      "note": "full-swing latch output, true side; precharged to VDD during reset (CLK low)"
+    },
+    {
+      "name": "OUTN",
+      "direction": "output",
+      "type": "digital",
+      "note": "full-swing latch output, complement side; precharged to VDD during reset (CLK low)"
+    }
+  ],
+  "netlist": {
+    "path": "sim/comparator-decision/testbench/comparator_core.spice",
+    "regeneration_command": "./design/netlist.sh",
+    "staleness_check": "./design/netlist.sh --check",
+    "note": "generated file, never hand-edited; source of truth is design/comparator.sch"
+  },
+  "gds": {
+    "path": null,
+    "note": "not yet produced: layout/ holds only a README as of 2026-09-22 (origin/main e084b55); flip to the real path when a GDS lands"
+  },
+  "measured_area": {
+    "value_um2": null,
+    "note": "not yet produced: no GDS exists to extract area from as of 2026-09-22 (origin/main e084b55); flip to the measured number when layout lands"
+  },
+  "maturity_rung": "pre-T1",
+  "maturity_rung_basis": "manifests/t1-signoff-report.json: tier null, 0/11 T1 items met (all unmet/no_evidence) - the honest pre-T1 state per issue #31's all-unmet-is-correct convention; rung vocabulary per manifests/design-evidence-tiers.md (T1/bronze = sim-validated, T2/silver, T3/gold)",
+  "provenance": {
+    "generated_from": [
+      "design/comparator.sch",
+      "manifests/t1-signoff-report.json"
+    ],
+    "refresh_rule": "hand-maintained view (issue #36). Refresh: re-derive the port list from design/comparator.sch, re-check maturity_rung against manifests/t1-signoff-report.json, re-read 2am repos.yml consumes: entries for spec/consumers.md, and flip gds/measured_area from null when layout lands. scripts/check-integrator-view.py gate (CI) fails on a missing key, a dangling path, or a rung that disagrees with the signoff report.",
+    "generated": "2026-09-22, issue #36, against origin/main e084b55"
+  }
+}

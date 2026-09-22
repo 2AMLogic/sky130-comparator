@@ -61,6 +61,19 @@ manifest rather than maintaining its own duplicate checkbox list; its
 edit history and `## Verified corrections` preserve the per-item
 engineering context behind the rows.
 
+## Consumers
+
+[`spec/consumers.md`](consumers.md) is this block's rule-9 record (2am
+cross-cutting rule 9, `2am#899`; issue #36): every repo recorded in
+`2am/repos.yml` as consuming this block, the requirement rows each imposes
+(port list, rails, input range, speed, offset, noise, area budget), a
+met / not-met / unknown status for each row against this repo's spec, the
+same-class/different-instance shape note, and the findings-routing rule
+(findings about a consumer's block are filed on the consumer's tracker —
+the `sky130-sar-adc#346` pattern). The structured-data half of that record
+— what an integrator takes — is `manifests/integrator-view.json`, gated
+against rot in CI by `scripts/check-integrator-view.py`.
+
 ## Porting plan
 
 [`spec/porting-plan.md`](porting-plan.md) names the nearest mature sibling
