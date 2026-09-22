@@ -1,0 +1,25 @@
+* comparator-decision input-referred noise (reduced sub-model of the DR-004 static preamplifier: preamp tail (gate at VDD) + input pair + both poly loads + both OUT1 absorber MOS caps, all re-emitted verbatim from the committed fragment; everything past the preamp outputs (steering pair, latch tail, cross-coupled PMOS, reset PMOS) omitted -- that is the loop break. Unlike the pre-DR-004 integration-phase proxy (diode-connected stand-in loads on a dynamic input stage), this stage holds its own real continuous DC operating point; noise taken at v(OUTP1,OUTN1)) corner=tt temp=27.0C supply=1.8V (issue #9)
+.lib /Users/rwalters/.volare/sky130A/libs.tech/combined/sky130.lib.spice tt
+.temp 27.0
+.param vdd_val = 1.8
+
+Vdd VDD 0 dc {vdd_val}
+Vinp VINP 0 dc 0.9 AC 1
+Vinn VINN 0 dc 0.9
+
+XM_PTAIL TAILP VDD GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=0.8 nf=1 ad=0.232 as=0.232 pd=2.18 ps=2.18 nrd=0.3625 nrs=0.3625 sa=0 sb=0 sd=0 mult=1 m=1
+XM_PINN OUTN1 VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13 nf=1 ad=3.77 as=3.77 pd=26.58 ps=26.58 nrd=0.0223076923076923 nrs=0.0223076923076923 sa=0 sb=0 sd=0 mult=1 m=1
+XM_PINP OUTP1 VINP TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13 nf=1 ad=3.77 as=3.77 pd=26.58 ps=26.58 nrd=0.0223076923076923 nrs=0.0223076923076923 sa=0 sb=0 sd=0 mult=1 m=1
+XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XR_LN OUTP1 VDD GND sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XM_C1P GND OUTP1 GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1 ad=11.6 as=11.6 pd=80.58 ps=80.58 nrd=0.00725 nrs=0.00725 sa=0 sb=0 sd=0 mult=1 m=1
+XM_C1N GND OUTN1 GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1 ad=11.6 as=11.6 pd=80.58 ps=80.58 nrd=0.00725 nrs=0.00725 sa=0 sb=0 sd=0 mult=1 m=1
+
+.control
+option sparse
+op
+print v(TAILP) v(OUTP1) v(OUTN1)
+noise v(outp1,outn1) Vinp dec 20 1000 1e+09 20
+print inoise_total onoise_total
+.endc
+.end

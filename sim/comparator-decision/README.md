@@ -58,16 +58,22 @@ issue's own scope statement (issue #9) cites in full.
   expected to reproduce identical results across every draw (stdev == 0) --
   the standard negative-control convention `sim/README.md` already uses for
   every other Monte Carlo record in this repo.
-- **`noise`**: break the cross-coupled latch's positive-feedback loop
-  (diode-connect the tail + input pair's own drain-node loads instead of
-  cross-coupling the latch pair) to get a well-posed small-signal `.noise`
-  analysis, holding CLK at VDD (steady evaluate bias, tail on). This is a
-  standard "break the loop for small-signal analysis" circuit-analysis
-  technique, not specific to any one topology, and is a deliberate **lower
-  bound** on the true regeneration-inclusive noise (the latch pair's own
-  regenerative-phase noise contribution is excluded by construction) -- see
-  the port source's own `spec/decision-records/
-  DR-004-comparator-topology-and-noise-budget.md` for the full derivation.
+- **`noise`**: break the latch's positive-feedback loop to get a
+  well-posed small-signal `.noise` analysis -- the standard "break the loop
+  for small-signal analysis" circuit-analysis technique, not specific to
+  any topology, and a deliberate **lower bound** on the true
+  regeneration-inclusive noise (the latch pair's own regenerative-phase
+  noise contribution is excluded by construction -- see the port source's
+  own `spec/decision-records/
+  DR-004-comparator-topology-and-noise-budget.md` for the full
+  derivation). Pre-DR-004 this meant diode-connecting stand-in loads on a
+  dynamic input stage's drain nodes with CLK held at VDD (an
+  integration-phase proxy); since DR-004 (issue #34) the DUT itself
+  carries a continuously-biased preamplifier, and the sub-model is simply
+  that REAL static stage re-emitted verbatim (tail + input pair + poly
+  loads + OUT1 absorber caps), everything past the preamp outputs omitted
+  as the loop break -- no stand-ins, no steady-bias trick, no clocked
+  device in the sub-model at all.
 - **The negative-control / mismatch-corner statistical convention** itself,
   generic to sky130's `_mm` local-mismatch corners (`AGAUSS()` per-instance
   terms, confirmed present in the installed `sky130.lib.spice` combined
@@ -160,23 +166,29 @@ scheme up front specifically so this repo checks for it before, rather than
 after, being bitten. `reset` is that check:
 
 - It starts the transient from a deliberately **wrong** state -- outputs
-  pinned at opposite rails, internal nodes at GND -- with reset asserted and
+  pinned at opposite rails, latch internal nodes at GND (the preamp's
+  static nodes start near their own DC bias) -- with reset asserted and
   no input applied, and requires the design to reject that asymmetry rather
   than amplify it.
-- Its primary criterion is DR-001's own mechanism measured directly: the
-  cross-coupled latch NMOS pair's `Vgs` must be ~0 during reset.
-- It runs the same check against a **`GND`-tied counterfactual** (the latch
-  NMOS sources moved to GND, nothing else changed) and requires that variant
-  to FAIL. A negative control that cannot be shown to fail on the defect it
-  screens for is not evidence that the defect is absent.
+- Its primary criterion is DR-001 Decision 3's own mechanism measured
+  directly, carried by the DR-004 latch stage onto its (PMOS) cross-coupled
+  pair: every latch PMOS's `|Vgs|` must be ~0 during reset (the precharged
+  outputs ARE the pair's gates).
+- It runs the same check against a **`GND`-tied counterfactual** (the
+  latch steering pair's sources moved from the floated `TAIL2` node to
+  GND, nothing else changed -- the same counterfactual shape DR-001
+  Decision 3 established for its own latch's source-precharge scheme) and
+  requires that variant to FAIL. A negative control that cannot be shown
+  to fail on the defect it screens for is not evidence that the defect is
+  absent.
 
 One caveat is written into the record itself and worth repeating: the
-supply-current criterion is not "zero current". A single-tail dynamic latch
-with an NMOS tail and a non-zero input common mode always has an off-state
-path (`VDD` -> DI-node reset PMOS -> input pair -> `TAIL` -> subthreshold
-tail switch -> `GND`), measuring a couple of hundred nA here. That floor is
-a property of the topology class, not a defect; the positive control is what
-gives the criterion its scale.
+supply-current criterion is not "zero current". Since DR-004 the design
+carries a continuously-biased preamplifier whose static current
+(~42-68 uA across the five reset-matrix corners) flows during reset too,
+on top of a small self-limiting off-state path. That floor is a property
+of the topology class, not a defect; the positive control (~0.9-1.1 mA)
+is what gives the criterion its scale.
 
 `kickback` was added by issue #26 and is this repo's own -- an ORIGINAL
 experiment, since no same-PDK standalone kickback prior art exists to port
@@ -288,5 +300,38 @@ figure above is new information that the DRAFT bound itself may need
 revisiting once ratification is considered, not a design defect this
 issue's scope asks to fix.
 
-Earlier records (`20260909-*`) characterize the **ported placeholder DUT**,
-not this design. See [The DUT](#the-dut) for why they remain, unedited.
+### DR-004 records (issue #34 -- static preamplifier + StrongARM latch)
+
+The topology-class change superseding DR-001's no-preamp scoping (see
+`spec/decision-records/DR-004-comparator-preamp-supersession.md`) produced
+a fresh record set at the new sizing, all against the DUT fragment as of
+`e084b55` + the DR-004 device set:
+
+- `offset` -- `records/20260922-065300-e084b55.md`: N=16 @ `tt_mm`/27C,
+  seed 1, input-referred offset stdev **1.7857 mV** (3-sigma = 5.36 mV);
+  same-seed mismatch-disabled negative control stdev == 0 exactly. Pick-off
+  re-anchored 1.0 -> 0.65 ns for the preamp design's faster separation
+  (calibration line 1 mV -> 68.1 mV ... 10 mV -> 639.3 mV, 6% compression).
+- `noise` -- `records/20260922-065534-e084b55.md`: input-referred noise
+  **0.5704 mV rms differential** at `tt`/27C, on the re-derived REAL-static
+  preamp sub-model.
+- `reset` -- `records/20260922-070024-e084b55.md`: **5/5 as-drawn corners
+  hold reset, 5/5 gnd-tied controls break it** (the counterfactual moved
+  onto the steering pair; the current bound re-derived around the preamp's
+  static-current floor).
+- `kickback` -- `records/20260922-070119-e084b55.md` (`tt`/27C: **1.8902
+  mV**), `records/20260922-070212-e084b55.md` (`ss`/-40C: **1.8605 mV**),
+  `records/20260922-070307-e084b55.md` (`ff`/125C: **1.7677 mV**) -- all
+  three PVT anchors clear BOTH the ratified 5 mV target and the 2 mV
+  stretch bound, with ideal controls collapsing to 0.0000 mV everywhere.
+- `regen` -- `records/20260922-070800-e084b55.md` (`tt`/27C: 8/8 resolved,
+  **0.4025 ns @ 50 mV**, 1.1375 ns @ 0.5 mV) and
+  `records/20260922-071313-e084b55.md` (`ss`/-40C: 7/8 -- the 0.5 mV point
+  is UNRESOLVED; a dedicated 400 ns probe confirms it never regenerates at
+  that corner, recorded as a DR-004 consequence and open item, while the
+  50 mV point resolves in 0.3575 ns).
+
+Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
+DR-003 single-tail design, and `20260909-*` the **ported placeholder
+DUT**; they remain, unedited, as append-only evidence. See [The DUT](#the-dut)
+for why they remain, unedited.

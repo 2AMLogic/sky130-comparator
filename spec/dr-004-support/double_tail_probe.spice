@@ -1,0 +1,117 @@
+* DR-004 support: double-tail option probe (issue #34, Option A)
+*
+* WHAT QUESTION THIS ANSWERS. Issue #34's implementation guidance maps two
+* routes onto DR-001's own exclusion clauses: (A) a double-tail /
+* two-stage dynamic latch (amending DR-001 Decision 2's double-tail
+* exclusion), and (B) a static preamplifier (superseding DR-001 Decision
+* 1's no-preamp ruling), with A recommended to be evaluated FIRST. This
+* deck is that evaluation: a minimal double-tail variant of this repo's
+* own device set, driven by the same reset->evaluate stimulus and the
+* same DR-003 soft-clock shaper as the committed design, measured by the
+* same kickback/regen deck shapes sim/comparator-decision/run.py uses.
+* It is a PROBE, not the design: nothing here is committed to
+* design/comparator.sch, and DR-004 records its numbers as the option
+ * table entry that route A measured before route B was chosen.
+*
+* TOPOLOGY (single-CLK double-tail, all devices this repo's own
+* sky130_fd_pr__{n,p}fet_01v8 set, L=0.5um throughout):
+*   stage 1 (dynamic input):  M_TAIL1 (CLKT-gated tail), M_DINN/M_DINP
+*                             (gates VINN/VINP, sources TAIL1, drains
+*                             MIDN/MIDP), M_MRST_P/M_MRST_N (mid-node
+*                             precharge PMOS, gates CLKT), plus a
+*                             cross-coupled PMOS pair M_MLAT_P/M_MLAT_N on
+*                             the mid nodes -- the standard double-tail
+*                             first stage (without it the mid nodes
+*                             discharge all the way to GND, the steering
+*                             drive decays with them, and the latch
+*                             stalls: measured sep max 0.655 V at 40 ns,
+*                             diagnostic noted in DR-004).
+*   stage 2 (latch):          M_STN_P/M_STN_N (gates MIDP/MIDN, sources
+*                             TAIL2), M_TAIL2 (CLKT-gated), M_LATP_P/
+*                             M_LATP_N (cross-coupled PMOS), M_RST_P/
+*                             M_RST_N (output precharge PMOS) -- exactly
+*                             the committed DR-004 latch stage, driven
+*                             dynamically instead of statically.
+*
+* The mechanism this isolates: with a DYNAMIC first stage, the input
+* pair's channels do not exist during reset (source node high, Vgs below
+* Vth), and the evaluate transition must form them -- charging Cox*W*L
+* of gate charge through whatever drives the pins (1 kOhm here, and in
+* any real system, the source impedance the ratified Kickback row names).
+* That channel-formation transient is gated by the same source-node ramp
+* that gates the stage's transconductance, so kickback and decision speed
+* trade ~1:1 -- the same elasticity DR-003 measured on the single tail,
+* which is WHY this option loses and DR-004 chose the static preamp.
+*
+* MEASUREMENT (per shaper setting): the DR-003 tau ladder is emulated by
+* the R_CLKS length literal on the XR_CLKS line -- L=1.75 (~2.2k, tau~220ps,
+* the committed design's shaper) and L=4 (~5k, tau~500ps, one step softer).
+* EDIT THE LITERAL: the value must stay a plain number (no 'u' suffix, no
+* .param indirection) -- a suffixed or param-expanded value on this
+* subckt call silently falls back to the model default l=1 under this
+* spiceinit's hsa/scale compatibility mode (verified empirically:
+* L=1.75 vs L=4 measurably change v(CLKT)'s rise, L=1.75u does not). The
+* committed DUT line uses the same plain-literal convention. For each
+* setting, record peak |VIN deviation| and the decision time -- DR-004's
+* Option A row cites those numbers.
+*
+* Run from the repository root (the .include is repo-relative):
+*   source sim/env.sh && ngspice -b spec/dr-004-support/double_tail_probe.spice
+* As committed: tt/27C, R_CLKS L=1.75um. The ladder point and the other
+* corners are obtained by editing the marked lines (DR-004 tabulates
+* them; scratch-deck series convention, same as DR-003's option table).
+
+.temp 27
+.lib $PDK_ROOT/$PDK/libs.tech/combined/sky130.lib.spice tt
+
+.param VDD=1.8
+.param VCM=0.9
+
+Vdd  VDD  0  dc {VDD}
+Vclk CLK  0  PULSE(0 {VDD} 5n 0.1n 0.1n 40n 90n)
+
+* kickback bench shape: loaded, 1 kOhm, vindiff=50 mV (uncomment this
+* block and comment the ideal block to measure kickback; regen uses ideal)
+Vsrcp VSRC_P 0 dc {VCM + 0.025}
+Vsrcn VSRC_N 0 dc {VCM - 0.025}
+Rsp VSRC_P VINP 1000
+Rsn VSRC_N VINN 1000
+* Vinp VINP 0 dc {VCM + 0.025}
+* Vinn VINN 0 dc {VCM - 0.025}
+
+* DR-003 soft-clock shaper (identical to the committed design)
+XR_CLKS CLKT CLK GND sky130_fd_pr__res_high_po_0p35 L=1.75 mult=1 m=1
+XM_CLKCAP GND CLKT GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=20 nf=1
+
+* stage 1: dynamic input pair, mid-node precharge, NO first-stage latch
+XM_TAIL1  TAIL1 CLKT  GND  GND  sky130_fd_pr__nfet_01v8 L=0.5 W=20 nf=1
+XM_DINN   MIDN  VINN  TAIL1 GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1
+XM_DINP   MIDP  VINP  TAIL1 GND sky130_fd_pr__nfet_01v8 L=0.5 W=10 nf=1
+XM_MRST_P MIDP  CLKT  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6  nf=1
+XM_MRST_N MIDN  CLKT  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=6  nf=1
+XM_MLAT_P MIDP  MIDN  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1
+XM_MLAT_N MIDN  MIDP  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1
+
+* stage 2: the committed DR-004 latch stage, driven from MIDP/MIDN
+XM_STN_P  OUTP MIDP  TAIL2 GND sky130_fd_pr__nfet_01v8 L=0.5 W=8  nf=1
+XM_STN_N  OUTN MIDN  TAIL2 GND sky130_fd_pr__nfet_01v8 L=0.5 W=8  nf=1
+XM_TAIL2  TAIL2 CLKT GND  GND sky130_fd_pr__nfet_01v8 L=0.5 W=8  nf=1
+XM_LATP_P OUTP OUTN VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1
+XM_LATP_N OUTN OUTP VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=16 nf=1
+XM_RST_P  OUTP CLKT  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8  nf=1
+XM_RST_N  OUTN CLKT  VDD  VDD sky130_fd_pr__pfet_01v8 L=0.5 W=8  nf=1
+
+.control
+tran 0.005n 45n
+* quiescent = each input node's own settled value before the edge
+meas tran vp0 FIND v(VINP) AT=5n
+meas tran vn0 FIND v(VINN) AT=5n
+meas tran kbp MAX v(VINP) FROM=5n TO=15n
+meas tran kbn MAX v(VINN) FROM=5n TO=15n
+* decision time: |OUTP-OUTN| crossing 0.5*VDD after evaluate start
+let sep = abs(v(OUTP)-v(OUTN))
+meas tran tdec WHEN sep=0.9 RISE=1 FROM=5.1n
+print vp0 vn0 kbp kbn tdec
+.endc
+
+.end

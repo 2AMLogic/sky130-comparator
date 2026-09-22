@@ -1,0 +1,114 @@
+* DR-004 support: preamp-stack headroom check at design/comparator.sch's
+* actual DR-004 sizing (issue #34)
+*
+* WHAT QUESTION THIS ANSWERS. DR-001 Decision 1 ("No static preamp") was a
+* HEADROOM ruling: its load-bearing argument was that 1.8 V leaves no
+* quantified headroom to spend on a second device group in front of the
+* latch. DR-004 supersedes that clause with a resistive-load preamp, and a
+* supersession carries the four-corner probe discipline DR-001 itself
+* established (see spec/dr-001-support/sizing_probe.spice, whose header
+* explains why the static three-term planning formula cannot simply be
+* re-evaluated once a circuit is actually solved -- the physically
+* meaningful question is the input pair's saturation margin at the solved
+* operating point, plus the tail device's region).
+*
+* WHY THIS SUB-MODEL IS THE REAL STAGE, NOT A STAND-IN. Unlike the
+* DR-001-era probe (diode-connected PMOS loads standing in for DIP/DIN
+* shortly after the evaluate edge), the DR-004 preamplifier is a
+* continuously-biased static stage: tail + input pair + REAL poly loads +
+* the OUT1 absorber caps, exactly as committed, holding its own DC
+* operating point at all times. This deck is therefore the same reduced
+* sub-model sim/comparator-decision/run.py's `noise` sub-command now uses,
+* and the op it solves is the op the real design sits at between and
+* during decisions.
+*
+* WHAT IS REPORTED PER CORNER:
+*   - input-pair saturation margin  Vds,in - Vdsat,in  (must be > 0)
+*   - preamp tail region            (deep triode expected: gate at VDD is
+*                                    a switch-like source, not a cascode)
+*   - preamp output common mode     v(OUTP1) -- the steering pair's
+*                                    static gate drive
+*   - per-side preamp current       (the class's static supply cost)
+*   - small-signal gain estimate    gm_in * R_load_eff, where R_load_eff
+*                                    is the poly load's solved large-signal
+*                                    resistance (res_high_po is nonlinear;
+*                                    the effective value is what the gain
+*                                    actually realizes)
+*
+* This is an operating-point check. It is NOT a transient characterization
+* and NOT a PVT campaign -- the transient evidence lives in
+* sim/comparator-decision/records/ (regen/offset/noise/reset/kickback).
+*
+* Run (repeat per corner by substituting the .lib and .temp lines below --
+* the same convention spec/dr-001-support/vth_probe.spice uses):
+*   source sim/env.sh && ngspice -b spec/dr-004-support/preamp_op_probe.spice
+* As committed: ss / -40C, the corner DR-001's original planning formula
+* flagged as its worst. The other three corners (tt/27C, ss/27C, tt/-40C)
+* are tabulated in DR-004 the same way DR-001 Amendment 1 tabulated its
+* four.
+
+.temp -40
+.lib $PDK_ROOT/$PDK/libs.tech/combined/sky130.lib.spice ss
+
+.param VDD=1.8
+.param VCM=0.9
+
+Vdd  VDD  0  dc {VDD}
+Vinp VINP 0  dc {VCM}
+Vinn VINN 0  dc {VCM}
+
+XM_PTAIL TAILP VDD  GND   GND  sky130_fd_pr__nfet_01v8 L=0.5 W=0.8 nf=1
+XM_PINN  OUTN1 VINN TAILP GND  sky130_fd_pr__nfet_01v8 L=0.5 W=13  nf=1
+XM_PINP  OUTP1 VINP TAILP GND  sky130_fd_pr__nfet_01v8 L=0.5 W=13  nf=1
+XR_LP    OUTN1 VDD  GND  sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XR_LN    OUTP1 VDD  GND  sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XM_C1P   GND OUTP1 GND GND  sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1
+XM_C1N   GND OUTN1 GND GND  sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1
+
+.control
+op
+
+echo "--- node voltages ---"
+print v(TAILP) v(OUTP1) v(OUTN1)
+
+echo "--- preamp current (per side -- sub-model is preamp-only, so i(Vdd) is 2x the side current) ---"
+let iside = abs(i(Vdd)) / 2
+print iside
+
+echo "--- effective poly load resistance (nonlinear device, solved value) ---"
+let r_eff = (v(VDD) - v(OUTP1)) / max(iside, 1e-15)
+print r_eff
+
+echo "--- input device M_PINP (W=13um/L=0.5um): saturation margin ---"
+let vgs_in   = v(VINP) - v(TAILP)
+let vth_in   = @m.xm_pinp.msky130_fd_pr__nfet_01v8[vth]
+let vov_in   = vgs_in - vth_in
+let vds_in   = v(OUTP1) - v(TAILP)
+let vdsat_in = @m.xm_pinp.msky130_fd_pr__nfet_01v8[vdsat]
+let satmar   = vds_in - vdsat_in
+print vgs_in
+print vth_in
+print vov_in
+print vds_in
+print vdsat_in
+echo "saturation margin Vds,in - Vdsat,in (must be > 0):"
+print satmar
+
+echo "--- preamp gain estimate gm_in * R_load_eff ---"
+let gm_in = @m.xm_pinp.msky130_fd_pr__nfet_01v8[gm]
+let gain  = gm_in * r_eff
+print gm_in
+print gain
+
+echo "--- preamp tail M_PTAIL (W=0.8um/L=0.5um): region ---"
+let vds_pt   = v(TAILP)
+let vdsat_pt = @m.xm_ptail.msky130_fd_pr__nfet_01v8[vdsat]
+let vth_pt   = @m.xm_ptail.msky130_fd_pr__nfet_01v8[vth]
+let vov_pt   = v(VDD) - vth_pt
+print vds_pt
+print vdsat_pt
+print vov_pt
+print @m.xm_ptail.msky130_fd_pr__nfet_01v8[id]
+.endc
+
+.end

@@ -1,0 +1,18 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision kickback disturbance -- variant=ideal rs=0ohm vindiff=50.0mv corner=ss temp=-40.0c (issue #26)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  1.82775e-08
+ Reference value :  3.64675e-08
+No. of Data Rows : 9034
+Note: Simulation executed from .control section 
