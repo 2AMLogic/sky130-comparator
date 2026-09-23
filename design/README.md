@@ -231,7 +231,6 @@ matrix), not leakage — the record states this.
 
 ## What is not here
 
-- **No layout, and no `.mag`/GDS.** T1 checklist items 2–4 (issue #3).
 - **No xschem symbol** (`comparator.sym`) and no testbench schematics. The
   simulation harness consumes the flat netlist fragment directly, so nothing
   needs a symbol yet; add one when a schematic instantiates this block.

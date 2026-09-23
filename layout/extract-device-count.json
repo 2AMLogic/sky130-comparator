@@ -1,0 +1,34 @@
+{
+  "tool": {
+    "klt_pin": "klayout-tools 0.5.0 (klt 0.5.0)",
+    "deck": "sky130",
+    "top_cell": "gen_compose_0"
+  },
+  "method": "klt extract over layout/comparator.gds; devices counted by model from the extracted netlist (parallel same-net devices merged, mirroring an LVS combine pass -- the raw pre-merge counts are recorded beside the merged ones)",
+  "raw_counts": {
+    "sky130_fd_pr__nfet_01v8": 11,
+    "sky130_fd_pr__pfet_01v8": 4,
+    "sky130_fd_pr__res_high_po": 3
+  },
+  "merged_counts": {
+    "sky130_fd_pr__nfet_01v8": 9,
+    "sky130_fd_pr__pfet_01v8": 4,
+    "sky130_fd_pr__res_high_po": 3
+  },
+  "check": {
+    "expected": {
+      "nfet_01v8": 9,
+      "pfet_01v8": 4,
+      "res_high_po": 3,
+      "total": 16
+    },
+    "found": {
+      "nfet_01v8": 9,
+      "pfet_01v8": 4,
+      "res_high_po": 3,
+      "total": 16
+    },
+    "unexpected_models": {}
+  },
+  "pass": true
+}

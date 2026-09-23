@@ -48,3 +48,29 @@ jobs:
 
       - name: Validate manifests/integrator-view.json
         run: python3 scripts/check-integrator-view.py gate
+
+  # Layout device-count assertion (issue #44, T1 item 2's evidence):
+  # klt extract over the committed layout/comparator.gds must re-derive the
+  # schematic's 16 devices counted by model. Separate job because the live
+  # extract needs the pinned sky130A PDK install (sim/pdk.json's own
+  # install_command); the jobs above stay PDK-free.
+  layout-device-count:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install klt + volare (pinned; see docs/environment-setup.md)
+        run: python -m pip install "klayout-tools==0.5.0" volare
+
+      - name: Gate selftest (hermetic; proves a wrong count fails)
+        run: python3 scripts/check-layout-device-count.py selftest
+
+      - name: Enable the pinned sky130A PDK (sim/pdk.json)
+        run: volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+
+      - name: Re-run the device-count assertion over the committed GDS
+        run: python3 scripts/check-layout-device-count.py gate --pdk-root ~/.volare
