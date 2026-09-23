@@ -70,16 +70,22 @@ regenerative phase).
 3. **Input-referred noise stays RATIFIED with its regeneration-inclusive
    evidence in place.** The `noise-tran` measurement at `tt`/27 °C,
    `ss`/−40 °C, and `ff`/125 °C (the anchor pair the kickback and
-   decision-time rows already use) measures the decision-relevant
+   decision-time rows already use) measures the decision-referred
    input-referred sigma including the real evaluate trajectory and the
    latch front-end's injected noise — the measurement DR-002's Open
-   items asked for. The decision-transition cross-check agrees with the
-   pick-off statistic at every corner (within the cross-check's coarser
-   CI), which is the evidence that the regenerative phase adds no
-   material noise term beyond the injected device noise. The measured
-   decision-relevant figures sit far below the AC band-integrated
-   figures (1 kHz–1 GHz) the row's prior basis used — the AC figure
-   remains the conservative reported basis; no bound changes.
+   items asked for. Measured: `tt`/27 °C **0.1362 mV** (95% CI
+   [0.1216, 0.1493], `records/20260922-192722-e23c509.md`; decision
+   cross-check 0.1342 mV — agrees), `ss`/−40 °C **0.1213 mV** (CI
+   [0.1084, 0.1335], `records/20260922-205857-ebea4e2.md`; cross-check
+   honestly not measurable — the sigma-scaled overdrives sit below that
+   corner's resolvable-overdrive floor, the same floor DR-004 recorded,
+   so noise does not bound decisions there), `ff`/125 °C **0.1754 mV**
+   (CI [0.1594, 0.1905], `records/20260923-010427-ebea4e2.md`;
+   cross-check 0.1515 mV — agrees). The measured decision-referred
+   figures sit ~3–4× below the 1 kHz–1 GHz band-integrated AC figures
+   the row's prior basis used (the decision sees the circuit's own
+   bandwidth, not the integration band); the AC figure remains the
+   conservative reported basis; no bound changes.
 4. **Kickback stays RATIFIED (target-compliant at all seven graded
    corners); the stretch annotation tightens.** The `sf`/`fs` skew
    corners at both temperature extremes complete the row's PVT set:

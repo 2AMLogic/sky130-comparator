@@ -392,8 +392,15 @@ All at the same DR-004 topology (netlist-identical, campaign commit
   (`fs`/125C: **1.6091 mV**) -- every `ideal` control collapses to
   0.0000 mV. Note `sf`/-40C breaches the 2 mV stretch figure by 1%
   (target still cleared 2.5x); recorded, not legislated (DR-005).
-- `noise-tran` regeneration-inclusive noise -- `tt`/27C, `ss`/-40C,
-  `ff`/125C anchors, records named in DR-005.
+- `noise-tran` regeneration-inclusive noise --
+  `records/20260922-192722-e23c509.md` (`tt`/27C: **0.1362 mV**, 95% CI
+  [0.1216, 0.1493], decision cross-check 0.1342 mV -- agrees),
+  `records/20260922-205857-ebea4e2.md` (`ss`/-40C: **0.1213 mV**, CI
+  [0.1084, 0.1335]; cross-check honestly not measurable at this corner --
+  the sigma-scaled overdrives sit below the resolvable-overdrive floor
+  DR-004 recorded, so noise does not bound decisions there),
+  `records/20260923-010427-ebea4e2.md` (`ff`/125C: **0.1754 mV**, CI
+  [0.1594, 0.1905], cross-check 0.1515 mV -- agrees).
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder
