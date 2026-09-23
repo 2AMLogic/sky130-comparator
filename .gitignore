@@ -15,6 +15,10 @@ bsim4v5.out
 !sim/*/mc-draws/**/*.log
 sim/build/
 design/build/
+# layout generator scratch (layout/_gen/, per layout/README.md): the committed
+# deliverables are layout/comparator.gds + the evidence JSONs, regenerated
+# wholesale by layout/gen_comparator.py
+layout/_gen/
 # synthesis / P&R scratch
 flow/build/
 # local klt install, created by the setup script

@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "generator": "gen-compose",
+  "cell_name": "gen_compose_0",
+  "gds_path": "gen_compose_0.gds",
+  "pdk": {
+    "name": "sky130A",
+    "variant": "sky130A",
+    "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+  },
+  "dbu_um": 0.001,
+  "bbox_um": {
+    "x0": 0.0,
+    "y0": 4.390000000000001,
+    "x1": 40.59,
+    "y1": 86.43
+  },
+  "ports": [],
+  "blocks": [
+    {
+      "id": "ptail",
+      "source": "generator_report",
+      "generator": "mos_array",
+      "cell_name": "PTAIL",
+      "offset_um": {
+        "x": 2.0,
+        "y": 44.6
+      },
+      "bbox_um": {
+        "x0": 2.0,
+        "y0": 44.6,
+        "x1": 3.34,
+        "y1": 46.22
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "inpair",
+      "source": "generator_report",
+      "generator": "diff_pair",
+      "cell_name": "INPAIR",
+      "offset_um": {
+        "x": 5.5,
+        "y": 37.89
+      },
+      "bbox_um": {
+        "x0": 5.5,
+        "y0": 37.89,
+        "x1": 8.58,
+        "y1": 52.93
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "rload",
+      "source": "generator_report",
+      "generator": "res_array",
+      "cell_name": "RLOAD",
+      "offset_um": {
+        "x": 5.5,
+        "y": 65.0
+      },
+      "bbox_um": {
+        "x0": 5.5,
+        "y0": 65.0,
+        "x1": 28.34,
+        "y1": 66.24
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "stn",
+      "source": "generator_report",
+      "generator": "diff_pair",
+      "cell_name": "STN",
+      "offset_um": {
+        "x": 11.0,
+        "y": 36.39
+      },
+      "bbox_um": {
+        "x0": 11.0,
+        "y0": 36.39,
+        "x1": 12.34,
+        "y1": 54.43
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "tail2",
+      "source": "generator_report",
+      "generator": "mos_array",
+      "cell_name": "TAIL2",
+      "offset_um": {
+        "x": 15.0,
+        "y": 41.0
+      },
+      "bbox_um": {
+        "x0": 15.0,
+        "y0": 41.0,
+        "x1": 16.34,
+        "y1": 49.82
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "latp",
+      "source": "generator_report",
+      "generator": "diff_pair",
+      "cell_name": "LATP",
+      "offset_um": {
+        "x": 18.5,
+        "y": 28.39
+      },
+      "bbox_um": {
+        "x0": 18.35,
+        "y0": 28.240000000000002,
+        "x1": 19.99,
+        "y1": 62.58
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "rst",
+      "source": "generator_report",
+      "generator": "diff_pair",
+      "cell_name": "RST",
+      "offset_um": {
+        "x": 22.5,
+        "y": 36.39
+      },
+      "bbox_um": {
+        "x0": 22.35,
+        "y0": 36.24,
+        "x1": 23.99,
+        "y1": 54.58
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "absorb",
+      "source": "generator_report",
+      "generator": "diff_pair",
+      "cell_name": "ABSORB",
+      "offset_um": {
+        "x": 30.0,
+        "y": 4.390000000000001
+      },
+      "bbox_um": {
+        "x0": 30.0,
+        "y0": 4.390000000000001,
+        "x1": 31.34,
+        "y1": 86.43
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "clkcap",
+      "source": "generator_report",
+      "generator": "mos_array",
+      "cell_name": "CLKCAP",
+      "offset_um": {
+        "x": 34.0,
+        "y": 35.0
+      },
+      "bbox_um": {
+        "x0": 34.0,
+        "y0": 35.0,
+        "x1": 35.34,
+        "y1": 55.82
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "rclks",
+      "source": "generator_report",
+      "generator": "res_array",
+      "cell_name": "RCLKS",
+      "offset_um": {
+        "x": 38.0,
+        "y": 44.79
+      },
+      "bbox_um": {
+        "x0": 38.0,
+        "y0": 44.79,
+        "x1": 40.59,
+        "y1": 45.21
+      },
+      "orientation": "none"
+    },
+    {
+      "id": "route",
+      "source": "generator_report",
+      "generator": "draw",
+      "cell_name": "ROUTE",
+      "offset_um": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "bbox_um": {
+        "x0": 0.0,
+        "y0": 9.85,
+        "x1": 40.53,
+        "y1": 86.28
+      },
+      "orientation": "none"
+    }
+  ],
+  "nets": [],
+  "pins": [],
+  "unrouted_nets": [],
+  "drc_hints": {
+    "min_spacing_um": null,
+    "matched_groups": [
+      {
+        "matched_group_id": "mos_array:1x1:common_centroid",
+        "blocks": [
+          "ptail",
+          "tail2",
+          "clkcap"
+        ],
+        "placement_symmetric": null
+      },
+      {
+        "matched_group_id": "diff_pair:pair:2",
+        "blocks": [
+          "inpair"
+        ],
+        "placement_symmetric": null
+      },
+      {
+        "matched_group_id": "res_array:2",
+        "blocks": [
+          "rload"
+        ],
+        "placement_symmetric": null
+      },
+      {
+        "matched_group_id": "diff_pair:pair:1",
+        "blocks": [
+          "stn",
+          "latp",
+          "rst",
+          "absorb"
+        ],
+        "placement_symmetric": null
+      },
+      {
+        "matched_group_id": "res_array:1",
+        "blocks": [
+          "rclks"
+        ],
+        "placement_symmetric": null
+      }
+    ],
+    "notes": []
+  },
+  "warnings": [
+    "block 'route' is placed 0.00um from block 'ptail' (strategy: explicit), closer than ptail's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'inpair' (strategy: explicit), closer than inpair's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'rload' (strategy: explicit), closer than rload's own declared drc_hints.min_spacing_um of 0.50um",
+    "block 'route' is placed 0.00um from block 'stn' (strategy: explicit), closer than stn's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'tail2' (strategy: explicit), closer than tail2's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'latp' (strategy: explicit), closer than latp's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'rst' (strategy: explicit), closer than rst's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'absorb' (strategy: explicit), closer than absorb's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'clkcap' (strategy: explicit), closer than clkcap's own declared drc_hints.min_spacing_um of 0.40um",
+    "block 'route' is placed 0.00um from block 'rclks' (strategy: explicit), closer than rclks's own declared drc_hints.min_spacing_um of 0.50um"
+  ]
+}
