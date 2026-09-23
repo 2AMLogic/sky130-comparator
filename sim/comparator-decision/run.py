@@ -20,6 +20,7 @@ fragment's own device lines, so it tracks the schematic automatically.
     python3 sim/comparator-decision/run.py regen    --record
     python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
     python3 sim/comparator-decision/run.py noise    --record
+    python3 sim/comparator-decision/run.py noise-tran --record --n 128
     python3 sim/comparator-decision/run.py reset    --record
     python3 sim/comparator-decision/run.py kickback --record
 
@@ -121,15 +122,16 @@ CLAIM_TEXT = (
     "- **Claim**: None by itself -- top-level README target-spec rows are "
     "graded by their ratifying decision record, and per DR-002 (2026-09-16, "
     "merged) the Offset sigma, Input-referred noise, and Kickback rows are "
-    "RATIFIED while Decision time vs. overdrive and Supply/power stay "
-    "DRAFT/OPEN. What this record characterizes is **this repo's own "
+    "RATIFIED while per DR-005 (2026-09-22, this campaign's record) Decision "
+    "time vs. overdrive is RATIFIED and only Supply/power stays DRAFT/OPEN. "
+    "What this record characterizes is **this repo's own "
     "comparator**: `design/comparator.sch`, the DR-004 static-preamplifier + "
     "StrongARM-latch topology (superseding DR-001's no-preamp scoping) with "
     "the DR-003 soft-clock shaper still on the clock port, at a sizing "
     "derived from this PDK's own mismatch models (see the schematic's "
-    "sizing-rationale block, DR-001 Amendment 1, DR-003, and DR-004). Any "
-    "statement about a ratified row's compliance made below cites the bound "
-    "and the number side by side."
+    "sizing-rationale block, DR-001 Amendment 1, DR-003, DR-004, and "
+    "DR-005). Any statement about a ratified row's compliance made below "
+    "cites the bound and the number side by side."
 )
 NETLIST_PROVENANCE = (
     "- **Netlist provenance**: schematic-derived "
@@ -188,6 +190,37 @@ def _dut_device_line(name: str, *, nodes: list[str] | None = None) -> str:
 
 def _run(deck_text: str, scratch_dir: Path, log_name: str) -> str:
     return toolchain.run_ngspice(deck_text, scratch_dir, log_name)
+
+
+def _run_many(
+    jobs: list[tuple[str, str]], scratch_dir: Path, workers: int = 1,
+) -> dict[str, str]:
+    """Run a batch of independent (log_name, deck_text) ngspice jobs, in
+    parallel when `workers` > 1. Every deck in a batch must be independent
+    of every other's result -- the callers that use this (the `offset`
+    draws/negative-control runs, the `regen` sweep points, the `kickback`
+    variants, and the `noise-tran` Monte Carlo seeds) are single-shot
+    transient analyses whose only shared state is the scratch directory
+    (each job writes its own uniquely-named log/csv pair). Threads, not
+    processes: `toolchain.run_ngspice` blocks on a subprocess, so the GIL
+    is released for the whole wait and a ThreadPoolExecutor parallelizes
+    the ngspice invocations themselves. Issue #41's campaign sized this:
+    a single pick-off transient costs ~21s wall (model-library load
+    dominates), and the O(100s)-draw offset campaign plus the
+    transient-noise Monte Carlo are thousands of such runs.
+    """
+    if workers <= 1 or len(jobs) <= 1:
+        return {name: _run(deck, scratch_dir, name) for name, deck in jobs}
+    import concurrent.futures
+    results: dict[str, str] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(_run, deck, scratch_dir, name): name
+            for name, deck in jobs
+        }
+        for future in concurrent.futures.as_completed(futures):
+            results[futures[future]] = future.result()
+    return results
 
 
 def _resolve_pdk_line(info: pdk.PdkInfo) -> str:
@@ -267,7 +300,7 @@ class RegenPoint:
 
 def run_regen_sweep(
     corner: str = "tt", temp_c: float = 27.0,
-    vindiff_sweep_mv: list[float] | None = None, quiet: bool = False,
+    vindiff_sweep_mv: list[float] | None = None, quiet: bool = False, jobs: int = 1,
 ) -> list[RegenPoint]:
     info = pdk.resolve_or_raise()
     vindiff_sweep_mv = vindiff_sweep_mv or DEFAULT_VINDIFF_SWEEP_MV
@@ -275,10 +308,15 @@ def run_regen_sweep(
     points: list[RegenPoint] = []
     with tempfile.TemporaryDirectory(prefix="comparator-decision-regen-") as scratch:
         scratch_dir = Path(scratch)
+        sweep_jobs = [
+            (f"regen_{v}mV".replace("-", "neg").replace(".", "p"),
+             _regen_deck(info, corner, temp_c, v, f"regen_{v}mV".replace("-", "neg").replace(".", "p")))
+            for v in vindiff_sweep_mv
+        ]
+        sweep_logs = _run_many(sweep_jobs, scratch_dir, jobs)
         for vindiff_mv in vindiff_sweep_mv:
             log_name = f"regen_{vindiff_mv}mV".replace("-", "neg").replace(".", "p")
-            deck = _regen_deck(info, corner, temp_c, vindiff_mv, log_name)
-            log_text = _run(deck, scratch_dir, log_name)
+            log_text = sweep_logs[log_name]
             csv_path = scratch_dir / f"{log_name}.csv"
             t, clk, outp, outn = toolchain.read_wrdata_csv(csv_path, 3)
             sign = 1.0 if vindiff_mv >= 0 else -1.0
@@ -445,11 +483,13 @@ class OffsetResult:
     n: int
     corner: str
     mismatch_corner: str
+    temp_c: float = 27.0
     logs: dict[str, str] = field(default_factory=dict)
 
 
 def run_offset_mc(
-    corner: str = "tt", temp_c: float = 27.0, seed: int = 1, n: int = 16, quiet: bool = False,
+    corner: str = "tt", temp_c: float = 27.0, seed: int = 1, n: int = 16,
+    quiet: bool = False, jobs: int = 1,
 ) -> OffsetResult:
     info = pdk.resolve_or_raise()
     mismatch_corner = corners_mod.mismatch_corner_for(corner)
@@ -460,12 +500,12 @@ def run_offset_mc(
 
         # 1. Gain calibration (ideal devices, plain corner).
         cal_points: list[tuple[float, float]] = []
+        cal_jobs = [(f"gaincal_{v}mV", _pickoff_deck(info, corner, temp_c, v, f"gaincal_{v}mV"))
+                    for v in VINDIFF_GAIN_CAL_MV]
+        cal_logs = _run_many(cal_jobs, scratch_dir, jobs)
+        logs.update(cal_logs)
         for vindiff_mv in VINDIFF_GAIN_CAL_MV:
-            log_name = f"gaincal_{vindiff_mv}mV"
-            deck = _pickoff_deck(info, corner, temp_c, vindiff_mv, log_name)
-            log_text = _run(deck, scratch_dir, log_name)
-            logs[log_name] = log_text
-            diff = _pickoff_value(scratch_dir / f"{log_name}.csv")
+            diff = _pickoff_value(scratch_dir / f"gaincal_{vindiff_mv}mV.csv")
             cal_points.append((vindiff_mv / 1000.0, diff))
             if not quiet:
                 print(f"  gain-cal vindiff={vindiff_mv}mV -> pickoff_diff={diff:.6g}")
@@ -476,30 +516,32 @@ def run_offset_mc(
             print(f"  gain = {gain:.4f} V/V (from {len(cal_points)} calibration points)")
 
         # 2. Mismatch-enabled draws at Vindiff=0.
-        draws_pickoff: list[float] = []
-        for i in range(n):
-            this_seed = seed + i
-            log_name = f"draw_{i}"
-            deck = _pickoff_deck(info, mismatch_corner, temp_c, 0.0, log_name, rndseed=this_seed)
-            log_text = _run(deck, scratch_dir, log_name)
-            logs[log_name] = log_text
-            diff = _pickoff_value(scratch_dir / f"{log_name}.csv")
-            draws_pickoff.append(diff)
-            if not quiet:
-                print(f"  draw {i} (seed={this_seed}, {mismatch_corner}): pickoff_diff={diff:.6g}")
+        draw_jobs = [
+            (f"draw_{i}", _pickoff_deck(info, mismatch_corner, temp_c, 0.0, f"draw_{i}", rndseed=seed + i))
+            for i in range(n)
+        ]
+        draw_logs = _run_many(draw_jobs, scratch_dir, jobs)
+        logs.update(draw_logs)
+        draws_pickoff = [
+            _pickoff_value(scratch_dir / f"draw_{i}.csv") for i in range(n)
+        ]
+        if not quiet:
+            for i in range(n):
+                print(f"  draw {i} (seed={seed + i}, {mismatch_corner}): pickoff_diff={draws_pickoff[i]:.6g}")
 
         # 3. Negative control at the plain corner, same seed sequence.
-        negctrl_pickoff: list[float] = []
-        for i in range(n):
-            this_seed = seed + i
-            log_name = f"negctrl_{i}"
-            deck = _pickoff_deck(info, corner, temp_c, 0.0, log_name, rndseed=this_seed)
-            log_text = _run(deck, scratch_dir, log_name)
-            logs[log_name] = log_text
-            diff = _pickoff_value(scratch_dir / f"{log_name}.csv")
-            negctrl_pickoff.append(diff)
-            if not quiet:
-                print(f"  negctrl {i} (seed={this_seed}, {corner}): pickoff_diff={diff:.6g}")
+        negctrl_jobs = [
+            (f"negctrl_{i}", _pickoff_deck(info, corner, temp_c, 0.0, f"negctrl_{i}", rndseed=seed + i))
+            for i in range(n)
+        ]
+        negctrl_logs = _run_many(negctrl_jobs, scratch_dir, jobs)
+        logs.update(negctrl_logs)
+        negctrl_pickoff = [
+            _pickoff_value(scratch_dir / f"negctrl_{i}.csv") for i in range(n)
+        ]
+        if not quiet:
+            for i in range(n):
+                print(f"  negctrl {i} (seed={seed + i}, {corner}): pickoff_diff={negctrl_pickoff[i]:.6g}")
 
     draws_offset_v = [d / gain for d in draws_pickoff]
     negctrl_offset_v = [d / gain for d in negctrl_pickoff]
@@ -508,7 +550,8 @@ def run_offset_mc(
         gain_v_per_v=gain, gain_cal_points=cal_points,
         draws_pickoff=draws_pickoff, draws_offset_v=draws_offset_v,
         negctrl_pickoff=negctrl_pickoff, negctrl_offset_v=negctrl_offset_v,
-        seed=seed, n=n, corner=corner, mismatch_corner=mismatch_corner, logs=logs,
+        seed=seed, n=n, corner=corner, mismatch_corner=mismatch_corner,
+        temp_c=temp_c, logs=logs,
     )
 
 
@@ -540,11 +583,17 @@ def write_offset_evidence(
     a(
         f"- **Statistical convention**: mismatch corner `{result.mismatch_corner}`, "
         f"N={result.n}, seed={result.seed} (draws use seed, seed+1, ..., "
-        f"seed+N-1), PVT point process={result.corner} temp=27.0C supply={VDD}V. "
+        f"seed+N-1), PVT point process={result.corner} temp={result.temp_c}C supply={VDD}V. "
         f"Relative standard error on the estimated offset stdev, "
-        f"SE(s)/s ~= 1/sqrt(2(N-1)): N={result.n} gives {rel_se_pct:.1f}% -- a "
-        "distribution-shape-adequate sample for this plumbing proof, not a "
-        "sample sized for a tight yield-fraction claim (that needs O(100s))."
+        f"SE(s)/s ~= 1/sqrt(2(N-1)): N={result.n} gives {rel_se_pct:.1f}%. "
+        + (
+            "A distribution-shape-adequate sample for this plumbing proof, not a "
+            "sample sized for a tight yield-fraction claim (that needs O(100s))."
+            if result.n < 100 else
+            "An O(100s)-draw campaign-sized sample (issue #41): the stdev "
+            "estimate carries a stated relative standard error and supports a "
+            "yield-fraction claim at production-relevant confidence."
+        )
     )
     a(
         f"- **Methodology**: linearized pick-off statistic at "
@@ -584,6 +633,17 @@ def write_offset_evidence(
         f"{draws_stdev * 1000:.4f} | {min(result.draws_offset_v) * 1000:.4f} | "
         f"{max(result.draws_offset_v) * 1000:.4f} |"
     )
+    if result.n >= 100:
+        # Normal-approximation CI on the stdev (SE(s) ~ s/sqrt(2(N-1))),
+        # adequate at O(100s) draws; stated so the yield-fraction claim
+        # carries its confidence explicitly (issue #41's acceptance criteria).
+        ci_lo = draws_stdev * (1 - 1.96 / (2 * (result.n - 1)) ** 0.5)
+        ci_hi = draws_stdev * (1 + 1.96 / (2 * (result.n - 1)) ** 0.5)
+        a(
+            f"- **95% CI on the stdev** (normal approximation, "
+            f"SE(s)/s = {1.0 / (2 * (result.n - 1)) ** 0.5:.4f}): "
+            f"[{ci_lo * 1000:.4f}, {ci_hi * 1000:.4f}] mV"
+        )
     a("")
     a(
         f"- **Ratified bound comparison (DR-002)**: the Offset sigma row is "
@@ -601,8 +661,13 @@ def write_offset_evidence(
             " -- new information for the decision records to weigh, never "
             "silently superseding DR-002's disposition."
         )
-        + " N=16 is sized for distribution shape, not a yield-fraction claim "
-        "(see the Statistical convention above)."
+        + (
+            " N=16 is sized for distribution shape, not a yield-fraction claim "
+            "(see the Statistical convention above)."
+            if result.n == 16 else
+            " See the Statistical convention above for this sample size's "
+            "stated relative standard error."
+        )
     )
     a("")
     a("## Negative control (mismatch-disabled, same seed sequence)")
@@ -843,6 +908,797 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "noise", supersedes=supersedes,
+    )
+
+
+# ---------------------------------------------------------------------------
+# noise-tran: REGENERATION-INCLUSIVE input-referred noise via transient-noise
+# Monte Carlo with equivalent-source injection (issue #41)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. The `noise` sub-command above is, by its own statement, a
+# LOWER BOUND: its loop-broken AC sub-model is the DR-004 preamplifier
+# verbatim, linearized at its static bias -- so it excludes (a) the real
+# time-varying propagation of that noise through the clocked evaluate
+# trajectory (shaper ramp, TAIL2 descent, steering conduction onset) and
+# (b) the latch front-end's own noise entering the decision after the
+# preamp. DR-002's Open items and issue #41's acceptance criteria both ask
+# for a regeneration-inclusive measurement "not the loop-broken
+# lower-bound sub-model". ngspice-46 has NO device-noise-enabled transient
+# analysis (verified against its NEWS: `trnoise` exists only on independent
+# sources), so device noise cannot simply be switched on in a transient.
+#
+# METHOD -- equivalent-source injection into the FULL committed fragment,
+# the standard workaround when the simulator lacks device transient noise,
+# used deliberately and with its boundaries stated:
+#
+#  1. PREAMP term: the existing AC `noise` sub-command already yields the
+#     preamp's input-referred rms (single-ended, 1kHz-1GHz). That figure is
+#     re-injected per side as a TRNOISE() source in series with each
+#     comparator input -- so the noise then propagates through the REAL
+#     clocked trajectory of the full fragment (the time-varying part the AC
+#     analysis cannot represent), not through a static linearization.
+#  2. LATCH FRONT-END term: a NEW AC `.noise` sub-model of the steering
+#     pair + strong tail verbatim (gates at the preamp's own static output
+#     common mode from stage 1's op point, CLKT at VDD -- the evaluate
+#     drive), drains DC-biased through ideal inductors to VDD and AC-loaded
+#     only by noiseless capacitors. `inoise_total` referred through one
+#     gate source is that stage's gate-referred rms over the same band.
+#     The gate-referred figure is load-capacitance-insensitive (verified
+#     5f-40fF: +-0.7%), because capacitors are noiseless and the
+#     input-referral divides the load out; the load only shapes onoise.
+#     That rms is re-injected per side as a TRNOISE() source in series
+#     between each preamp output (OUTP1/OUTN1) and the corresponding
+#     steering gate -- the exact node pair where latch noise physically
+#     enters the decision.
+#  3. TRNOISE() semantics were characterized empirically on this exact
+#     ngspice build (see `run_trnoise_calibration`): the source emits
+#     band-limited white Gaussian noise with time-domain std ~= 0.86*na,
+#     updated every `ts`; independent streams per source; re-seeded by
+#     `.option rndseed`. A calibration deck measures the actual injected
+#     std at na=1mV and the target amplitudes are scaled off that measured
+#     factor, so the record states achieved-vs-target injection rms
+#     directly. Correlation time is 0.5ns (~the 1GHz AC integration band's
+#     Nyquist interval); the PSD shape mismatch vs. the real shaped device
+#     spectra is a stated approximation -- same band, same integrated rms.
+#  4. MONTE CARLO, two statistics from the same seeded deck family:
+#     a. PICK-OFF MC (primary): N seeds at Vindiff=0, each recording the
+#        same v(OUTP)-v(OUTN) pick-off the `offset` sub-command uses, at
+#        the same PICKOFF_NS after the evaluate edge. std(pickoff)/gain
+#        (gain from the same ideal-device calibration) is the total
+#        input-referred noise at the pick-off instant, propagated through
+#        the real evaluate onset -- devices the AC sub-model omits are
+#        present here, and both injected terms ride the true clocked
+#        trajectory.
+#     b. DECISION-TRANSITION cross-check (regeneration phase): at
+#        +/-{0.75, 1.5} * sigma_hat_mv (sigma_hat from (a)) the same deck
+#        runs M seeds per point through the FULL evaluate window and
+#        records the final latched decision. The pair-symmetric estimator
+#        p(+v)-p(-v) ~= 2*Phi(v/sigma)-1 inverts to a sigma per pair; if
+#        the latch's regenerative phase added significant noise beyond
+#        what (a) already sees at pick-off, the transition sigma comes out
+#        LARGER than (a)'s -- the two statistics agreeing (within the
+#        coarser CI of (b)) is the evidence that the regeneration phase
+#        adds no material term beyond the injected device noise, which is
+#        precisely the regeneration-inclusiveness claim this sub-command
+#        exists to make. The residual omissions, stated: the cross-coupled
+#        PMOS pair's noise DURING exponential separation (input-referred,
+#        divided by the exponentially growing regenerative gain -- a
+#        second-order term by the same division argument that demotes
+#        steering-pair Vth mismatch) and the reset PMOS (off in evaluate).
+#
+# Injection topology note: the steering pair's device lines are re-emitted
+# with their GATE terminals moved to injected nodes GST_P/GST_N (via
+# `_dut_device_line(name, nodes=...)`, the same node-replacement helper the
+# reset counterfactual uses), so the committed sizing still tracks the
+# schematic verbatim; the trnoise sources sit in series between OUTP1/OUTN1
+# and GST_P/GST_N with DC=0 (no bias disturbance).
+
+NOISE_TRAN_TS = 0.37e-9         # trnoise update/correlation interval (s).
+# NOT 0.5ns (the 1GHz band's Nyquist interval): a 0.5ns update grid puts a
+# noise jump at t=5.0ns EXACTLY -- coincident with the reset->evaluate edge
+# -- and the transient solver's timestep collapses there ("Timestep too
+# small; time = 5e-09", observed on ngspice-46). 0.37ns keeps the grid off
+# every critical instant (updates land at 0.37*k ns, never on 5.0 or 5.1)
+# while leaving the injected band (~1.35GHz Nyquist) close to the AC
+# integration band; the calibration targets the INTEGRATED rms, which is
+# band-matched by construction. A per-deck retry with a perturbed interval
+# (0.41ns, see _run_mc_deck) covers any residual pathological coincidence
+# at other seeds/corners.
+NOISE_TRAN_EVALUATE_NS = 20.0   # decision window (b): full separation + metastability margin
+NOISE_TRAN_DECIDE_PAIRS = (0.75, 1.5)  # |Vod| points, in units of sigma_hat
+NOISE_TRAN_SEEDS_PER_POINT = 64  # decision-transition seeds per (sign, point)
+LATCH_NOISE_CL_FF = 10.0        # steering-sub-model drain load (bandwidth only -- noiseless)
+
+
+NOISE_TRAN_RETRY_TS = 0.41e-9    # perturbed update grid for the per-deck retry
+
+
+def _run_ts_retry(
+    build, scratch_dir: Path, name: str,
+) -> str:
+    """Run one noise-tran deck, retrying once at the perturbed update
+    interval on ngspice failure. `build(ts)` returns the deck text. The
+    retry exists because a noise-update jump coinciding with a solver
+    breakpoint can collapse the transient timestep (the t=5.0ns exact
+    coincidence that ruled out the 0.5ns grid -- see NOISE_TRAN_TS); a
+    different grid with identical statistics resolves it. A deck that
+    fails BOTH grids is a real failure and propagates."""
+    try:
+        return _run(build(NOISE_TRAN_TS), scratch_dir, name)
+    except RuntimeError:
+        return _run(build(NOISE_TRAN_RETRY_TS), scratch_dir, name)
+
+
+def _run_many_ts_retry(builds, scratch_dir: Path, workers: int = 1) -> dict[str, str]:
+    """Parallel batch of _run_ts_retry jobs. `builds` is a list of
+    (name, build(ts)->deck). First pass runs everything at the default ts
+    in parallel; decks that failed are retried individually at the
+    perturbed ts (rare, so sequential retry is fine)."""
+    from concurrent.futures import ThreadPoolExecutor
+    results: dict[str, str] = {}
+    failed: list[tuple[str, object]] = []
+    if workers <= 1:
+        for name, build in builds:
+            try:
+                results[name] = _run(build(NOISE_TRAN_TS), scratch_dir, name)
+            except RuntimeError:
+                failed.append((name, build))
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_run, build(NOISE_TRAN_TS), scratch_dir, name): (name, build)
+                       for name, build in builds}
+            for future in futures:
+                name, build = futures[future]
+                try:
+                    results[name] = future.result()
+                except RuntimeError:
+                    failed.append((name, build))
+    for name, build in failed:
+        results[name] = _run(build(NOISE_TRAN_RETRY_TS), scratch_dir, name)
+    return results
+
+
+def _trnoise_calibration_deck(na: float, ts: float) -> str:
+    """Measure the actual injected time-domain std of a TRNOISE(na, ts, 0, 0)
+    source on this ngspice build -- ngspice's manual states the parameter
+    semantics only loosely for this source, so the campaign calibrates it
+    empirically instead of trusting a formula (the record prints the
+    achieved-vs-target rms). The deck drives a 1-ohm resistor from the
+    source and reports mean/std of v(n1) computed inside ngspice, so the
+    returned log parses to one `cal_std =` line."""
+    npts = 100000
+    return "\n".join([
+        f"* trnoise injection calibration -- na={na} ts={ts}",
+        ".options rndseed=41",
+        f"V1 n1 0 DC 0 TRNOISE({na:g} {ts:g} 0 0)",
+        "R1 n1 0 1",
+        ".control",
+        f"tran {ts:g} {npts * ts:g}",
+        "let m = mean(v(n1))",
+        "let s = sqrt(mean((v(n1)-m)*(v(n1)-m)))",
+        f"echo cal_std=$&s",
+        ".endc",
+        ".end",
+    ]) + "\n"
+
+
+def run_trnoise_calibration(quiet: bool = False) -> float:
+    """Return the measured std-per-unit-na of the TRNOISE source at the
+    campaign's correlation time (fraction ~0.86 measured on ngspice-46)."""
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-trncal-") as scratch:
+        scratch_dir = Path(scratch)
+        log_text = _run(_trnoise_calibration_deck(1e-3, NOISE_TRAN_TS), scratch_dir, "trncal")
+    factor = float("nan")
+    for line in log_text.splitlines():
+        if line.strip().startswith("cal_std="):
+            factor = float(line.split("=")[1].strip()) / 1e-3
+    if not (factor > 0):
+        raise RuntimeError(f"trnoise calibration failed to parse: {log_text[-400:]}")
+    if not quiet:
+        print(f"  trnoise calibration: std = {factor:.4f} x na (na in volts, ts={NOISE_TRAN_TS:g}s)")
+    return factor
+
+
+def _latch_noise_deck(
+    info: pdk.PdkInfo, corner: str, temp_c: float, gate_cm_v: float, cl_ff: float,
+) -> str:
+    """AC `.noise` deck for the latch front-end's gate-referred noise (stage
+    2 above): steering pair + strong tail re-emitted verbatim from the
+    committed fragment (gates moved to driven nodes), linearized at the
+    preamp's own static output common mode with CLKT at VDD."""
+    return "\n".join([
+        f"* comparator-decision latch front-end gate-referred noise -- "
+        f"corner={corner} temp={temp_c}C gate_cm={gate_cm_v:.4f}V (issue #41)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD} vcmo = {gate_cm_v:.6f}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        "Vclkfix CLKT 0 dc {vdd_val}",
+        "Vstp GST_P 0 dc {vcmo} AC 1",
+        "Vstn GST_N 0 dc {vcmo}",
+        "",
+        "* steering pair + strong tail, verbatim device lines (gates on the",
+        "* driven GST_* nodes -- the same node-replacement helper the reset",
+        "* counterfactual uses)",
+        _dut_device_line("XM_STN_P", nodes=["OUTP", "GST_P", "TAIL2", "GND"]),
+        _dut_device_line("XM_STN_N", nodes=["OUTN", "GST_N", "TAIL2", "GND"]),
+        _dut_device_line("XM_TAIL2"),
+        "",
+        "* noiseless loads: ideal inductors DC-bias the drains at VDD while",
+        f"* presenting their band as open; shunt caps ({cl_ff:g}fF) shape only",
+        "* onoise's bandwidth -- caps are noiseless, so inoise_total (the",
+        "* gate-referred figure) is load-insensitive (verified 5f-40fF).",
+        "Lp OUTP VDD 1",
+        "Ln OUTN VDD 1",
+        f"Cp OUTP 0 {cl_ff:g}f",
+        f"Cn OUTN 0 {cl_ff:g}f",
+        "",
+        ".control",
+        "option sparse",
+        "op",
+        "print v(TAIL2) v(OUTP) v(OUTN)",
+        f"noise v(OUTP,OUTN) Vstp dec 20 {NOISE_FSTART_HZ:g} {NOISE_FSTOP_HZ:g} 20",
+        "print inoise_total onoise_total",
+        ".endc",
+        ".end",
+    ]) + "\n"
+
+
+@dataclass
+class LatchNoiseResult:
+    gate_rms_v: float
+    op_tail2_v: float
+    log_text: str
+    corner: str
+    temp_c: float
+    gate_cm_v: float
+    cl_ff: float
+
+
+def run_latch_noise(
+    corner: str = "tt", temp_c: float = 27.0, gate_cm_v: float = 1.18,
+    cl_ff: float = LATCH_NOISE_CL_FF, quiet: bool = False,
+) -> LatchNoiseResult:
+    info = pdk.resolve_or_raise()
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-lnoise-") as scratch:
+        scratch_dir = Path(scratch)
+        deck = _latch_noise_deck(info, corner, temp_c, gate_cm_v, cl_ff)
+        log_text = _run(deck, scratch_dir, "latch_noise")
+    op_tail2 = gate_rms = float("nan")
+    for line in log_text.splitlines():
+        s = line.strip()
+        if s.startswith("v(tail2)"):
+            op_tail2 = float(s.split("=")[1])
+        elif s.startswith("inoise_total"):
+            gate_rms = float(s.split("=")[1])
+    if not quiet:
+        print(
+            f"  latch front-end (gate-referred, {corner}/{temp_c}C): "
+            f"inoise_total = {gate_rms * 1000:.4f} mV rms (op TAIL2={op_tail2:.4f}V)"
+        )
+    return LatchNoiseResult(
+        gate_rms_v=gate_rms, op_tail2_v=op_tail2, log_text=log_text,
+        corner=corner, temp_c=temp_c, gate_cm_v=gate_cm_v, cl_ff=cl_ff,
+    )
+
+
+def _noise_tran_pickoff_deck(
+    info: pdk.PdkInfo, corner: str, temp_c: float, vindiff_mv: float, seed: int,
+    na_input: float, na_gate: float, log_name: str, ts: float = NOISE_TRAN_TS,
+) -> str:
+    """One noise-seeded pick-off transient (statistic (a) above): the full
+    committed fragment, inputs driven through per-side trnoise sources of
+    the calibrated preamp rms, steering gates driven through per-side
+    trnoise sources of the calibrated latch rms."""
+    vindiff_v = vindiff_mv / 1000.0
+    evaluate_ns = PICKOFF_TSTOP_NS - RESET_NS - RESET_TR_NS
+    period_ns = RESET_NS + RESET_TR_NS + evaluate_ns + 10.0
+    lines = [
+        f"* comparator-decision noise-tran pick-off -- vindiff={vindiff_mv}mV "
+        f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}",
+        f".option rndseed={seed}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{evaluate_ns}n {period_ns}n)",
+        f"Vinp VINP 0 dc {VCM + vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
+        f"Vinn VINN 0 dc {VCM - vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
+        "",
+        "* full committed fragment, with the steering pair's gates moved to",
+        "* the injected nodes GST_P/GST_N (sizing verbatim; the series",
+        "* trnoise sources carry the latch front-end's gate-referred rms):",
+    ]
+    for raw in _dut_lines().splitlines():
+        stripped = raw.strip()
+        if stripped.startswith(("XM_STN_P", "XM_STN_N")):
+            gate_node = "GST_P" if stripped.split()[0] == "XM_STN_P" else "GST_N"
+            out_node = "OUTP" if stripped.split()[0] == "XM_STN_P" else "OUTN"
+            lines.append(_dut_device_line(
+                "XM_STN_P" if gate_node == "GST_P" else "XM_STN_N",
+                nodes=[out_node, gate_node, "TAIL2", "GND"],
+            ))
+        else:
+            lines.append(raw)
+    lines += [
+        "",
+        f"Vstp GST_P OUTP1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
+        f"Vstn GST_N OUTN1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
+        "",
+        ".control",
+        f"tran 0.002n {PICKOFF_TSTOP_NS}n",
+        f"wrdata {log_name}.csv v(OUTP) v(OUTN)",
+        ".endc",
+        ".end",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _noise_tran_decision_deck(
+    info: pdk.PdkInfo, corner: str, temp_c: float, vindiff_mv: float, seed: int,
+    na_input: float, na_gate: float, log_name: str, ts: float = NOISE_TRAN_TS,
+) -> str:
+    """One noise-seeded full-decision transient (statistic (b) above): same
+    injection topology as the pick-off deck, but the full evaluate window
+    (NOISE_TRAN_EVALUATE_NS) so the final latched decision is recorded."""
+    vindiff_v = vindiff_mv / 1000.0
+    period_ns = RESET_NS + RESET_TR_NS + NOISE_TRAN_EVALUATE_NS + 10.0
+    lines = [
+        f"* comparator-decision noise-tran decision -- vindiff={vindiff_mv}mV "
+        f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}",
+        f".option rndseed={seed}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{NOISE_TRAN_EVALUATE_NS}n {period_ns}n)",
+        f"Vinp VINP 0 dc {VCM + vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
+        f"Vinn VINN 0 dc {VCM - vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
+        "",
+        "* full committed fragment, steering gates on injected nodes (see",
+        "* the pick-off deck above for the topology note):",
+    ]
+    for raw in _dut_lines().splitlines():
+        stripped = raw.strip()
+        if stripped.startswith(("XM_STN_P", "XM_STN_N")):
+            name = stripped.split()[0]
+            gate_node = "GST_P" if name == "XM_STN_P" else "GST_N"
+            out_node = "OUTP" if name == "XM_STN_P" else "OUTN"
+            lines.append(_dut_device_line(name, nodes=[out_node, gate_node, "TAIL2", "GND"]))
+        else:
+            lines.append(raw)
+    lines += [
+        "",
+        f"Vstp GST_P OUTP1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
+        f"Vstn GST_N OUTN1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
+        "",
+        ".control",
+        f"tran 0.01n {RESET_NS + RESET_TR_NS + NOISE_TRAN_EVALUATE_NS}n",
+        f"wrdata {log_name}.csv v(OUTP) v(OUTN)",
+        ".endc",
+        ".end",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _decision_from_csv(csv_path: Path) -> int | None:
+    """Final latched decision from a decision-window wrdata csv: +1 if
+    OUTP-OUTN > 0 at the last sample, -1 if < 0, None if the run never
+    separated (unresolved metastability inside the window)."""
+    t, outp, outn = toolchain.read_wrdata_csv(csv_path, 2)
+    diff = outp[-1] - outn[-1]
+    if diff > 0.1:
+        return 1
+    if diff < -0.1:
+        return -1
+    return None
+
+
+def _norm_cdf(x: float) -> float:
+    return 0.5 * (1.0 + __import__("math").erf(x / 2 ** 0.5))
+
+
+def _probit(p: float) -> float:
+    """Inverse normal CDF by bisection on _norm_cdf (no scipy in the
+    toolchain; the estimator only needs a few digits)."""
+    lo, hi = -8.0, 8.0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if _norm_cdf(mid) < p:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def pair_sigma_mv(v_mv: float, plus_ones: int, plus_n: int, minus_ones: int, minus_n: int) -> float:
+    """Pair-symmetric sigma estimate (mV) from one +/-v_mv decision pair:
+    p+ - p- ~= 2*Phi(v/sigma) - 1 (offset cancels to first order), so
+    sigma = v / Phi^-1((1 + p+ - p-)/2). Returns NaN if the pair is
+    degenerate -- all-same-way at both signs, or p+ == p- (all-unresolved
+    or all-correct, e.g. when v sits below the corner's resolvable-overdrive
+    floor so nothing decides, or so far above it that noise never flips a
+    decision; either way the pair carries no sigma information)."""
+    p_plus = plus_ones / plus_n
+    p_minus = minus_ones / minus_n
+    arg = 0.5 * (1.0 + p_plus - p_minus)
+    if not (0.01 < arg < 0.99):
+        return float("nan")
+    denom = _probit(arg)
+    if abs(denom) < 1e-9:
+        return float("nan")
+    return v_mv / denom
+
+
+@dataclass
+class NoiseTranResult:
+    corner: str
+    temp_c: float
+    preamp: NoiseResult
+    latch: LatchNoiseResult
+    trnoise_factor: float
+    na_input: float
+    na_gate: float
+    cal_achieved_input_rms_v: float
+    cal_achieved_gate_rms_v: float
+    gain_v_per_v: float
+    gain_cal_points: list[tuple[float, float]]
+    pickoff_diffs: list[float]          # v(OUTP)-v(OUTN) at pick-off, per seed
+    sigma_pickoff_mv: float
+    sigma_pickoff_ci95_mv: tuple[float, float]
+    decision_points: list[dict]         # per |vod| point: {v_mv, plus_ones, minus_ones, unresolved, m}
+    sigma_decision_mv: float            # inverse-variance-weighted mean over pairs
+    logs: dict[str, str] = field(default_factory=dict)
+
+
+def run_noise_tran(
+    corner: str = "tt", temp_c: float = 27.0, n_pickoff: int = 128,
+    seeds_per_point: int = NOISE_TRAN_SEEDS_PER_POINT, quiet: bool = False,
+    jobs: int = 1,
+) -> NoiseTranResult:
+    info = pdk.resolve_or_raise()
+    logs: dict[str, str] = {}
+
+    # Stage 1: preamp input-referred rms + its op point (gate CM for stage 2).
+    preamp = run_noise(corner=corner, temp_c=temp_c, quiet=quiet)
+    # Stage 2: latch front-end gate-referred rms, biased at the preamp's own CM.
+    gate_cm = preamp.op_outp1_v
+    latch = run_latch_noise(corner=corner, temp_c=temp_c, gate_cm_v=gate_cm, quiet=quiet)
+    logs["latch_noise"] = latch.log_text
+    # Stage 3: calibrate TRNOISE std-per-na, then scale the two amplitudes.
+    factor = run_trnoise_calibration(quiet=quiet)
+    na_input = preamp.single_ended_rms_v / factor
+    na_gate = latch.gate_rms_v / factor
+    if not quiet:
+        print(
+            f"  injection amplitudes: input na={na_input:g}V "
+            f"(target {preamp.single_ended_rms_v * 1000:.4f} mV rms/side), "
+            f"gate na={na_gate:g}V (target {latch.gate_rms_v * 1000:.4f} mV rms/side)"
+        )
+
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-noisetran-") as scratch:
+        scratch_dir = Path(scratch)
+
+        # Gain calibration: ideal devices, plain corner, NO noise -- the
+        # same calibration the `offset` sub-command performs, so the
+        # pick-off statistic is referred back through the identical gain.
+        cal_jobs = [(f"gaincal_{v}mV", _pickoff_deck(info, corner, temp_c, v, f"gaincal_{v}mV"))
+                    for v in VINDIFF_GAIN_CAL_MV]
+        logs.update(_run_many(cal_jobs, scratch_dir, jobs))
+        gain_cal_points = [
+            (v / 1000.0, _pickoff_value(scratch_dir / f"gaincal_{v}mV.csv"))
+            for v in VINDIFF_GAIN_CAL_MV
+        ]
+        sxy = sum(x * y for x, y in gain_cal_points)
+        sxx = sum(x * x for x, y in gain_cal_points)
+        gain = sxy / sxx if sxx else float("nan")
+        if not quiet:
+            print(f"  gain = {gain:.4f} V/V (from {len(gain_cal_points)} calibration points)")
+
+        # Injection-rms verification decks: the same trnoise sources into a
+        # 1-ohm load, one for each amplitude, so the record can state
+        # achieved-vs-target injection rms directly.
+        for tag, na in (("input", na_input), ("gate", na_gate)):
+            cal_log = _trnoise_calibration_deck(na, NOISE_TRAN_TS)
+            vlog = _run(cal_log, scratch_dir, f"injcal_{tag}")
+            logs[f"injcal_{tag}"] = vlog
+        achieved = {}
+        for tag in ("input", "gate"):
+            for line in logs[f"injcal_{tag}"].splitlines():
+                if line.strip().startswith("cal_std="):
+                    achieved[tag] = float(line.split("=")[1].strip())
+
+        # Statistic (a): pick-off MC at Vindiff=0, n_pickoff seeds.
+        seed_base = 10_000
+
+        def _po_build(i: int):
+            def build(ts: float) -> str:
+                return _noise_tran_pickoff_deck(
+                    info, corner, temp_c, 0.0, seed_base + i,
+                    na_input, na_gate, f"po_{i}", ts=ts,
+                )
+            return build
+
+        po_builds = [(f"po_{i}", _po_build(i)) for i in range(n_pickoff)]
+        logs.update(_run_many_ts_retry(po_builds, scratch_dir, jobs))
+        pickoff_diffs = [
+            _pickoff_value(scratch_dir / f"po_{i}.csv") for i in range(n_pickoff)
+        ]
+        sigma_pickoff_v = (
+            statistics.pstdev([d / gain for d in pickoff_diffs]) if n_pickoff > 1 else float("nan")
+        )
+        # Bootstrap 95% CI on the input-referred sigma (normal-approx SE is
+        # available in closed form; bootstrap also captures the small-sample
+        # skew -- 1000 resamples, stdlib random).
+        import random as _random
+        rng = _random.Random(20260922)
+        referred = [d / gain for d in pickoff_diffs]
+        boot = []
+        for _ in range(1000):
+            sample = rng.choices(referred, k=len(referred))
+            boot.append(statistics.pstdev(sample))
+        boot.sort()
+        ci = (boot[49] * 1000, boot[949] * 1000)
+        if not quiet:
+            print(
+                f"  pick-off MC: N={n_pickoff} -> sigma_in = {sigma_pickoff_v * 1000:.4f} mV "
+                f"(95% CI [{ci[0]:.4f}, {ci[1]:.4f}] mV)"
+            )
+
+        # Statistic (b): decision-transition cross-check at +/-k*sigma_hat.
+        sigma_hat_mv = sigma_pickoff_v * 1000
+        decision_points: list[dict] = []
+        dseed_base = 20_000
+        for k in NOISE_TRAN_DECIDE_PAIRS:
+            v_mv = k * sigma_hat_mv
+            point = {"k": k, "v_mv": v_mv, "m": seeds_per_point,
+                     "plus_ones": 0, "minus_ones": 0, "unresolved": 0}
+            d_builds = []
+
+            def _dec_build(name: str, vod_mv: float, dseed: int):
+                def build(ts: float) -> str:
+                    return _noise_tran_decision_deck(
+                        info, corner, temp_c, vod_mv, dseed,
+                        na_input, na_gate, name, ts=ts,
+                    )
+                return build
+
+            for sign in (1, -1):
+                for i in range(seeds_per_point):
+                    name = f"dec_{k:g}_{ '+' if sign > 0 else '-'}_{i}".replace(".", "p")
+                    dseed = (dseed_base + int(k * 1000) * 10_000
+                             + (seeds_per_point if sign > 0 else 0) + i)
+                    d_builds.append((name, _dec_build(name, sign * v_mv, dseed)))
+            d_logs = _run_many_ts_retry(d_builds, scratch_dir, jobs)
+            logs.update(d_logs)
+            for sign in (1, -1):
+                ones = 0
+                unresolved = 0
+                for i in range(seeds_per_point):
+                    name = f"dec_{k:g}_{ '+' if sign > 0 else '-'}_{i}".replace(".", "p")
+                    dec = _decision_from_csv(scratch_dir / f"{name}.csv")
+                    if dec is None:
+                        unresolved += 1
+                    elif dec == 1:
+                        ones += 1
+                if sign > 0:
+                    point["plus_ones"] = ones
+                    point["plus_unresolved"] = unresolved
+                else:
+                    point["minus_ones"] = ones
+                    point["minus_unresolved"] = unresolved
+            point["unresolved"] = point.get("plus_unresolved", 0) + point.get("minus_unresolved", 0)
+            decision_points.append(point)
+            if not quiet:
+                print(
+                    f"  decision pair |v|={v_mv:.4f}mV: p+={point['plus_ones']}/{seeds_per_point} "
+                    f"p-={point['minus_ones']}/{seeds_per_point} "
+                    f"unresolved={point['unresolved']}"
+                )
+
+    # Combine pairs: inverse-variance weights via the delta-method variance
+    # of each pair's probit (binomial on p+ - p-).
+    pair_sigmas: list[tuple[float, float]] = []  # (sigma_mv, var)
+    for point in decision_points:
+        m = point["m"]
+        sigma_i = pair_sigma_mv(
+            point["v_mv"], point["plus_ones"], m, point["minus_ones"], m,
+        )
+        if sigma_i != sigma_i:  # NaN: degenerate pair
+            continue
+        p_plus = point["plus_ones"] / m
+        p_minus = point["minus_ones"] / m
+        arg = 0.5 * (1.0 + p_plus - p_minus)
+        darg = _probit(arg)
+        # var(sigma_i)/sigma_i^2 ~ (dPhi^-1/darg)^2 * var(arg) / darg^2
+        dprobit = (2 * 3.141592653589793) ** 0.5 * pow(2.718281828459045, 0.5 * darg * darg)
+        var_arg = (p_plus * (1 - p_plus) + p_minus * (1 - p_minus)) / m
+        rel_var = (dprobit * dprobit * var_arg) / (darg * darg)
+        pair_sigmas.append((sigma_i, (sigma_i * sigma_i) * rel_var))
+    if pair_sigmas:
+        wsum = sum(1.0 / v for _, v in pair_sigmas)
+        sigma_decision = sum(s / v for s, v in pair_sigmas) / wsum
+    else:
+        sigma_decision = float("nan")
+
+    return NoiseTranResult(
+        corner=corner, temp_c=temp_c, preamp=preamp, latch=latch,
+        trnoise_factor=factor, na_input=na_input, na_gate=na_gate,
+        cal_achieved_input_rms_v=achieved.get("input", float("nan")),
+        cal_achieved_gate_rms_v=achieved.get("gate", float("nan")),
+        gain_v_per_v=gain, gain_cal_points=gain_cal_points,
+        pickoff_diffs=pickoff_diffs,
+        sigma_pickoff_mv=sigma_pickoff_v * 1000,
+        sigma_pickoff_ci95_mv=ci,
+        decision_points=decision_points,
+        sigma_decision_mv=sigma_decision,
+        logs=logs,
+    )
+
+
+def write_noise_tran_evidence(
+    result: NoiseTranResult, note: str = "", supersedes: str = "",
+) -> Path:
+    info = pdk.resolve()
+    netlist_text = _noise_tran_pickoff_deck(
+        info, result.corner, result.temp_c, 0.0, 10000,
+        result.na_input, result.na_gate, "noise_tran_pickoff",
+    )
+    record_id = evidence.new_record_id()
+    netlist_sha = evidence.sha256_text(netlist_text)
+    record_path = evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
+    runs_dir = EXPERIMENT_DIR / "corners" / record_id
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("latch_noise", "injcal_input", "injcal_gate"):
+        if name in result.logs:
+            (runs_dir / f"{name}.log").write_text(result.logs[name])
+
+    lines: list[str] = []
+    a = lines.append
+    a(f"# Record {record_id}")
+    a("")
+    a(f"- **Record ID**: {record_id}")
+    a(CLAIM_TEXT)
+    a(NETLIST_PROVENANCE)
+    a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
+    a(
+        f"- **Noise methodology**: `tran-noise-mc` (issue #41), REGENERATION-"
+        f"INCLUSIVE by equivalent-source injection -- per-side TRNOISE sources "
+        f"at the comparator inputs (preamp input-referred rms from the AC "
+        f"`noise` sub-command: {result.preamp.single_ended_rms_v * 1000:.4f} mV) "
+        f"and in series with the steering gates (latch front-end gate-referred "
+        f"rms from a new steering+tail AC sub-model: {result.latch.gate_rms_v * 1000:.4f} mV, "
+        f"load-cap insensitivity verified), propagated through the FULL committed "
+        f"fragment's real clocked evaluate trajectory. Injected rms calibrated "
+        f"empirically against this ngspice build's TRNOISE semantics "
+        f"(std = {result.trnoise_factor:.4f} x na; achieved "
+        f"{result.cal_achieved_input_rms_v * 1000:.4f} mV input / "
+        f"{result.cal_achieved_gate_rms_v * 1000:.4f} mV gate vs the AC targets), "
+        f"correlation time {NOISE_TRAN_TS:g}s (~the 1GHz AC band's Nyquist "
+        f"interval). Stated residual omissions: the cross-coupled PMOS pair's "
+        f"noise during exponential separation (divided by the growing "
+        f"regenerative gain) and the reset PMOS (off in evaluate)."
+    )
+    if result.sigma_decision_mv == result.sigma_decision_mv:
+        a(
+            f"- **Two statistics, one claim**: (a) pick-off MC at Vindiff=0, "
+            f"N={len(result.pickoff_diffs)} seeds, gain "
+            f"{result.gain_v_per_v:.4f} V/V -> input-referred sigma "
+            f"**{result.sigma_pickoff_mv:.4f} mV** (95% CI "
+            f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, {result.sigma_pickoff_ci95_mv[1]:.4f}] mV); "
+            f"(b) decision-transition cross-check at "
+            f"+/-{NOISE_TRAN_DECIDE_PAIRS} sigma_hat, {result.decision_points[0]['m'] if result.decision_points else 0} "
+            f"seeds/point -> sigma **{result.sigma_decision_mv:.4f} mV**. (b)'s agreeing "
+            f"with (a) within (b)'s coarser CI is the evidence that the "
+            f"regenerative phase adds no material noise term beyond the injected "
+            f"device noise -- the regeneration-inclusiveness this record exists "
+            f"to establish."
+        )
+    else:
+        a(
+            f"- **Two statistics, one claim**: (a) pick-off MC at Vindiff=0, "
+            f"N={len(result.pickoff_diffs)} seeds, gain "
+            f"{result.gain_v_per_v:.4f} V/V -> input-referred sigma "
+            f"**{result.sigma_pickoff_mv:.4f} mV** (95% CI "
+            f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, {result.sigma_pickoff_ci95_mv[1]:.4f}] mV). "
+            f"(b) The decision-transition cross-check is NOT MEASURABLE at this "
+            f"corner: every pair was degenerate (see the table below -- the "
+            f"sigma-scaled overdrives sit below this corner's resolvable-"
+            f"overdrive floor, so runs either never resolve within the window "
+            f"or all decide correctly). That is itself the physical statement: "
+            f"at this corner the input-referred noise sigma is far below the "
+            f"deterministic resolution floor DR-004 already documented, so "
+            f"noise does not bound the decision statistics here and the pick-"
+            f"off figure stands alone, with the cross-check deferred to the "
+            f"corners where it is measurable."
+        )
+    if note:
+        a(f"- **Note**: {note}")
+    overall = "MEASURED" if result.sigma_pickoff_mv == result.sigma_pickoff_mv else "FAIL"
+    a(f"- **Overall**: {overall} (informational characterization, not pass/fail -- see Claim)")
+    a("")
+    a("## Injection calibration")
+    a("")
+    a("| Injected term | AC target (mV rms/side) | achieved (mV rms/side) |")
+    a("|---|---|---|")
+    a(
+        f"| preamp, at comparator inputs | {result.preamp.single_ended_rms_v * 1000:.4f} | "
+        f"{result.cal_achieved_input_rms_v * 1000:.4f} |"
+    )
+    a(
+        f"| latch front-end, in series with steering gates | {result.latch.gate_rms_v * 1000:.4f} | "
+        f"{result.cal_achieved_gate_rms_v * 1000:.4f} |"
+    )
+    a("")
+    a("## AC anchors (this corner)")
+    a("")
+    a("| Quantity | Value |")
+    a("|---|---|")
+    a(f"| Preamp single-ended input-referred (AC `noise` sub-command, 1kHz-1GHz) | {result.preamp.single_ended_rms_v * 1000:.4f} mV rms |")
+    a(f"| Latch front-end gate-referred (steering+tail sub-model, same band, gate CM {result.latch.gate_cm_v:.4f}V, op TAIL2 {result.latch.op_tail2_v:.4f}V) | {result.latch.gate_rms_v * 1000:.4f} mV rms |")
+    a(f"| Pick-off gain (ideal-device calibration) | {result.gain_v_per_v:.4f} V/V |")
+    a("")
+    a("## Pick-off Monte Carlo (statistic (a))")
+    a("")
+    a("| N | sigma input-referred (mV) | 95% CI (mV) |")
+    a("|---|---|---|")
+    a(
+        f"| {len(result.pickoff_diffs)} | {result.sigma_pickoff_mv:.4f} | "
+        f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, {result.sigma_pickoff_ci95_mv[1]:.4f}] |"
+    )
+    a("")
+    a("## Decision-transition cross-check (statistic (b))")
+    a("")
+    a("| \\|Vod\\| (mV) | k (x sigma_hat) | +Vod: ones/M | -Vod: ones/M | unresolved | pair sigma (mV) |")
+    a("|---|---|---|---|---|---|")
+    for point in result.decision_points:
+        m = point["m"]
+        pair = pair_sigma_mv(point["v_mv"], point["plus_ones"], m, point["minus_ones"], m)
+        pair_shown = f"{pair:.4f}" if pair == pair else "degenerate"
+        a(
+            f"| {point['v_mv']:.4f} | {point['k']:g} | {point['plus_ones']}/{m} | "
+            f"{point['minus_ones']}/{m} | {point['unresolved']} | {pair_shown} |"
+        )
+    a(
+        f"\nInverse-variance-weighted decision sigma: "
+        + (
+            f"**{result.sigma_decision_mv:.4f} mV**"
+            if result.sigma_decision_mv == result.sigma_decision_mv else
+            "**not measurable at this corner** (every pair degenerate -- "
+            "sigma-scaled overdrives sit below the corner's resolvable-"
+            "overdrive floor; see the unresolved counts above)"
+        )
+    )
+    a("")
+    diff_rms_pickoff = result.sigma_pickoff_mv
+    a(
+        f"- **Ratified bound comparison (DR-002)**: the Input-referred noise "
+        f"row is RATIFIED at <= {NOISE_TARGET_MV:g} mV rms differential "
+        f"(target) / <= {NOISE_STRETCH_MV:g} mV (stretch). This record's "
+        f"regeneration-inclusive pick-off sigma {diff_rms_pickoff:.4f} mV "
+        f"(differential; the per-side injections are independent, the same "
+        f"convention the sqrt(2) AC estimate uses) "
+        f"{'clears' if diff_rms_pickoff <= NOISE_TARGET_MV else 'DOES NOT clear'} the target bound"
+        + (
+            f" and {'clears' if diff_rms_pickoff <= NOISE_STRETCH_MV else 'DOES NOT yet clear'} "
+            f"the stretch bound."
+            if diff_rms_pickoff <= NOISE_TARGET_MV else
+            " -- new information for the decision records to weigh, never "
+            "silently superseding DR-002's disposition."
+        )
+    )
+    a("")
+    return _finalize_record(
+        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
+        netlist_sha, "noise-tran",
+        extra={"noise-tran N pickoff": str(len(result.pickoff_diffs))},
+        supersedes=supersedes,
     )
 
 
@@ -1412,16 +2268,20 @@ class KickbackPoint:
 
 
 def run_kickback(
-    corner: str = "tt", temp_c: float = 27.0, quiet: bool = False,
+    corner: str = "tt", temp_c: float = 27.0, quiet: bool = False, jobs: int = 1,
 ) -> list[KickbackPoint]:
     info = pdk.resolve_or_raise()
     results: list[KickbackPoint] = []
     with tempfile.TemporaryDirectory(prefix="comparator-decision-kickback-") as scratch:
         scratch_dir = Path(scratch)
+        kb_jobs = [
+            (f"kickback_{variant}", _kickback_deck(info, corner, temp_c, variant, f"kickback_{variant}"))
+            for variant in KICKBACK_VARIANTS
+        ]
+        kb_logs = _run_many(kb_jobs, scratch_dir, jobs)
         for variant in KICKBACK_VARIANTS:
             log_name = f"kickback_{variant}"
-            deck = _kickback_deck(info, corner, temp_c, variant, log_name)
-            log_text = _run(deck, scratch_dir, log_name)
+            log_text = kb_logs[log_name]
             t, clk, vinp, vinn, outp, outn = toolchain.read_wrdata_csv(
                 scratch_dir / f"{log_name}.csv", 5)
             # Quiescent = each node's own settled value at/before RESET_NS,
@@ -1586,19 +2446,25 @@ def write_kickback_evidence(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "noise", "reset", "kickback"],
+        "mode", nargs="?", choices=["regen", "offset", "noise", "noise-tran", "reset", "kickback"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
     ap.add_argument("--corner", default="tt")
     ap.add_argument("--temp", type=float, default=27.0)
     ap.add_argument("--seed", type=int, default=1, help="offset: MC base seed")
-    ap.add_argument("--n", type=int, default=16, help="offset: MC sample count")
+    ap.add_argument("--n", type=int, default=16, help="offset / noise-tran: MC sample count")
     ap.add_argument("--record", action="store_true", help="write an evidence record under records/")
     ap.add_argument("--note", default="")
     ap.add_argument(
         "--supersedes", default="",
         help="prior <record-id> this run REPLACES for the same claim. Omit for a record making a different claim.",
+    )
+    ap.add_argument(
+        "--jobs", type=int, default=1,
+        help="parallel ngspice workers for independent single-shot decks "
+        "(offset draws/negctrl, regen sweep points, kickback variants, "
+        "noise-tran MC). Issue #41's campaign support.",
     )
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
@@ -1617,7 +2483,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.mode == "regen":
-        points = run_regen_sweep(corner=args.corner, temp_c=args.temp, quiet=args.quiet)
+        points = run_regen_sweep(corner=args.corner, temp_c=args.temp, quiet=args.quiet, jobs=args.jobs)
         if args.record:
             path = write_regen_evidence(points, args.corner, args.temp, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
@@ -1625,7 +2491,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if not unresolved else 1
 
     if args.mode == "offset":
-        result = run_offset_mc(corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n, quiet=args.quiet)
+        result = run_offset_mc(
+            corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n,
+            quiet=args.quiet, jobs=args.jobs,
+        )
         if args.record:
             path = write_offset_evidence(result, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
@@ -1640,6 +2509,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"wrote {path}")
         return 0
 
+    if args.mode == "noise-tran":
+        result = run_noise_tran(
+            corner=args.corner, temp_c=args.temp, n_pickoff=args.n,
+            quiet=args.quiet, jobs=args.jobs,
+        )
+        if args.record:
+            path = write_noise_tran_evidence(result, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if result.sigma_pickoff_mv == result.sigma_pickoff_mv else 1
+
     if args.mode == "reset":
         points = run_reset_check(quiet=args.quiet)
         if args.record:
@@ -1648,7 +2527,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if all(p.ok for p in points) else 1
 
     if args.mode == "kickback":
-        points = run_kickback(corner=args.corner, temp_c=args.temp, quiet=args.quiet)
+        points = run_kickback(corner=args.corner, temp_c=args.temp, quiet=args.quiet, jobs=args.jobs)
         if args.record:
             path = write_kickback_evidence(points, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")

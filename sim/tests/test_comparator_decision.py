@@ -218,5 +218,197 @@ class TestResetDeviceBlockGndTied(unittest.TestCase):
             cd_run._reset_device_block("bogus")
 
 
+class TestLatchNoiseDeck(unittest.TestCase):
+    """`_latch_noise_deck()` (issue #41) -- the steering+tail AC sub-model
+    whose gate-referred `inoise_total` supplies the noise-tran gate
+    injection amplitude. Same shape discipline as `_noise_deck`: latch
+    front-end devices verbatim (gates on driven nodes), everything else
+    absent, noiseless loads only."""
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+
+    def test_re_emits_steering_pair_and_tail_verbatim(self):
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        deck_joined = " ".join(deck.split())
+        for name, nodes in (
+            ("XM_STN_P", ["OUTP", "GST_P", "TAIL2", "GND"]),
+            ("XM_STN_N", ["OUTN", "GST_N", "TAIL2", "GND"]),
+        ):
+            joined = " ".join(cd_run._dut_device_line(name, nodes=nodes).split())
+            self.assertIn(joined, deck_joined, f"{name} should be re-emitted verbatim")
+        self.assertIn(" ".join(cd_run._dut_device_line("XM_TAIL2").split()), deck_joined)
+
+    def test_omits_everything_upstream_and_past_the_front_end(self):
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        for absent in ("XM_PINN", "XM_PINP", "XM_PTAIL", "XR_LP", "XR_LN",
+                       "XM_C1P", "XM_C1N", "XM_LATP_P", "XM_LATP_N",
+                       "XM_RST_P", "XM_RST_N", "XR_CLKS", "XM_CLKCAP"):
+            self.assertNotIn(absent, deck, f"{absent} must be omitted from the steering sub-model")
+
+    def test_loads_are_noiseless(self):
+        # Only inductors and capacitors load the drains -- a resistor would
+        # contribute its own noise to onoise and contaminate the
+        # gate-referred referral.
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        self.assertIn("Lp OUTP VDD", deck)
+        self.assertIn("Ln OUTN VDD", deck)
+        self.assertIn("Cp OUTP 0", deck)
+        self.assertIn("Cn OUTN 0", deck)
+        self.assertNotIn("R", "\n".join(
+            l for l in deck.splitlines() if l and not l.startswith(("*", "."))))
+
+    def test_gate_bias_and_noise_analysis_shape(self):
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        self.assertIn("vcmo = 1.180000", deck)  # gate CM bias param
+        self.assertIn("dc {vcmo} AC 1", deck)   # input reference source
+        self.assertIn(f"noise v(OUTP,OUTN) Vstp dec 20 "
+                      f"{cd_run.NOISE_FSTART_HZ:g} {cd_run.NOISE_FSTOP_HZ:g}", deck)
+
+
+class TestNoiseTranDecks(unittest.TestCase):
+    """The `noise-tran` injection decks (issue #41): the FULL committed
+    fragment (unlike both AC sub-models), with the steering pair's gates
+    moved onto injected nodes and per-side TRNOISE sources at the inputs
+    and in series with the gates."""
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+
+    def _pickoff(self, **kw):
+        defaults = dict(corner="tt", temp_c=27.0, vindiff_mv=0.0, seed=7,
+                        na_input=1e-3, na_gate=2e-3, log_name="nt")
+        defaults.update(kw)
+        return cd_run._noise_tran_pickoff_deck(self.info, **defaults)
+
+    def test_includes_the_full_fragment_verbatim(self):
+        deck = self._pickoff()
+        # Fold SPICE continuation markers ("+") the same way _dut_devices
+        # folds them, so a multi-line raw emit compares equal to the
+        # helper's single-line re-emission.
+        joined = " ".join(deck.split()).replace(" + ", " ")
+        for name in cd_run._dut_devices():
+            if name in ("XM_STN_P", "XM_STN_N"):
+                continue
+            self.assertIn(" ".join(cd_run._dut_device_line(name).split()),
+                          joined,
+                          f"{name} should appear verbatim")
+
+    def test_steering_gates_moved_to_injected_nodes(self):
+        deck = self._pickoff()
+        deck_joined = " ".join(deck.split())
+        self.assertIn(" ".join(cd_run._dut_device_line(
+            "XM_STN_P", nodes=["OUTP", "GST_P", "TAIL2", "GND"]).split()), deck_joined)
+        self.assertIn(" ".join(cd_run._dut_device_line(
+            "XM_STN_N", nodes=["OUTN", "GST_N", "TAIL2", "GND"]).split()), deck_joined)
+
+    def test_four_trnoise_sources_present_with_seed(self):
+        deck = self._pickoff()
+        self.assertIn(".option rndseed=7", deck)
+        self.assertEqual(deck.count("TRNOISE("), 4)
+        self.assertIn(f"Vinp VINP 0 dc {cd_run.VCM}", deck)
+        self.assertIn(f"Vstp GST_P OUTP1 dc 0 TRNOISE(", deck)
+        self.assertIn(f"Vstn GST_N OUTN1 dc 0 TRNOISE(", deck)
+
+    def test_decision_deck_uses_the_longer_window(self):
+        pickoff = self._pickoff()
+        decision = cd_run._noise_tran_decision_deck(
+            self.info, "tt", 27.0, 0.5, 9, 1e-3, 2e-3, "ntd")
+        self.assertIn(f"tran 0.002n {cd_run.PICKOFF_TSTOP_NS}n", pickoff)
+        self.assertIn(
+            f"tran 0.01n {cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.NOISE_TRAN_EVALUATE_NS}n",
+            decision)
+
+    def test_ts_parameterizes_the_update_interval(self):
+        deck = self._pickoff(ts=4.1e-10)
+        self.assertIn("4.1e-10", deck)
+
+
+class TestPairSigmaEstimator(unittest.TestCase):
+    """`pair_sigma_mv()` / `_probit()` (issue #41): the pair-symmetric
+    decision-statistic estimator. Checks against hand-derived Gaussian
+    fractions, offset cancellation, and the degenerate-pair guard."""
+
+    def test_recovers_sigma_from_exact_gaussian_fractions(self):
+        # Phi(1) ~= 0.8413: at v = sigma exactly, p+ - p- ~= 0.683.
+        # All quantities in mV (sigma = 0.6 mV).
+        import math
+        sigma = 0.6
+        v = 1.0 * sigma
+        p_plus = 0.5 * (1 + math.erf(1 / math.sqrt(2)))
+        p_minus = 0.5 * (1 - math.erf(1 / math.sqrt(2)))
+        m = 100_000
+        est = cd_run.pair_sigma_mv(v, round(p_plus * m), m, round(p_minus * m), m)
+        self.assertAlmostEqual(est, 0.6, places=3)
+
+    def test_offset_cancels_to_first_order(self):
+        # The same offset shift on both signs moves p+ and p- together and
+        # their difference is unchanged to first order -- the reason the
+        # estimator is pair-symmetric. mV units throughout.
+        import math
+        sigma = 0.6
+        v = sigma
+        mu = 0.05  # mV offset
+        p_plus = 0.5 * (1 + math.erf((v - mu) / sigma / math.sqrt(2)))
+        p_minus = 0.5 * (1 + math.erf((-v - mu) / sigma / math.sqrt(2)))
+        m = 100_000
+        est = cd_run.pair_sigma_mv(v, round(p_plus * m), m, round(p_minus * m), m)
+        self.assertAlmostEqual(est, 0.6, places=2)
+
+    def test_degenerate_pair_is_nan(self):
+        est = cd_run.pair_sigma_mv(0.5, 64, 64, 0, 64)
+        self.assertNotEqual(est, est)  # NaN
+
+    def test_all_unresolved_pair_is_nan(self):
+        # p+ == p- (e.g. every run below the corner's resolvable-overdrive
+        # floor) makes arg exactly 0.5 and probit 0 -- no sigma information.
+        est = cd_run.pair_sigma_mv(0.5, 0, 64, 0, 64)
+        self.assertNotEqual(est, est)  # NaN
+
+    def test_probit_inverts_norm_cdf(self):
+        for x in (-2.0, -0.5, 0.0, 0.37, 1.3, 2.7):
+            self.assertAlmostEqual(cd_run._norm_cdf(cd_run._probit(cd_run._norm_cdf(x))), cd_run._norm_cdf(x), places=9)
+
+
+class TestJobsPlumbing(unittest.TestCase):
+    """The issue #41 CLI surface: `--jobs` and the `noise-tran` mode exist
+    and route; `--jobs 1` preserves the sequential default."""
+
+    def test_jobs_flag_parses(self):
+        # Parse-level only: a real offset run would invoke the PDK; the
+        # harness's own selftest covers the real path. argparse rejecting
+        # the flag exits 2.
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                cd_run.main(["offset", "--jobs", "4", "--help"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("--jobs", buf.getvalue())
+
+    def test_noise_tran_mode_in_choices(self):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                cd_run.main(["noise-tran", "--help"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("noise-tran", buf.getvalue())
+        self.assertIn("--jobs", buf.getvalue())
+
+    def test_noise_tran_mode_in_choices(self):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                cd_run.main(["noise-tran", "--help"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("noise-tran", buf.getvalue())
+        self.assertIn("--jobs", buf.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

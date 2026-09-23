@@ -45,6 +45,15 @@ it — each also carries permissible extensions the template does not
 mandate (`Supersedes`/`Superseded by`/`Related` bullets, `## Open items`;
 DR-001 an `### Amendment`), which stay as-is.
 
+**Update (issue #41,
+[DR-005](decision-records/DR-005-full-corner-campaign.md),
+2026-09-22).** The full-corner campaign record: ratifies the
+Decision-time row (four of five rows now ratified; only Supply/power
+stays open), records the multi-corner + N=200 offset basis, the
+regeneration-inclusive noise evidence, and the `sf`/−40 °C kickback
+stretch breach (2.0208 mV vs the non-binding 2 mV stretch figure —
+recorded, not relaxed).
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar
