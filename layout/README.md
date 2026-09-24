@@ -22,12 +22,22 @@ python3 layout/gen_comparator.py --check   # byte-compare against the committed 
 
 `--check` passes: the flow is deterministic (no randomness, no dict-ordering
 dependence), so a re-run at the pinned toolchain reproduces
-`comparator.gds` byte-for-byte.
+`comparator.gds` byte-for-byte. It also survived the klt 0.5.0 → 0.6.0 bump
+(#47) unchanged — the committed GDS is byte-identical across both generator
+builds, so nothing in that toolchain move is a geometry change.
+`compose-report.json` did move: klt 0.6.0 records a `source_path` +
+`source_digest` per placed block (additive; no field removed), so the
+compose evidence now pins each `klt gen` block's own GDS by hash.
 
-**Toolchain pin.** `klt` (klayout-tools) **0.5.0**, the same pin as
-`docs/environment-setup.md` and `.github/workflows/t1-signoff.yml`; PDK
-`sky130A` at open_pdks `c6d73a35f5…` (`~/.volare`, per `sim/pdk.json`).
-Override the install root with `--pdk-root`.
+**Toolchain pin.** `klt` (klayout-tools) **0.6.0** on the **klayout
+0.30.10** engine, the same pin as `docs/environment-setup.md` and
+`.github/workflows/t1-signoff.yml`; PDK `sky130A` at open_pdks
+`c6d73a35f5…` (`~/.volare`, per `sim/pdk.json`). Override the install root
+with `--pdk-root`, and the binary with `--klt` (e.g. a venv that holds the
+pin). The engine is pinned because klt declares only `klayout>=0.30` and
+stamps `provenance.klayout_version_mismatch` against the version it
+build-tests on; see `docs/environment-setup.md` for the measurement behind
+that pin.
 
 ## Method
 
@@ -121,10 +131,13 @@ and this README updated.
 `drc-report.json` is the committed `klt drc` envelope
 `manifests/sky130-comparator.json` cites for T1 item 3: `status: "clean"`,
 `violation_count: 0`, exit status 0, deck `sky130` identified by content
-hash `sha256:a903acb1…`, over `layout/comparator.gds` at
+hash `sha256:a1d90e06…`, over `layout/comparator.gds` at
 `sha256:cad5ad55…` — the input hash the manifest **pins**, so a regenerated
 GDS renders item 3 `unmet` (stale evidence) instead of silently grading
-yesterday's run.
+yesterday's run. The envelope also records `provenance.pdk` (`sky130A`,
+open_pdks `c6d73a35f5…`, resolved from the `--pdk-root` flag) and
+`provenance.klayout_version_mismatch: false` — the engine that produced it
+is the one klt 0.6.0 build-tests against.
 
 `gen_comparator.py` refreshes it with every other deliverable
 (`emit_drc_evidence`, which unlike the scratch "[6/7] composed DRC" step
@@ -152,17 +165,18 @@ committed envelope's own `coverage` block:
   implant, or the met1 pin shapes was checked. Implant
   enclosure/spacing and tap rules are **not** covered by this clean verdict;
   the body ties documented above are geometry this deck cannot grade.
-- **`rules_skipped`** (28): `capm.{enclosing.via3.1,separation.via3.1,space.1,width.1}`,
+- **`rules_skipped`** (34): `capm.{enclosing.via3.1,separation.via3.1,space.1,width.1}`,
   `capm2.{enclosing.via4.1,separation.via4.1,space.1,width.1}`,
   `met2.enclosing.via2.1`,
-  `met3.{enclosing.capm.1,enclosing.via2.1,enclosing.via3.1,space.1,width.1}`,
-  `met4.{enclosing.capm2.1,enclosing.via3.1,enclosing.via4.1,space.1,width.1}`,
-  `met5.{enclosing.via4.1,space.1,width.1}`,
+  `met3.{area.1,enclosing.capm.1,enclosing.via2.1,enclosing.via3.1,holes_area.1,space.1,width.1}`,
+  `met4.{area.1,enclosing.capm2.1,enclosing.via3.1,enclosing.via4.1,holes_area.1,space.1,width.1}`,
+  `met5.{area.1,enclosing.via4.1,holes_area.1,space.1,width.1}`,
   `via2.{space.1,width.1}`, `via3.{space.1,width.1}`, `via4.{space.1,width.1}`.
   Each was skipped because a layer it reads is absent from this stream —
   top metal here is met2 and no MIM capacitor is drawn — i.e. "no geometry
-  to check", not "checked and waived". The unabridged list is in
-  `drc-report.json`.
+  to check", not "checked and waived". The envelope now says so per rule:
+  `coverage.inapplicable` carries all 34 with `reason:
+  no_applicable_geometry`. The unabridged list is in `drc-report.json`.
 - **`deck_scope`** (17): `cap2m, capm, ct, difftap, li, licon, m1, m2, m3,
   m4, m5, nwell, poly, via, via2, via3, via4`. sky130's source decks
   (`sky130.lydrc` / `sky130A_mr.drc`) have no numbered DRM sections to cite,
@@ -172,23 +186,41 @@ committed envelope's own `coverage` block:
   density/`areaid`, antenna, or latchup/tap-distance family appears — the
   deck does not attempt those DRM chapters at all, for any layout.
 
-Two positive statements belong beside the gaps. `coverage.layers_checked`
+Three positive statements belong beside the gaps. `coverage.layers_checked`
 is 9 of the deck's 17 layers — `64/20, 65/20, 66/20, 66/44, 67/20, 67/44,
 68/20, 68/44, 69/20` (nwell, diff, poly, licon1, li1, mcon, met1, via,
 met2): the entire stack this layout actually draws for connectivity, width,
-space and enclosure. And `coverage.voltage_domain_warnings` is empty — no
-`hvi` (75/20) medium-voltage marker is drawn, so no checked geometry was
-graded against the wrong threshold column.
+space and enclosure. `coverage.rules_checked` (23, new in the 0.6.0
+envelope) names them rule-by-rule, so "which of the deck's rules actually
+ran" is now readable off the evidence instead of inferred from the skipped
+list. And `coverage.voltage_domain_warnings` is empty — no `hvi` (75/20)
+medium-voltage marker is drawn, so no checked geometry was graded against
+the wrong threshold column.
 
-**What the pinned grader cannot show.** klt 0.5.0 predates
-`klayout-tools` #2002 (`citation.coverage` passthrough) and #2196
-(`input_verified`), so `manifests/t1-signoff-report.json` records item 3's
-citation with neither field, and `scripts/check-t1-signoff.py` rule 3 emits
-its documented `input_verified: null` **warning** rather than an
-affirmative re-hash (gate passes, loudly). Re-graded out-of-band at klt
-0.6.0 the identical manifest returns the same `met` verdict with
-`input_verified: true` and the `coverage` block above echoed into the
-citation. Bumping the repo-wide pin is #47, deliberately not done here.
+**What the klt 0.6.0 pin changed about this verdict (#47).** The bump off
+0.5.0 moved the deck, not the layout: the curated sky130 deck grew from 47
+to 57 rules (10 added, none removed) — `met1`–`met5` `area.1` and
+`holes_area.1`, transcribed from `sky130A_mr.drc`'s `m1.6`/`m2.6`/`m3.6`/
+`m4.4a`/`m5.4` and their `m*.7` holes companions (klayout-tools #1955,
+#1976). Before that the deck carried **no area check at all**, so a
+sub-minimum-area metal sliver graded clean unlooked-at. Four of the ten
+(`met1.area.1`, `met1.holes_area.1`, `met2.area.1`, `met2.holes_area.1`)
+actually ran against this layout and found nothing; the other six are the
+met3/met4/met5 entries in the skipped list above. **The `met` verdict is
+unchanged and the geometry is byte-identical — but the "clean" behind it is
+strictly wider than the one 0.5.0 produced.** The deck's content hash moved
+with it (`sha256:a903acb1…` → `sha256:a1d90e06…`), which is exactly what
+that hash is for.
+
+Two grader-side disclosures arrived in the same bump.
+`manifests/t1-signoff-report.json` now records item 3's citation with
+`input_verified: true` (klayout-tools #2196 — signoff re-hashes
+`layout/comparator.gds` on disk and compares it against the envelope's own
+`provenance.input.content_hash`), so `scripts/check-t1-signoff.py` rule 3
+gets an affirmative verification instead of the `input_verified: null`
+warning it used to emit on every run; and the `coverage` block above is
+echoed into the citation itself (#2002), so the three claimant-enforced
+disclosure fields sit next to the verdict without re-opening this envelope.
 
 ## What is deliberately not attempted here
 

@@ -42,7 +42,7 @@ volare --version    # -> Volare v0.20.6 ...
 python3 --version   # -> Python 3.12.3
 ```
 
-## Signoff tooling (klt, recorded 2026-09-21)
+## Signoff tooling (klt, recorded 2026-09-24)
 
 The T1 signoff manifest (issue #31) is graded by
 [`klt`](https://github.com/2AMLogic/klayout-tools)'s `klt signoff
@@ -51,20 +51,34 @@ The T1 signoff manifest (issue #31) is graded by
 
 | Tool | Version | Install path |
 | --- | --- | --- |
-| klt (klayout-tools) | `0.5.0` | `/home/ubuntu/.local/bin/klt` (`uv tool install klayout-tools`) |
+| klt (klayout-tools) | `0.6.0` | `uv tool install "klayout-tools==0.6.0" --with klayout==0.30.10`, or a venv: `pip install "klayout-tools==0.6.0" "klayout==0.30.10"` |
+| klayout (engine under klt) | `0.30.10` | same install; `klayout_tools.build_identity.klayout_version_expected()` |
 
 ```sh
-klt --version       # -> klt 0.5.0 ...
+klt --version       # -> klt 0.6.0
+python -c "import klayout; print(klayout.__version__)"   # -> 0.30.10
 ```
 
-The install is pinned the same way in CI (`klayout-tools==0.5.0`) so the
-committed evidence record (`manifests/t1-signoff-report.json`) and every
-re-grade are produced by the same grader build. Because klt 0.5.0 ships a
-pre-item-11 checklist, signoff runs pass `--tiers-doc
-manifests/design-evidence-tiers.md` — a vendored, pinned copy of the
-klayout-tools checklist doc — see `manifests/README.md` for the
-regeneration command, the pin policy, and the honest all-`unmet` current
-verdict.
+The install is pinned the same way in CI (`klayout-tools==0.6.0`,
+`klayout==0.30.10`) so the committed evidence record
+(`manifests/t1-signoff-report.json`) and every re-grade are produced by the
+same grader build.
+
+**Why the engine is pinned too.** klt declares `klayout>=0.30`, so an
+unpinned install resolves whatever klayout is newest that day; klt 0.6.0
+build-tests against `klayout==0.30.10` and stamps
+`provenance.klayout_version_mismatch: true` (plus a stderr warning that
+"DRC/LVS report counts … may differ") on any other engine. Measured on this
+repo's own layout, klayout 0.30.10 and 0.30.12 produce a `klt drc` envelope
+that is identical field-for-field apart from that version string and
+boolean — but the committed envelope should not carry a self-declared
+reproducibility warning, so the pin names the engine klt expects.
+
+Signoff runs pass `--tiers-doc manifests/design-evidence-tiers.md` — a
+vendored, pinned copy of the klayout-tools checklist doc — so the record is
+graded against a fixed checklist revision rather than whatever the installed
+klt happens to ship. See `manifests/README.md` for the regeneration command,
+the pin policy, and the honest current verdict.
 
 `sim/toolchain.json` is the machine-checked pin this repo's harness actually
 enforces (`sim/harness/toolchain.py`'s `check_env()`, driven by

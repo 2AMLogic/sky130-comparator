@@ -11,7 +11,7 @@ move.
 | File | What it is |
 | --- | --- |
 | `sky130-comparator.json` | The block manifest — `block` (the fleet roll-up's identity for this repo), `kind`, and per-T1-item evidence citations. Grader contract: `klayout-tools` `docs/cli/signoff.md` → "Tier-verdict report". |
-| `design-evidence-tiers.md` | **Vendored copy** of `2AMLogic/klayout-tools`'s checklist doc, pinned at klayout-tools commit `31a3e3c` (byte-for-byte: SHA-256 `c7a1e7e10627fae396007e0ff951734f37d95028b8f49f2e21e802e9f552f318`, MIT-licensed). The pinned extra copy exists because the newest released klt (0.5.0) ships a pre-item-11 checklist (10 items), while the checklist grew an eleventh item — "Power delivery (structural)" — on 2026-09-17 (klayout-tools #2025) and refined its grading rules through klayout-tools #31a3e3c (2026-09-21). `--tiers-doc` grades against this pinned copy so item 11 renders a row, as issue #31 requires. |
+| `design-evidence-tiers.md` | **Vendored copy** of `2AMLogic/klayout-tools`'s checklist doc, pinned at klayout-tools commit `31a3e3c` (byte-for-byte: SHA-256 `c7a1e7e10627fae396007e0ff951734f37d95028b8f49f2e21e802e9f552f318`, MIT-licensed). It was introduced because klt 0.5.0 shipped a pre-item-11 checklist (10 items) while the doc had already grown an eleventh item — "Power delivery (structural)" — on 2026-09-17 (klayout-tools #2025), refined through #31a3e3c (2026-09-21). **The pinned klt now ships all 11 itself** (0.6.0 reports `build_t1_item_count: 11`), so the vendored copy's job is no longer "restore a missing row" but "pin the checklist revision": `--tiers-doc` keeps the record graded against one fixed, hash-recorded doc (`source_doc_content_hash`) rather than whatever revision the installed klt happens to carry. |
 | `t1-signoff-report.json` | The committed **evidence record**: byte-for-byte `klt signoff --manifest` JSON output as of the pinned klt version below. This is the single row-per-item verdict (`met`/`unmet` plus per-item `reason`) the tracker (issue #3) points at. |
 | `integrator-view.json` | The **rule-9 integrator view** (issue #36): what a full-chip integrator takes, as structured data at a fixed path — top cell, port list, netlist path (with its regeneration command), GDS path, measured area, maturity rung, provenance. Honest nulls (`"not yet produced"` notes) where the artifact does not exist yet (GDS, area today); the maturity rung always agrees with `t1-signoff-report.json`'s graded verdict. Consumers and their requirement rows live in [`spec/consumers.md`](../spec/consumers.md); this file is the data half of that record. |
 
@@ -52,12 +52,17 @@ irrelevant one anyway. The historical per-item prose context lives in
 tracker issue #3's edit history and `## Verified corrections`.
 
 Item 11 ("Power delivery (structural)") renders a row, `unmet`, as
-issue #31 requires. Note the grading-build disclosure: as of the pinned
-klt, `build_t1_item_count` (10) trails the vendored doc's item count
-(11) — klt 0.5.0 predates item 11's grading rules, so when an item-11
-ERC/LVS citation is eventually added, a klt upgrade must land first
-(until then `klt signoff` reports what it can grade and the `#2176`
-grader-notes machinery flags the rest).
+issue #31 requires. The grading-build disclosure now agrees with the doc:
+as of the pinned klt, `build_t1_item_count` (11) **equals** the vendored
+doc's item count (11) — klt 0.6.0 carries item 11's grading rules, so an
+item-11 ERC/LVS citation is gradeable when one is eventually produced, and
+no further klt upgrade is a prerequisite for it. (Under the previous 0.5.0
+pin the build knew only 10 of the 11, and `scripts/check-t1-signoff.py`
+carried a warning for that case; the check remains, it simply no longer
+fires.) The report also records the grading build itself — `build.version`,
+`git_commit`, `git_tag`, `is_release`, and a `grading_ruleset_id` hash —
+so "which grader produced this verdict" is in the record, not inferred
+from the CI pin.
 
 ## Regenerating the evidence record
 
@@ -95,19 +100,34 @@ report against the committed record:
 - **passes** on the honest pre-T1 state — `unmet` uncited rows are the
   gap, visibly, which is the point.
 
-**One warning stands today, expected:** klt 0.5.0 predates
-klayout-tools #2196, so item 3's citation carries a `content_hash` the
-grading build never re-hashed (`input_verified: null`) and the gate says so
-on every run. Re-graded out-of-band at klt 0.6.0 the same citation reports
-`input_verified: true`; bumping the pin to retire the warning is issue #47.
+**The gate runs warning-free today** (issue #47). Under the previous klt
+0.5.0 pin it did not: 0.5.0 predates klayout-tools #2196, so item 3's
+citation carried a `content_hash` the grading build never re-hashed
+(`input_verified: null`) and the gate said so, loudly, on every run. klt
+0.6.0 re-hashes `layout/comparator.gds` on disk against the envelope's own
+`provenance.input.content_hash` and records `input_verified: true`, so
+rule 3 now gets an affirmative verification instead of a standing warning.
+The `input_verified: null` branch stays in the gate and stays covered by
+the selftest — it is the correct behavior for any future citation graded by
+a build that cannot re-hash.
+
+Item 3's citation also now carries a `coverage` block (klayout-tools
+#2002) echoing the cited envelope's `layers_in_stream_without_rules` /
+`rules_skipped` / `deck_scope` verbatim, so the claimant-enforced
+disclosure is readable next to the verdict. Reported is still not graded —
+see "The current verdict, honestly" above, and read them against
+[`layout/README.md`](../layout/README.md)'s claim.
 
 CI (`.github/workflows/t1-signoff.yml`) installs klt **pinned to
-`klayout-tools==0.5.0`** — the version that graded the committed record —
-then runs the gate's hermetic selftest and the live gate. Bump the pin
-deliberately, regenerate the record in the same change (see above), and
-note that klt versions newer than the vendored doc's item list will
-report `build_t1_item_count`/`graded_by_build` disclosures rather than
-fail.
+`klayout-tools==0.6.0`** on the **`klayout==0.30.10`** engine — the build
+that graded the committed record — then runs the gate's hermetic selftest
+and the live gate. Bump the pin deliberately, regenerate the record in the
+same change (see above), and note that a klt whose own checklist differs
+from the vendored doc reports `build_t1_item_count`/`graded_by_build`
+disclosures rather than failing. **A klt bump can move the evidence as well
+as the report**: 0.6.0's curated sky130 deck added 10 rules over 0.5.0's,
+so `layout/drc-report.json` had to be re-run in the same change — diff the
+verdicts and the coverage, don't rubber-stamp the version string.
 
 ## The integrator-view gate (issue #36)
 
