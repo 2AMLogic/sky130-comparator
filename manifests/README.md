@@ -17,24 +17,39 @@ move.
 
 ## The current verdict, honestly
 
-Every T1 item renders `unmet` with `reason: no_evidence` — this block has
-**no `klt` JSON envelope committed yet** (no DRC/LVS/PEX run exists, and
-this repo's `sim/` harness records evidence as append-only Markdown
-records, not `klt sim`/`klt yield` JSON envelopes, so nothing gradeable
-can be cited honestly yet). An all-`unmet` manifest is the correct result
-per issue #31's own "An all-`unmet` manifest is a correct result" section:
-it is the machine-readable statement of the gap, and it must not be
-decorated with citations that do not actually support their rows (items
-1, 2, 9 and 10 in particular are graded on "some passing envelope was
-cited", never on topical relevance — see the grader contract).
+**1 of 11 T1 items is `met`: item 3, "DRC clean"** (issue #46), cited from
+`layout/drc-report.json` — a committed `klt drc` envelope over
+`layout/comparator.gds`, `status: "clean"`, 0 violations, deck identified
+by content hash, with the cited input hash pinned in the manifest so a
+regenerated GDS renders the row `unmet` (stale) rather than grading a
+superseded run. Item 3's coverage disclosure is **claimant-enforced, not
+graded** (`design-evidence-tiers.md` item 3): the
+`layers_in_stream_without_rules` / `rules_skipped` / `deck_scope` fields
+that qualify that "clean" are quoted in full in
+[`layout/README.md`](../layout/README.md) → "DRC signoff, and the coverage
+gaps behind 'clean'". A `met` row here is **not** evidence that they were
+disclosed — read them against the claim.
+
+The other ten items render `unmet` with `reason: no_evidence`: no LVS/PEX
+run exists, and this repo's `sim/` harness records evidence as append-only
+Markdown records, not `klt sim`/`klt yield` JSON envelopes, so nothing
+gradeable can be cited honestly for them yet. Those `unmet` rows are the
+correct result per issue #31's own "An all-`unmet` manifest is a correct
+result" section: they are the machine-readable statement of the gap, and
+they must not be decorated with citations that do not actually support
+them (items 1, 2, 9 and 10 in particular are graded on "some passing
+envelope was cited", never on topical relevance — see the grader
+contract).
 
 Rows are `klt`-graded verdicts, not repo-content claims. Items 1
-(schematic `design/comparator.sch` + `design/netlist.sh`) and 9
-(`sim/comparator-decision` testbenches) have committed content, but the
-grade is about a *check behind a citation*, and no `klt` envelope backs
-them yet — the `unmet`/`no_evidence` row is the accurate mechanical
-statement. The historical per-item prose context lives in tracker issue
-#3's edit history and `## Verified corrections`.
+(schematic `design/comparator.sch` + `design/netlist.sh`), 2 (the
+committed `layout/comparator.gds`) and 9 (`sim/comparator-decision`
+testbenches) have committed content, but the grade is about a *check
+behind a citation*, and no `klt` envelope backs them yet — the
+`unmet`/`no_evidence` row is the accurate mechanical statement, and for
+those three the grader could not tell a relevant citation from an
+irrelevant one anyway. The historical per-item prose context lives in
+tracker issue #3's edit history and `## Verified corrections`.
 
 Item 11 ("Power delivery (structural)") renders a row, `unmet`, as
 issue #31 requires. Note the grading-build disclosure: as of the pinned
@@ -79,6 +94,12 @@ report against the committed record:
   reflected in the committed record;
 - **passes** on the honest pre-T1 state — `unmet` uncited rows are the
   gap, visibly, which is the point.
+
+**One warning stands today, expected:** klt 0.5.0 predates
+klayout-tools #2196, so item 3's citation carries a `content_hash` the
+grading build never re-hashed (`input_verified: null`) and the gate says so
+on every run. Re-graded out-of-band at klt 0.6.0 the same citation reports
+`input_verified: true`; bumping the pin to retire the warning is issue #47.
 
 CI (`.github/workflows/t1-signoff.yml`) installs klt **pinned to
 `klayout-tools==0.5.0`** — the version that graded the committed record —

@@ -8,8 +8,11 @@ places and routes them with a deterministic router this repo controls, and
 verifies the composition (per-block DRC, composed DRC, ``klt extract``
 device count).  Running it writes scratch under ``layout/_gen/`` (gitignored)
 and refreshes the committed deliverables ``layout/comparator.gds``,
-``layout/compose-report.json``, ``layout/route-summary.json`` and
-``layout/extract-device-count.json``.
+``layout/compose-report.json``, ``layout/route-summary.json``,
+``layout/extract-device-count.json`` and ``layout/drc-report.json`` (the
+last re-run from the repo root against the *emitted* GDS, since it is the
+envelope ``manifests/sky130-comparator.json`` cites for T1 item 3 -- see
+``emit_drc_evidence``).
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
     python3 layout/gen_comparator.py --check    # byte-compare against the
@@ -962,6 +965,42 @@ def emit(out_dir: Path, layout_dir: Path) -> dict:
     return bbox
 
 
+def emit_drc_evidence(klt: str, pdk_args: list[str], repo_root: Path) -> None:
+    """Re-run the composed DRC against the *emitted* GDS and commit it.
+
+    This is T1 item 3's citable evidence (issue #46), distinct from the
+    step-[6/7] run inside ``_gen/``: that one runs with ``cwd=_gen`` on a
+    bare ``comparator.gds``, so the envelope it records names a path that
+    does not resolve from the repo root where ``klt signoff`` /
+    ``scripts/check-t1-signoff.py`` grade it.  Re-running from the repo root
+    on ``layout/comparator.gds`` records both the path CI resolves and the
+    ``provenance.input.content_hash`` the manifest pins -- so regenerating
+    the GDS without refreshing this file renders item 3 ``unmet`` (stale
+    evidence) rather than grading a superseded run.
+
+    Unlike step [6/7] this checks the verdict: committing an envelope that
+    records violations as *signoff evidence* would be a false claim.
+    """
+    r = run([klt, "drc", "layout/comparator.gds", "--deck", "sky130"] + pdk_args
+            + ["--format", "json"], cwd=repo_root, check=False)
+    envelope = json.loads(r.stdout) if r.stdout.strip() else {"error": r.stderr}
+    if r.returncode != 0 or envelope.get("status") != "clean":
+        raise RuntimeError(
+            f"signoff DRC over layout/comparator.gds is not clean "
+            f"(rc={r.returncode}, status={envelope.get('status')!r}, "
+            f"violations={envelope.get('violation_count')}) -- refusing to "
+            "commit it as T1 item 3 evidence"
+        )
+    (repo_root / "layout" / "drc-report.json").write_text(
+        json.dumps(envelope, indent=2) + "\n")
+    cov = envelope.get("coverage") or {}
+    print("  signoff drc: status=clean, "
+          f"layers_in_stream_without_rules={len(cov.get('layers_in_stream_without_rules', []))}, "
+          f"rules_skipped={len(cov.get('rules_skipped', []))}, "
+          f"deck_scope={len(cov.get('deck_scope', []))} "
+          "(disclosure: layout/README.md)")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true",
@@ -999,6 +1038,9 @@ def main() -> int:
     if rc != 0:
         return rc
     bbox = emit(repo_root / "layout" / "_gen", repo_root / "layout")
+    print("[emit] signoff DRC over the emitted GDS (T1 item 3 evidence)")
+    emit_drc_evidence(args.klt, ["--pdk", PDK_VARIANT, "--pdk-root", str(pdk_root)],
+                      repo_root)
     area = None
     if bbox:
         area = round((bbox["x1"] - bbox["x0"]) * (bbox["y1"] - bbox["y0"]), 2)
