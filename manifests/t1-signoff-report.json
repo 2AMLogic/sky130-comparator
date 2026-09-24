@@ -4,7 +4,7 @@
   "kind": "analog",
   "tier": null,
   "t1_item_count": 11,
-  "t1_met_count": 0,
+  "t1_met_count": 1,
   "source_doc": "manifests/design-evidence-tiers.md",
   "items": [
     {
@@ -36,9 +36,16 @@
       "partition": null,
       "text": "latest `klt drc` JSON report: `status: clean`, fresh, with the deck identified (content hash). Known deck coverage gaps (rule-free layers, skipped rules) must be enumerated in the claim, not hidden behind \"clean\" \u2014 a clean verdict from a deck with undisclosed holes is a false claim. The report already states its own gaps, so the disclosure is those fields quoted from the cited envelope's `coverage` block (`docs/cli/drc.md`), not prose written from memory: `coverage.layers_in_stream_without_rules` (layers drawn in this stream that the deck has no rule for), `coverage.rules_skipped` (rules the deck carries but this run did not evaluate), and `coverage.deck_scope` (which chapters of the foundry DRM the deck transcribes at all). A claim that leaves a non-empty `layers_in_stream_without_rules` or `rules_skipped` unstated, or that never states the `deck_scope` its \"clean\" was measured inside, has not satisfied this item however clean the `status` is. **This disclosure is claimant-enforced, not tool-enforced**: `klt signoff` grades item 3 on `status: \"clean\"` alone \u2014 a deck with rule-free drawn layers or skipped rules grades `met` exactly like a fully-covering one. Since #2002 it does *report* all three fields (item 3's citation carries a `coverage` block quoting them verbatim, `docs/cli/signoff.md` \u2192 \"DRC coverage is reported, not graded\"), so a reviewer no longer has to re-open the DRC envelope to find them \u2014 but reporting is not enforcing: nothing compares them against what the claim actually disclosed, so a `met` verdict from `klt signoff` is still not evidence that the gaps were disclosed. A reviewer must read the reported `coverage` against the claim themselves.",
       "notes": [],
-      "status": "unmet",
-      "reason": "no_evidence",
-      "citation": null
+      "status": "met",
+      "reason": null,
+      "citation": {
+        "file": "layout/drc-report.json",
+        "command": null,
+        "kind": "drc",
+        "check_status": "clean",
+        "content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4",
+        "exit_status": 0
+      }
     },
     {
       "tier": "T1",

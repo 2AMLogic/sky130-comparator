@@ -7,9 +7,10 @@ Physical layout for the comparator block, klayout-tools (`klt`) driven.
 | File | What it is |
 | --- | --- |
 | `comparator.gds` | The composed layout — one top cell `gen_compose_0`, all 16 devices of `sim/comparator-decision/testbench/comparator_core.spice`, all 12 nets (7 ports + 5 internal), body ties drawn. |
-| `gen_comparator.py` | The reviewable source of the GDS: `klt gen` per device group, explicit floorplan, a deterministic met1/met2 channel router, `klt draw` + `klt gen-compose` (placer only), and the verification flow (per-block DRC, composed DRC, `klt extract` device count). |
+| `gen_comparator.py` | The reviewable source of the GDS: `klt gen` per device group, explicit floorplan, a deterministic met1/met2 channel router, `klt draw` + `klt gen-compose` (placer only), and the verification flow (per-block DRC, composed DRC, `klt extract` device count, and the repo-root signoff DRC that writes `drc-report.json`). |
 | `compose-report.json` | The `klt gen-compose` response for the committed GDS (evidence). |
 | `route-summary.json` | Per-net wiring metrics and the differential wire-area symmetry numbers below. |
+| `drc-report.json` | The committed `klt drc` envelope over the committed GDS — T1 item 3's cited evidence (`manifests/sky130-comparator.json`). `status: "clean"`, 0 violations, deck identified by content hash, and the `coverage` block whose three disclosure fields are quoted in "DRC signoff" below. |
 | `extract-device-count.json` | The independent device-count check: `klt extract` over the committed GDS re-derives the 16 devices counted by model from the extracted netlist (9 `nfet_01v8`, 4 `pfet_01v8`, 3 `res_high_po`), not from the generator's own parameters. Raw pre-merge counts (11 nfets — the input pair's cross-quad legs) are recorded beside the merged ones. Re-asserted on every push by `scripts/check-layout-device-count.py` (CI job `layout-device-count` in `.github/workflows/t1-signoff.yml`, hermetic selftest included). |
 
 Generation (regenerates the GDS and every evidence file, ~1 min):
@@ -115,14 +116,84 @@ device's. Filed generically per CLAUDE.md's friction protocol as
 if a narrower width becomes drawable, the loads should be re-drawn at 0.35 µm
 and this README updated.
 
+## DRC signoff, and the coverage gaps behind "clean" (T1 item 3)
+
+`drc-report.json` is the committed `klt drc` envelope
+`manifests/sky130-comparator.json` cites for T1 item 3: `status: "clean"`,
+`violation_count: 0`, exit status 0, deck `sky130` identified by content
+hash `sha256:a903acb1…`, over `layout/comparator.gds` at
+`sha256:cad5ad55…` — the input hash the manifest **pins**, so a regenerated
+GDS renders item 3 `unmet` (stale evidence) instead of silently grading
+yesterday's run.
+
+`gen_comparator.py` refreshes it with every other deliverable
+(`emit_drc_evidence`, which unlike the scratch "[6/7] composed DRC" step
+runs from the **repo root** against the emitted GDS — so the envelope
+records the path CI resolves and the hash the manifest pins — and refuses
+to write anything but a clean verdict). Standalone, the same run is:
+
+```sh
+klt drc layout/comparator.gds --deck sky130 --pdk sky130A --pdk-root ~/.volare \
+    --format json > layout/drc-report.json
+```
+
+**A clean verdict is only as wide as the deck that produced it.** Per
+`manifests/design-evidence-tiers.md` item 3, that disclosure is
+*claimant-enforced* — `klt signoff` grades item 3 on `status: "clean"`
+alone, so a deck with rule-free drawn layers grades `met` exactly like a
+fully-covering one. The three fields it requires, quoted verbatim from the
+committed envelope's own `coverage` block:
+
+- **`layers_in_stream_without_rules`** (5): `65/44` (`tap.drawing`), `66/13`
+  (`poly.res`), `68/5` (`met1.pin`), `86/20` (`rpm`), `94/20` (`psdm`).
+  This layout draws all five and the curated sky130 deck carries no rule
+  that reads any of them — so nothing about the body-tie **tap** geometry,
+  the poly-resistor ID marker, the precision-resistor implant, the P+
+  implant, or the met1 pin shapes was checked. Implant
+  enclosure/spacing and tap rules are **not** covered by this clean verdict;
+  the body ties documented above are geometry this deck cannot grade.
+- **`rules_skipped`** (28): `capm.{enclosing.via3.1,separation.via3.1,space.1,width.1}`,
+  `capm2.{enclosing.via4.1,separation.via4.1,space.1,width.1}`,
+  `met2.enclosing.via2.1`,
+  `met3.{enclosing.capm.1,enclosing.via2.1,enclosing.via3.1,space.1,width.1}`,
+  `met4.{enclosing.capm2.1,enclosing.via3.1,enclosing.via4.1,space.1,width.1}`,
+  `met5.{enclosing.via4.1,space.1,width.1}`,
+  `via2.{space.1,width.1}`, `via3.{space.1,width.1}`, `via4.{space.1,width.1}`.
+  Each was skipped because a layer it reads is absent from this stream —
+  top metal here is met2 and no MIM capacitor is drawn — i.e. "no geometry
+  to check", not "checked and waived". The unabridged list is in
+  `drc-report.json`.
+- **`deck_scope`** (17): `cap2m, capm, ct, difftap, li, licon, m1, m2, m3,
+  m4, m5, nwell, poly, via, via2, via3, via4`. sky130's source decks
+  (`sky130.lydrc` / `sky130A_mr.drc`) have no numbered DRM sections to cite,
+  so `deck_scope` is the rule-id prefix family each rule claims
+  (`klayout-tools` `docs/cli/drc.md` → `coverage.deck_scope`). What it does
+  not name matters as much as what it does: **no** implant (`nsdm`/`psdm`),
+  density/`areaid`, antenna, or latchup/tap-distance family appears — the
+  deck does not attempt those DRM chapters at all, for any layout.
+
+Two positive statements belong beside the gaps. `coverage.layers_checked`
+is 9 of the deck's 17 layers — `64/20, 65/20, 66/20, 66/44, 67/20, 67/44,
+68/20, 68/44, 69/20` (nwell, diff, poly, licon1, li1, mcon, met1, via,
+met2): the entire stack this layout actually draws for connectivity, width,
+space and enclosure. And `coverage.voltage_domain_warnings` is empty — no
+`hvi` (75/20) medium-voltage marker is drawn, so no checked geometry was
+graded against the wrong threshold column.
+
+**What the pinned grader cannot show.** klt 0.5.0 predates
+`klayout-tools` #2002 (`citation.coverage` passthrough) and #2196
+(`input_verified`), so `manifests/t1-signoff-report.json` records item 3's
+citation with neither field, and `scripts/check-t1-signoff.py` rule 3 emits
+its documented `input_verified: null` **warning** rather than an
+affirmative re-hash (gate passes, loudly). Re-graded out-of-band at klt
+0.6.0 the identical manifest returns the same `met` verdict with
+`input_verified: true` and the `coverage` block above echoed into the
+citation. Bumping the repo-wide pin is #47, deliberately not done here.
+
 ## What is deliberately not attempted here
 
 Per #3's one-at-a-time convention, each of these is its own issue:
 
-- **DRC-clean signoff** (T1 item 3): the composed layout is DRC-clean under
-  `klt drc --deck sky130` today (0 violations, recorded in `_gen/drc.json`
-  at generation time), but item 3's graded evidence requires a `klt`
-  envelope citation, not an incidental pass.
 - **LVS-clean** (T1 item 4): not run — no `klt lvs` verdict is claimed. The
   extracted netlist in `_gen/comparator.extract.spice` matches the
   schematic's device list pin-for-pin (verified when generating), which is
@@ -130,9 +201,13 @@ Per #3's one-at-a-time convention, each of these is its own issue:
 - **Post-layout re-simulation** (T1 item 7) and **ERC / power delivery**
   (T1 item 11).
 
-`manifests/sky130-comparator.json` / `manifests/t1-signoff-report.json` are
-deliberately **not** decorated by this issue: T1 item 2 stays `unmet` /
-`no_evidence` until a `klt` envelope citation exists, per
-`manifests/README.md`. Only `manifests/integrator-view.json`'s honest nulls
-(`gds.path`, `measured_area`) flip, validated by
+`manifests/sky130-comparator.json` / `manifests/t1-signoff-report.json`
+carry exactly one citation — item 3's, above. **T1 item 2 (Layout) stays
+`unmet` / `no_evidence`** even though the GDS it describes is committed:
+items 1, 2, 9 and 10 have no `klt` verb behind them, so citing *any*
+passing envelope would render them `met` on no topical basis at all
+(`klayout-tools` `docs/cli/signoff.md` → "Items 1, 2, 9, and 10: `klt
+signoff` cannot check topical relevance"). Leaving it uncited is the honest
+row, per `manifests/README.md`. `manifests/integrator-view.json`'s
+`gds.path` / `measured_area` are the layout's own record there, validated by
 `scripts/check-integrator-view.py`.
