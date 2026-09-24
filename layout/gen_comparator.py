@@ -2,8 +2,9 @@
 """layout/gen_comparator.py -- generate the comparator's GDS layout (issue #44).
 
 The single reviewable source for ``layout/comparator.gds``: it generates
-every device block with ``klt gen`` (klayout-tools 0.5.0, pinned the same
-way as ``docs/environment-setup.md`` and ``.github/workflows/t1-signoff.yml``),
+every device block with ``klt gen`` (klayout-tools 0.6.0 on the klayout
+0.30.10 engine, pinned the same way as ``docs/environment-setup.md`` and
+``.github/workflows/t1-signoff.yml``),
 places and routes them with a deterministic router this repo controls, and
 verifies the composition (per-block DRC, composed DRC, ``klt extract``
 device count).  Running it writes scratch under ``layout/_gen/`` (gitignored)
@@ -135,7 +136,7 @@ DBU = 1000
 # --- PDK pin (mirrors sim/pdk.json) ------------------------------------------
 PDK_VARIANT = "sky130A"
 PDK_ROOT_DEFAULT = "~/.volare"  # default_pdk_root in sim/pdk.json
-KLT_PIN = "klayout-tools 0.5.0 (klt 0.5.0)"
+KLT_PIN = "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10"
 
 
 def nm(value_um: float) -> int:

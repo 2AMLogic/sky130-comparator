@@ -1,6 +1,6 @@
 {
   "tool": {
-    "klt_pin": "klayout-tools 0.5.0 (klt 0.5.0)",
+    "klt_pin": "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10",
     "deck": "sky130",
     "top_cell": "gen_compose_0"
   },

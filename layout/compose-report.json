@@ -22,6 +22,8 @@
       "source": "generator_report",
       "generator": "mos_array",
       "cell_name": "PTAIL",
+      "source_path": "ptail.gds",
+      "source_digest": "sha256:78af9508bd5c0c5c7487e8ce378f65004bbc95a00a005a60c505e2d60d875520",
       "offset_um": {
         "x": 2.0,
         "y": 44.6
@@ -39,6 +41,8 @@
       "source": "generator_report",
       "generator": "diff_pair",
       "cell_name": "INPAIR",
+      "source_path": "inpair.gds",
+      "source_digest": "sha256:4a4a880052efe8a1a82681bb13d3d31a0761eee9163eb595cfe748709ce854c4",
       "offset_um": {
         "x": 5.5,
         "y": 37.89
@@ -56,6 +60,8 @@
       "source": "generator_report",
       "generator": "res_array",
       "cell_name": "RLOAD",
+      "source_path": "rload.gds",
+      "source_digest": "sha256:40e79e9fec41252d98fd116be50f675760bc67d58fbf104b2afd2032bbbf137b",
       "offset_um": {
         "x": 5.5,
         "y": 65.0
@@ -73,6 +79,8 @@
       "source": "generator_report",
       "generator": "diff_pair",
       "cell_name": "STN",
+      "source_path": "stn.gds",
+      "source_digest": "sha256:a80899f57a5cd4ddccd2df2f0ad32a5eb2e29605aed3fc082d93fa0a22226831",
       "offset_um": {
         "x": 11.0,
         "y": 36.39
@@ -90,6 +98,8 @@
       "source": "generator_report",
       "generator": "mos_array",
       "cell_name": "TAIL2",
+      "source_path": "tail2.gds",
+      "source_digest": "sha256:5d085d3e5ae07ba649ff7f632b248440d748cd4c19cb41e1bb5a4ef0ec476c96",
       "offset_um": {
         "x": 15.0,
         "y": 41.0
@@ -107,6 +117,8 @@
       "source": "generator_report",
       "generator": "diff_pair",
       "cell_name": "LATP",
+      "source_path": "latp.gds",
+      "source_digest": "sha256:3a5887f919c97c405e3e028dd024d4939206db563166f05bd4716fec823a172e",
       "offset_um": {
         "x": 18.5,
         "y": 28.39
@@ -124,6 +136,8 @@
       "source": "generator_report",
       "generator": "diff_pair",
       "cell_name": "RST",
+      "source_path": "rst.gds",
+      "source_digest": "sha256:f5b5e32da742e47392febb0f92d58596a63d92cb96bcbda77c65b14578c38304",
       "offset_um": {
         "x": 22.5,
         "y": 36.39
@@ -141,6 +155,8 @@
       "source": "generator_report",
       "generator": "diff_pair",
       "cell_name": "ABSORB",
+      "source_path": "absorb.gds",
+      "source_digest": "sha256:53198685e3ed9b9ff10f6bc11e6047e97991de1c0558240e60fb6c3843c0caf8",
       "offset_um": {
         "x": 30.0,
         "y": 4.390000000000001
@@ -158,6 +174,8 @@
       "source": "generator_report",
       "generator": "mos_array",
       "cell_name": "CLKCAP",
+      "source_path": "clkcap.gds",
+      "source_digest": "sha256:fd3b75decf91e1c359ea3ec73509bc69c6bfa7b96cb20ba74fb8f1ec631dd077",
       "offset_um": {
         "x": 34.0,
         "y": 35.0
@@ -175,6 +193,8 @@
       "source": "generator_report",
       "generator": "res_array",
       "cell_name": "RCLKS",
+      "source_path": "rclks.gds",
+      "source_digest": "sha256:7d5edfd58ceed67573f9b39cb29a7b2e0db21880783624768e02c3ffd1791854",
       "offset_um": {
         "x": 38.0,
         "y": 44.79
@@ -192,6 +212,8 @@
       "source": "generator_report",
       "generator": "draw",
       "cell_name": "ROUTE",
+      "source_path": "route.gds",
+      "source_digest": "sha256:4e035ecd8f83e61189416f91e3af6a76a67cbbf4c7271327e45766f8399daa04",
       "offset_um": {
         "x": 0.0,
         "y": 0.0
@@ -265,5 +287,16 @@
     "block 'route' is placed 0.00um from block 'absorb' (strategy: explicit), closer than absorb's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'clkcap' (strategy: explicit), closer than clkcap's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'rclks' (strategy: explicit), closer than rclks's own declared drc_hints.min_spacing_um of 0.50um"
-  ]
+  ],
+  "provenance": {
+    "klt_version": "0.6.0",
+    "klayout_version": "0.30.10",
+    "pdk": {
+      "name": "sky130A",
+      "source": "search root: ~/.volare",
+      "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+    },
+    "deck": null,
+    "input": null
+  }
 }
