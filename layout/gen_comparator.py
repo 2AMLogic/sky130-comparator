@@ -10,10 +10,11 @@ verifies the composition (per-block DRC, composed DRC, ``klt extract``
 device count).  Running it writes scratch under ``layout/_gen/`` (gitignored)
 and refreshes the committed deliverables ``layout/comparator.gds``,
 ``layout/compose-report.json``, ``layout/route-summary.json``,
-``layout/extract-device-count.json`` and ``layout/drc-report.json`` (the
-last re-run from the repo root against the *emitted* GDS, since it is the
-envelope ``manifests/sky130-comparator.json`` cites for T1 item 3 -- see
-``emit_drc_evidence``).
+``layout/extract-device-count.json``, ``layout/drc-report.json`` and
+``layout/lvs-request.json`` + ``layout/lvs-report.json`` (the last three
+re-run from the repo root against the *emitted* GDS, since they are the
+envelopes ``manifests/sky130-comparator.json`` cites for T1 items 3 and 4 --
+see ``emit_drc_evidence`` / ``emit_lvs_evidence``).
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
     python3 layout/gen_comparator.py --check    # byte-compare against the
@@ -90,8 +91,9 @@ naming convention):
   p-substrate tap outside every n-well contacted up to GND, and an n-well
   tap inside the merged pfet well contacted up to VDD, so ``klt extract``
   sees real supply-referenced bodies rather than a synthesized proxy net --
-  without them, item 4's eventual LVS would not be comparing the layout
-  this issue claims to deliver.
+  without them, item 4's LVS would not be comparing the layout this repo
+  claims to deliver (``lvs-report.json`` records
+  ``body_verification.status: "verified"`` because of them).
 
 Determinism: no randomness and no dict-ordering dependence anywhere (the
 router's candidate ordering is a pure function of the geometry), so a
@@ -102,6 +104,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -137,6 +140,65 @@ DBU = 1000
 PDK_VARIANT = "sky130A"
 PDK_ROOT_DEFAULT = "~/.volare"  # default_pdk_root in sim/pdk.json
 KLT_PIN = "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10"
+
+# --- T1 item 4 (LVS) request -------------------------------------------------
+# The reference side is the schematic's own derivation product -- what
+# ``design/netlist.sh`` writes out of ``design/comparator.sch``, never
+# hand-edited (``./design/netlist.sh --check`` asserts exactly that).  It is
+# the item-1 netlist ``manifests/design-evidence-tiers.md`` item 4 requires the
+# compare to run against.
+LVS_REFERENCE = "sim/comparator-decision/testbench/comparator_core.spice"
+LVS_TOP = "gen_compose_0"
+
+# sky130 spells its poly resistor two ways: the geometry-parameterised
+# primitive ``sky130_fd_pr__res_high_po`` (``l``/``w`` at the call site) and a
+# family of fixed-width wrappers that instantiate it with the width baked into
+# the *name* -- ``sky130_fd_pr__res_high_po_0p35`` is literally
+# ``x0 r0 r1 sub sky130_fd_pr__res_high_po l=l w=0.35``.  The schematic uses
+# the wrapper; klt's extraction deck curates only the primitive, so
+# ``reference.device_map`` binds one to the other.  The object form is
+# required because this is a 3-terminal resistor, not a 4-terminal MOS.
+#
+# ``length_param``/``width_param`` deliberately name a parameter no call site
+# carries, which makes the conversion carry *no* geometry for this class.  That
+# is not a convenience: klt 0.6.0's subckt-call conversion rejects a call that
+# supplies one of L/W without the other ("both 'L' and 'W' must be given
+# together"), and a fixed-width wrapper structurally cannot supply W -- so
+# without this the compare does not run at all.  It is verdict-neutral, and
+# ``layout/README.md`` -> "LVS signoff" records the negative control that
+# proves it: KLayout compares only a resistor's *primary* parameter R (which
+# this reference form excludes as a documented ``0`` placeholder), never the
+# secondary L/W.  A reference carrying a deliberately absurd resistor width
+# still grades ``match``.
+LVS_RESISTOR_WRAPPER = "sky130_fd_pr__res_high_po_0p35"
+LVS_GEOMETRY_NOT_ON_CARD = "__geometry_not_on_card__"
+
+LVS_REQUEST = {
+    "engine": "klayout",
+    "layout": {
+        "file": "layout/comparator.gds",
+        "deck": "sky130",
+        "top": LVS_TOP,
+    },
+    "reference": {
+        "netlist": LVS_REFERENCE,
+        "form": "subckt-call",
+        "deck": "sky130",
+        "device_map": {
+            LVS_RESISTOR_WRAPPER: {
+                "kind": "resistor",
+                "class": "res_high_po",
+                "length_param": LVS_GEOMETRY_NOT_ON_CARD,
+                "width_param": LVS_GEOMETRY_NOT_ON_CARD,
+            },
+        },
+    },
+    # The layout folds the input pair into two W=6.5um legs per device (the
+    # common-centroid cross-quad); the schematic states one W=13um device.
+    # combine_devices is what reconciles the two -- the same fold
+    # extract-device-count.json's "merged_counts" already records.
+    "options": {"combine_devices": True},
+}
 
 
 def nm(value_um: float) -> int:
@@ -444,8 +506,10 @@ class Pin:
         return f"{self.block}.{self.port}@({self.x:.3f},{self.ylo:.3f}..{self.yhi:.3f})"
 
 
-def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+def run(cmd: list[str], cwd: Path | None = None, check: bool = True,
+        stdin_text: str | None = None) -> subprocess.CompletedProcess:
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd,
+                            input=stdin_text)
     if check and result.returncode != 0:
         raise RuntimeError(
             f"command failed (rc={result.returncode}): {' '.join(cmd)}\n"
@@ -1002,6 +1066,125 @@ def emit_drc_evidence(klt: str, pdk_args: list[str], repo_root: Path) -> None:
           "(disclosure: layout/README.md)")
 
 
+def _run_lvs(klt: str, request: dict, repo_root: Path) -> tuple[dict, int]:
+    """Run one ``klt lvs`` compare from ``repo_root``; return (envelope, rc).
+
+    The request goes in on **stdin** rather than as a file path on purpose:
+    relative paths inside a request *file* resolve against that file's own
+    directory, while the stdin form resolves them against the current working
+    directory.  Running from the repo root with the stdin form is therefore
+    what makes the envelope echo repo-root-relative paths
+    (``layout/comparator.gds``, ``sim/.../comparator_core.spice``) -- the paths
+    CI and ``klt signoff`` resolve -- instead of host-specific absolute ones.
+    """
+    r = run([klt, "lvs", "-", "--format", "json"], cwd=repo_root, check=False,
+            stdin_text=json.dumps(request))
+    if not r.stdout.strip():
+        raise RuntimeError(f"klt lvs produced no output (rc={r.returncode}): {r.stderr}")
+    return json.loads(r.stdout), r.returncode
+
+
+def _perturbed_reference(text: str) -> str:
+    """The negative control's reference netlist: the committed one with the
+    first MOSFET card's ``W`` doubled.
+
+    A compare that cannot fail grades nothing (``sim/selftest.sh``'s stage-4
+    discipline, applied here to a signoff artifact).  This perturbation is
+    deliberately a *device parameter* one rather than a topology one, because
+    the parameter half is exactly the half this compare's disclosures are
+    about: it proves the run actually compares MOS geometry, on the same
+    netlist pair, seconds before the real verdict is committed.
+    """
+    match = re.search(r"(?m)^(XM_\S+\s.*?\bW=)([0-9.]+)", text)
+    if match is None:
+        raise RuntimeError(
+            "LVS negative control: found no 'XM_... W=<value>' card in "
+            f"{LVS_REFERENCE} to perturb -- refusing to commit an LVS "
+            "verdict whose compare was never shown to bite"
+        )
+    doubled = f"{float(match.group(2)) * 2:g}"
+    return text[:match.start(2)] + doubled + text[match.end(2):]
+
+
+def emit_lvs_evidence(klt: str, repo_root: Path) -> None:
+    """Run the signoff LVS over the *emitted* GDS and commit it (T1 item 4).
+
+    Mirrors :func:`emit_drc_evidence`: run from the repo root against
+    ``layout/comparator.gds`` so the committed envelope records both the path
+    ``scripts/check-t1-signoff.py`` resolves and the
+    ``provenance.input.content_hash`` ``manifests/sky130-comparator.json``
+    pins -- regenerating the GDS without refreshing this file then renders
+    item 4 ``unmet`` (stale evidence) rather than grading a superseded run.
+
+    Writes two files.  ``layout/lvs-request.json`` is the request document
+    itself, committed because the response echoes ``layout``/``reference``/
+    ``options`` but **not** ``reference.form`` or ``reference.device_map`` --
+    without it the committed envelope would not record the device-class
+    mapping the compare was reached through.  ``layout/lvs-report.json`` is
+    the envelope the manifest cites.
+
+    Two guards, both after the envelope is on disk (so a failing run leaves
+    the evidence to read rather than nothing):
+
+    * the negative control above must report ``mismatch`` -- otherwise the
+      compare is not discriminating and its ``match`` means nothing;
+    * the real verdict must be the one item 4 is graded on, ``status:
+      "match"`` **and** ``power_connectivity.status != "mismatch"``
+      (``manifests/design-evidence-tiers.md`` item 4).  A regression here
+      must stop the generator loudly: the manifest cites this envelope, so
+      silently emitting a mismatch would leave a cited-but-unmet row that
+      only CI would catch.
+    """
+    (repo_root / "layout" / "lvs-request.json").write_text(
+        json.dumps(LVS_REQUEST, indent=2) + "\n")
+
+    envelope, rc = _run_lvs(klt, LVS_REQUEST, repo_root)
+    (repo_root / "layout" / "lvs-report.json").write_text(
+        json.dumps(envelope, indent=2) + "\n")
+
+    status = envelope.get("status")
+    power = (envelope.get("power_connectivity") or {}).get("status")
+    warnings = [m for m in envelope.get("mismatches", [])
+                if m.get("severity") != "error"]
+    print(f"  signoff lvs: status={status}, power_connectivity={power}, "
+          f"errors={envelope.get('error_count')}, warnings={len(warnings)} "
+          "(disclosure: layout/README.md)")
+    for w in warnings:
+        print(f"    warning [{w.get('category')}]: "
+              f"{str(w.get('description'))[:100]}")
+
+    reference = (repo_root / LVS_REFERENCE).read_text()
+    with tempfile.NamedTemporaryFile("w", suffix=".spice", delete=False,
+                                     encoding="utf-8") as handle:
+        handle.write(_perturbed_reference(reference))
+        control_path = handle.name
+    try:
+        control_request = json.loads(json.dumps(LVS_REQUEST))
+        control_request["reference"]["netlist"] = control_path
+        control, _rc = _run_lvs(klt, control_request, repo_root)
+    finally:
+        Path(control_path).unlink(missing_ok=True)
+    if control.get("status") != "mismatch":
+        raise RuntimeError(
+            "LVS negative control did NOT bite: a reference with the first "
+            f"MOSFET's W doubled still graded {control.get('status')!r} -- "
+            "refusing to commit a 'match' from a compare that cannot fail"
+        )
+    print(f"    negative control: doubled-W reference grades "
+          f"{control.get('status')} ({control.get('error_count')} errors) -- "
+          "the compare discriminates")
+
+    if status != "match" or power == "mismatch":
+        raise RuntimeError(
+            f"signoff LVS over layout/comparator.gds is not clean "
+            f"(rc={rc}, status={status!r}, power_connectivity={power!r}, "
+            f"errors={envelope.get('error_count')}) -- the envelope was "
+            "written for inspection, but manifests/sky130-comparator.json "
+            "cites it for T1 item 4, so the citation must be removed before "
+            "this verdict can be committed"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true",
@@ -1042,6 +1225,8 @@ def main() -> int:
     print("[emit] signoff DRC over the emitted GDS (T1 item 3 evidence)")
     emit_drc_evidence(args.klt, ["--pdk", PDK_VARIANT, "--pdk-root", str(pdk_root)],
                       repo_root)
+    print("[emit] signoff LVS over the emitted GDS (T1 item 4 evidence)")
+    emit_lvs_evidence(args.klt, repo_root)
     area = None
     if bbox:
         area = round((bbox["x1"] - bbox["x0"]) * (bbox["y1"] - bbox["y0"]), 2)
