@@ -59,6 +59,7 @@ comparable in format to every other record under sim/.
 from __future__ import annotations
 
 import argparse
+import json
 import statistics
 import sys
 import tempfile
@@ -94,6 +95,7 @@ REPO_ROOT = EXPERIMENT_DIR.parent.parent
 LAYOUT_DIR = REPO_ROOT / "layout"
 PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
 PEX_PREAMP_FRAGMENT = LAYOUT_DIR / "comparator.pex-preamp.spice"
+PEX_ENVELOPE = LAYOUT_DIR / "extract-parasitics.json"
 
 DUT_PROVENANCES = ("schematic", "extracted")
 # Module-level rather than threaded through ~15 deck builders and their
@@ -211,27 +213,55 @@ SCHEMATIC_NETLIST_PROVENANCE = (
     "(`design/comparator.sch` -> `./design/netlist.sh` -> "
     "`sim/comparator-decision/testbench/comparator_core.spice`)"
 )
-EXTRACTED_NETLIST_PROVENANCE = (
-    "- **Netlist provenance**: POST-LAYOUT / EXTRACTED "
-    "(`layout/comparator.gds` -> `klt extract --parasitics` -> "
-    "`layout/comparator.extract.spice` -> `layout/extract_pex.py` -> "
-    "`layout/comparator.pex.spice`). Lumped-RC parasitics: 69 star "
-    "resistors, 12 net-to-ground capacitors and 21 net-to-net coupling "
-    "capacitors, 117.65 fF total ground capacitance and 14.70 kohm total "
-    "series resistance over 12 nets (`layout/extract-parasitics.json`). "
-    "Net names are the SCHEMATIC names, carried across by the 12/12 net "
-    "correspondence in the committed `layout/lvs-report.json`, so every "
-    "probe in this deck names the same circuit node the schematic-level "
-    "record's probe named. This fragment deliberately carries the "
-    "`res_high_po` w=0.42 um drawn vs. w=0.35 um schematic delta disclosed "
-    "by PR #55 / `layout/lvs-coverage-probe.json` -- it is what the layout "
-    "actually draws, so it is what a post-layout measurement must see."
-)
+def extracted_netlist_provenance() -> str:
+    """The POST-LAYOUT provenance line, with its RC summary and TOOL PIN read
+    out of the committed `layout/extract-parasitics.json` rather than
+    transcribed.
+
+    Derived, not hardcoded, because both halves are re-generated evidence.
+    The RC totals change whenever the layout or the extractor does, and PR
+    #67's review found the harder case: klt/klayout builds that agree on
+    every capacitance to the last digit but differ by up to 2.3x per net on
+    RESISTANCE (17.52 kohm vs 14.70 kohm in total on this block). A
+    transcribed figure silently describes the wrong extraction after a
+    re-run; a derived one cannot. Each record therefore states the exact
+    extraction build its numbers came from.
+    """
+    report = json.loads(PEX_ENVELOPE.read_text())
+    par = report["parasitics"]
+    prov = report["provenance"]
+    return (
+        "- **Netlist provenance**: POST-LAYOUT / EXTRACTED "
+        "(`layout/comparator.gds` -> `klt extract --parasitics` -> "
+        "`layout/comparator.extract.spice` -> `layout/extract_pex.py` -> "
+        f"`layout/comparator.pex.spice`), extracted by klt "
+        f"{prov['klt_version']} on klayout {prov['klayout_version']} -- the "
+        "pin `docs/environment-setup.md` records and CI installs, asserted "
+        "by `layout/extract_pex.py` because extracted resistances are not "
+        f"stable across builds. Lumped-RC parasitics: {par['r_count']} star "
+        f"resistors, {par['c_count']} net-to-ground capacitors and "
+        f"{par['cc_count']} net-to-net coupling capacitors, "
+        f"{par['total_capacitance_ff']:.2f} fF total ground capacitance and "
+        f"{par['total_resistance_ohm'] / 1000.0:.2f} kohm total series "
+        f"resistance over {report['net_count']} nets "
+        "(`layout/extract-parasitics.json`). The per-net series R is the "
+        "extractor's DEFAULT single-lumped-star model, which is coarse on "
+        "the supply nets specifically (GND and VDD carry the bulk of it) "
+        "and is expected to be pessimistic there -- see "
+        "`sim/comparator-decision/README.md`. "
+        "Net names are the SCHEMATIC names, carried across by the 12/12 net "
+        "correspondence in the committed `layout/lvs-report.json`, so every "
+        "probe in this deck names the same circuit node the schematic-level "
+        "record's probe named. This fragment deliberately carries the "
+        "`res_high_po` w=0.42 um drawn vs. w=0.35 um schematic delta disclosed "
+        "by PR #55 / `layout/lvs-coverage-probe.json` -- it is what the layout "
+        "actually draws, so it is what a post-layout measurement must see."
+    )
 
 
 def netlist_provenance() -> str:
     return (
-        EXTRACTED_NETLIST_PROVENANCE if _DUT_PROVENANCE == "extracted"
+        extracted_netlist_provenance() if _DUT_PROVENANCE == "extracted"
         else SCHEMATIC_NETLIST_PROVENANCE
     )
 
