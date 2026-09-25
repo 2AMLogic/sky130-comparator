@@ -18,7 +18,9 @@ a resolvable sky130A PDK install at the sim/pdk.json pin:
 `selftest` is hermetic (no klt, no PDK): it proves the counter accepts a
 known-good fixture netlist and rejects two corrupted ones (a missing device
 and an extra one) -- a count gate means nothing until "wrong count fails"
-has been shown reachable on the same code path.
+has been shown reachable on the same code path.  Its case tally is printed
+by `scripts/_gate_common.report_cases()`, shared with the other gates so
+the selftest output convention cannot drift (issue #69).
 """
 from __future__ import annotations
 
@@ -32,7 +34,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "layout"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _gate_common import report_cases  # noqa: E402
 from gen_comparator import count_check, parse_extract_devices  # noqa: E402
 
 GDS = "layout/comparator.gds"
@@ -67,19 +71,12 @@ X$18 vdd n2 b1 sky130_fd_pr__res_high_po l=22 w=0.42
 
 def selftest() -> int:
     """The counter must accept the fixture and reject corrupted variants."""
-    ok = True
+    case_results = []
 
     def verdict(text: str, expect_pass: bool, label: str) -> None:
-        nonlocal ok
         _raw, merged = parse_extract_devices(text)
         passed, _tally = count_check(merged)
-        if passed != expect_pass:
-            print(f"selftest: FAIL: {label} (expected "
-                  f"{'pass' if expect_pass else 'reject'}, got "
-                  f"{'pass' if passed else 'reject'})")
-            ok = False
-        else:
-            print(f"selftest: ok: {label}")
+        case_results.append((label, passed == expect_pass))
 
     verdict(FIXTURE_GOOD, True, "known-good 16-device netlist passes")
     verdict(FIXTURE_GOOD.replace("X$9 n7 g1 s2 b1", "X$9 n3 g2 s2 b1", 1),
@@ -88,8 +85,7 @@ def selftest() -> int:
     verdict(FIXTURE_GOOD
             + "X$19 n10 g4 b1 b1 sky130_fd_pr__nfet_01v8 L=0.5 W=1\n",
             False, "an extra 17th device rejects")
-    print("gate: selftest: PASS" if ok else "gate: selftest: FAIL")
-    return 0 if ok else 1
+    return report_cases(case_results)
 
 
 def gate(klt: str, pdk_root: Path) -> int:
