@@ -178,10 +178,11 @@ change host tooling. `extract_pex.py --check` is a CI gate in the
 single lumped star R per net (its own header in each fragment says so
 verbatim: "not a per-segment, distributed RC ladder"). On the *signal* nets
 that is a reasonable first-order model. On the **supply nets it is the coarse
-default and is expected to be pessimistic**: `GND` carries 6.56 kΩ and `VDD`
-1.89 kΩ of lumped star R, i.e. 93-450 Ω per device leg in series with every
-source/body tie, where the real drawn supply is a wide low-impedance shape
-whose distributed resistance a single star node cannot represent. So the
+default and is expected to be pessimistic**: `GND` carries 6.76 kΩ and `VDD`
+2.36 kΩ of lumped star R -- together 52.0% of the block's 17.52 kΩ total
+series R -- i.e. 94.7-463.0 Ω per device leg in series with every source/body
+tie, where the real drawn supply is a wide low-impedance shape whose
+distributed resistance a single star node cannot represent. So the
 post-layout degradations below should be read as an **upper bound on the
 supply-network contribution**, not a best estimate of it. `klt extract`
 offers `--distributed-rc` with `--critical-net` for a per-segment ladder;
