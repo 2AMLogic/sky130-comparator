@@ -62,6 +62,25 @@ jobs:
       - name: Re-hash the committed LVS envelope's own inputs
         run: klt lvs --check layout/lvs-report.json
 
+      # The ERC supply-spec envelope's own rot check (issue #68).
+      # layout/erc-report.json is committed evidence but deliberately NOT
+      # cited for item 11 (see manifests/README.md), so the signoff gate above
+      # never looks at it -- and it depends on a SECOND committed document,
+      # layout/erc-spec.json, which nothing else pins: `klt signoff`'s item-11
+      # path re-reads that spec from disk and does not check it against the
+      # envelope's own provenance.spec.content_hash (klayout-tools#2496), so an
+      # edited spec would silently change what a citation is graded on. There
+      # is no `klt erc --check`, so this re-runs the documented command and
+      # byte-compares: klt's own `--format json` stdout IS the committed file,
+      # and a clean run exits 0, so a findings/skipped-work regression fails
+      # here too. No PDK needed -- `--deck`/`--pdk` are curated-table names,
+      # not an install (the same reason this job stays PDK-free).
+      - name: Re-run the committed ERC supply spec and diff the envelope
+        run: |
+          klt erc layout/comparator.gds layout/erc-spec.json \
+              --deck sky130 --pdk sky130 --format json > /tmp/erc-report.json
+          diff -u layout/erc-report.json /tmp/erc-report.json
+
       # Rule-9 integrator view (issue #36): stdlib-only, no klt needed.
       - name: Integrator-view selftest (hermetic)
         run: python3 scripts/check-integrator-view.py selftest

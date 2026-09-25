@@ -88,9 +88,46 @@ item 7 wants cannot be produced here at all. Filed generically per
 the row stays `unmet`/`no_evidence` rather than being decorated with a
 citation of the wrong kind.
 
+**Item 11 ("Power delivery (structural)") is the third row with real evidence
+that is deliberately not cited — and its blocker is item 4's defect, reached
+through the grader's own compound rule** (issue #68). The ERC half is done and
+clean: `layout/erc-spec.json` declares `VDD`/`GND` as `"kind": "supply"` over
+the four conductor roles they route on plus a `ties[]` entry for each of the
+p-substrate and n-well taps, and `layout/erc-report.json` is a committed
+`klt erc` envelope over `layout/comparator.gds` reporting `erc_status:
+"clean"`, 0 findings, and — the field that matters as much as the verdict —
+`erc_coverage.skipped: []`, i.e. both ties were actually *checked* rather than
+rejected as unfalsifiable. `layout/erc-coverage-probe.json` is the
+negative-control matrix behind it: nine runs against perturbed scratch copies
+of the spec (and one of the stream), each asserting the exact findings and the
+exact `erc_coverage.skipped` reasons its perturbation must produce, including
+the two rows that show klt's own degeneracy rejections firing against this very
+spec once its narrowing is removed.
+
+For an `analog` block with no P&R run, `klt signoff` grades item 11 on that ERC
+run **plus `layout/lvs-report.json`, which must itself pass** — the envelope
+item 4 withholds. The grader does not require item 4 to be cited, so the
+citation *would* grade `met` and move this count 1 → 2; that is measured, not
+assumed (`layout/erc-coverage-probe.json` → `signoff_if_cited`). It is left
+uncited because the item's LVS half turns out to carry **no information beyond
+"item 4's envelope reports `match`"**: `net_correspondence` lists only matched
+nets, so the supply-pairing predicate is satisfied by every `match` and failed
+by every `mismatch` — including one whose perturbation is a single MOSFET width
+and touches no rail. Each probe row now records that measurement
+(`layout/lvs-coverage-probe.json` → `supply_pairing`). So a `met` item 11 would
+rest on exactly the verdict this file already says must not be cited. The full
+reasoning, the measurement table, and what the ERC evidence *does* establish are
+in [`layout/README.md`](../layout/README.md) → "ERC: supply-spec run, committed
+— and why T1 item 11 is still not claimed". The grader-side weakness is filed
+generically as
+[2AMLogic/klayout-tools#2495](https://github.com/2AMLogic/klayout-tools/issues/2495);
+the row itself becomes a one-line manifest change the moment item 4 is honestly
+citable, which is the same klayout-tools#2436 + re-draw step item 4 is waiting
+on.
+
 The other ten items render `unmet` with `reason: no_evidence`: apart from
-item 4's uncited envelope and item 7's ungradeable one above, no LVS/PEX
-citation exists, and this repo's
+item 4's uncited envelope, item 7's ungradeable one and item 11's uncited
+ERC evidence above, no LVS/PEX citation exists, and this repo's
 `sim/` harness records evidence as append-only Markdown records, not
 `klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
 honestly for them yet. Those `unmet` rows are the correct result per issue
@@ -110,12 +147,14 @@ those three the grader could not tell a relevant citation from an
 irrelevant one anyway. The historical per-item prose context lives in
 tracker issue #3's edit history and `## Verified corrections`.
 
-Item 11 ("Power delivery (structural)") renders a row, `unmet`, as
-issue #31 requires. The grading-build disclosure now agrees with the doc:
-as of the pinned klt, `build_t1_item_count` (11) **equals** the vendored
-doc's item count (11) — klt 0.6.0 carries item 11's grading rules, so an
-item-11 ERC/LVS citation is gradeable when one is eventually produced, and
-no further klt upgrade is a prerequisite for it. (Under the previous 0.5.0
+Item 11's row is present and graded, as issue #31 requires, and the
+grading-build disclosure agrees with the doc: as of the pinned klt,
+`build_t1_item_count` (11) **equals** the vendored
+doc's item count (11) — klt 0.6.0 carries item 11's grading rules, so the
+compound ERC/LVS citation described above is gradeable today (verified: it
+renders `met` against a scratch manifest), and no klt upgrade is a
+prerequisite for it. What holds the row at `unmet` is the citation decision
+above, not the grader. (Under the previous 0.5.0
 pin the build knew only 10 of the 11, and `scripts/check-t1-signoff.py`
 carried a warning for that case; the check remains, it simply no longer
 fires.) The report also records the grading build itself — `build.version`,
