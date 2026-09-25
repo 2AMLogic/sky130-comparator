@@ -633,6 +633,70 @@ class TestPostLayoutTerminalMoves(unittest.TestCase):
         self.assertIn("Vstn GST_N 0 dc", deck)
 
 
+class TestDegenerateCrossCheckReason(unittest.TestCase):
+    """A degenerate decision cross-check has three physically different
+    causes, and a record that names the wrong one is worse than one that
+    names none. Issue #65 found this the hard way: the post-layout `tt`/27C
+    run resolved every single seed and decided all of them the SAME way,
+    while the record asserted -- unconditionally, from a canned string --
+    that runs "never resolve within the window or all decide correctly",
+    two lines above its own `unresolved = 0` counts.
+    """
+
+    @staticmethod
+    def _points(plus, minus, unresolved, m=16):
+        return [
+            {"k": k, "v_mv": v, "m": m, "plus_ones": plus,
+             "minus_ones": minus, "unresolved": unresolved}
+            for k, v in ((0.75, 0.1129), (1.5, 0.2258))
+        ]
+
+    def test_unresolved_runs_are_named_as_the_overdrive_floor(self):
+        reason = cd_run.degenerate_cross_check_reason(
+            self._points(0, 0, unresolved=32))
+        self.assertIn("never separated inside the decision window", reason)
+        self.assertIn("resolvable-overdrive floor", reason)
+
+    def test_all_one_way_is_named_as_a_deterministic_term(self):
+        # The issue #65 post-layout case: every seed resolves, all negative.
+        reason = cd_run.degenerate_cross_check_reason(
+            self._points(0, 0, unresolved=0))
+        self.assertIn("DETERMINISTIC term", reason)
+        self.assertIn("negative", reason)
+        self.assertNotIn("never separated", reason)
+        self.assertNotIn("decided CORRECTLY", reason)
+
+    def test_all_correct_is_not_confused_with_all_one_way(self):
+        reason = cd_run.degenerate_cross_check_reason(
+            self._points(16, 0, unresolved=0))
+        self.assertIn("decided CORRECTLY at both signs", reason)
+        self.assertNotIn("DETERMINISTIC term", reason)
+
+    def _result(self, points, sigma_decision_mv):
+        return cd_run.NoiseTranResult(
+            corner="tt", temp_c=27.0, preamp=None, latch=None,
+            trnoise_factor=0.86, na_input=5.4e-4, na_gate=3.6e-4,
+            cal_achieved_input_rms_v=4.66e-4, cal_achieved_gate_rms_v=3.1e-4,
+            gain_v_per_v=30.46, gain_cal_points=[],
+            pickoff_diffs=[0.0] * 64, sigma_pickoff_mv=0.1506,
+            sigma_pickoff_ci95_mv=(0.1294, 0.1678),
+            decision_points=points, sigma_decision_mv=sigma_decision_mv,
+        )
+
+    def test_the_record_bullet_quotes_the_derived_reason(self):
+        points = self._points(0, 0, unresolved=0)
+        line = cd_run.two_statistics_line(self._result(points, float("nan")))
+        self.assertIn(cd_run.degenerate_cross_check_reason(points), line)
+        self.assertIn("NOT MEASURABLE", line)
+
+    def test_a_measurable_cross_check_bullet_states_no_reason(self):
+        points = self._points(13, 3, unresolved=0)
+        line = cd_run.two_statistics_line(self._result(points, 0.1421))
+        self.assertIn("0.1421 mV", line)
+        self.assertNotIn("NOT MEASURABLE", line)
+        self.assertNotIn("DETERMINISTIC term", line)
+
+
 class TestPostLayoutDelta(unittest.TestCase):
     """`post_layout_delta_lines()` -- issue #57's "not just the new number
     in isolation" acceptance criterion, as code."""

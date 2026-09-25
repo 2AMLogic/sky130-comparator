@@ -2133,6 +2133,112 @@ def run_noise_tran(
     )
 
 
+def degenerate_cross_check_reason(points: list[dict]) -> str:
+    """Why every decision pair came out degenerate, READ OFF THE COUNTS.
+
+    A degenerate pair (p+ == p-, or p+ - p- == 1) carries no sigma
+    information, but the three ways of getting there are three different
+    physical statements and a record must not assert the wrong one. This
+    classifies from the data instead:
+
+      UNRESOLVED   most runs never separated inside the decision window --
+                   the overdrive sits under the corner's own
+                   resolvable-overdrive floor. (The schematic-level
+                   `ss`/-40C record's case.)
+      ALL-ONE-WAY  every run decided, and decided the SAME way at BOTH
+                   signs -- so a DETERMINISTIC term bigger than the
+                   sigma-scaled overdrive (a systematic offset) is setting
+                   the outcome, not noise. Noise would have to be comparable
+                   to that term to flip anything. This is the post-layout
+                   case: issue #65's `tt`/27C run sat entirely inside the
+                   layout-induced systematic offset the post-layout `offset`
+                   record measured.
+      ALL-CORRECT  every run decided, correctly, at both signs -- the
+                   overdrive is far ABOVE what noise can flip.
+
+    Issue #65: before this was derived, the record asserted the UNRESOLVED
+    wording unconditionally, which was simply untrue of an all-one-way run
+    sitting two lines below its own 0-unresolved counts.
+    """
+    if not points:
+        return "no decision pairs were run"
+    total = sum(2 * p["m"] for p in points)
+    unresolved = sum(p.get("unresolved", 0) for p in points)
+    if unresolved * 2 >= total:
+        return (
+            f"{unresolved} of {total} runs never separated inside the "
+            "decision window: the sigma-scaled overdrives sit below this "
+            "corner's own resolvable-overdrive floor, so the pairs carry no "
+            "sigma information"
+        )
+    one_way = all(
+        p["plus_ones"] == p["minus_ones"] and p["plus_ones"] in (0, p["m"])
+        for p in points
+    )
+    if one_way:
+        side = "negative" if all(p["plus_ones"] == 0 for p in points) else "positive"
+        return (
+            f"every one of the {total} runs RESOLVED ({unresolved} unresolved) "
+            f"and every one of them decided the SAME way -- {side} -- at BOTH "
+            "signs of the overdrive, so p+ = p- exactly and the pairs carry no "
+            "sigma information. That is not a noise statement and must not be "
+            "read as one: it says a DETERMINISTIC term larger than these "
+            "sigma-scaled overdrives (tens to hundreds of uV) is setting the "
+            "outcome. Compare the systematic input offset the `offset` "
+            "sub-command measures at this same corner and provenance before "
+            "reading anything else into it"
+        )
+    all_correct = all(
+        p["plus_ones"] == p["m"] and p["minus_ones"] == 0 for p in points
+    )
+    if all_correct:
+        return (
+            f"every one of the {total} runs decided CORRECTLY at both signs "
+            "(p+ = 1, p- = 0), so the overdrives sit far above anything this "
+            "noise can flip and the pairs carry no sigma information"
+        )
+    return (
+        f"the pair counts below ({unresolved} of {total} runs unresolved) "
+        "leave p+ - p- outside the range the probit estimator can invert"
+    )
+
+
+def two_statistics_line(result: NoiseTranResult) -> str:
+    """The record's headline bullet: the pick-off sigma, and either the
+    decision cross-check that corroborates it or the data-derived reason
+    there is none. Split out of the record writer so the degenerate branch
+    can be tested against synthetic counts without an ngspice run."""
+    head = (
+        f"- **Two statistics, one claim**: (a) pick-off MC at Vindiff=0, "
+        f"N={len(result.pickoff_diffs)} seeds, gain "
+        f"{result.gain_v_per_v:.4f} V/V -> input-referred sigma "
+        f"**{result.sigma_pickoff_mv:.4f} mV** (95% CI "
+        f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, "
+        f"{result.sigma_pickoff_ci95_mv[1]:.4f}] mV)"
+    )
+    if result.sigma_decision_mv == result.sigma_decision_mv:
+        seeds = result.decision_points[0]["m"] if result.decision_points else 0
+        return (
+            f"{head}; (b) decision-transition cross-check at "
+            f"+/-{NOISE_TRAN_DECIDE_PAIRS} sigma_hat, {seeds} "
+            f"seeds/point -> sigma **{result.sigma_decision_mv:.4f} mV**. "
+            f"(b)'s agreeing with (a) within (b)'s coarser CI is the evidence "
+            f"that the regenerative phase adds no material noise term beyond "
+            f"the injected device noise -- the regeneration-inclusiveness this "
+            f"record exists to establish."
+        )
+    return (
+        f"{head}. (b) The decision-transition cross-check is NOT MEASURABLE at "
+        f"this corner: every pair was degenerate, and the reason is read off "
+        f"the counts in the table below rather than asserted from a canned "
+        f"string -- {degenerate_cross_check_reason(result.decision_points)}. "
+        f"Either way the consequence for THIS record is the same: at this "
+        f"corner the decision statistics are not noise-bound, so the pick-off "
+        f"figure stands alone and the cross-check is deferred to the corners "
+        f"where it is measurable."
+    )
+
+
 def write_noise_tran_evidence(
     result: NoiseTranResult, note: str = "", supersedes: str = "",
 ) -> Path:
@@ -2176,39 +2282,7 @@ def write_noise_tran_evidence(
         f"noise during exponential separation (divided by the growing "
         f"regenerative gain) and the reset PMOS (off in evaluate)."
     )
-    if result.sigma_decision_mv == result.sigma_decision_mv:
-        a(
-            f"- **Two statistics, one claim**: (a) pick-off MC at Vindiff=0, "
-            f"N={len(result.pickoff_diffs)} seeds, gain "
-            f"{result.gain_v_per_v:.4f} V/V -> input-referred sigma "
-            f"**{result.sigma_pickoff_mv:.4f} mV** (95% CI "
-            f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, {result.sigma_pickoff_ci95_mv[1]:.4f}] mV); "
-            f"(b) decision-transition cross-check at "
-            f"+/-{NOISE_TRAN_DECIDE_PAIRS} sigma_hat, {result.decision_points[0]['m'] if result.decision_points else 0} "
-            f"seeds/point -> sigma **{result.sigma_decision_mv:.4f} mV**. (b)'s agreeing "
-            f"with (a) within (b)'s coarser CI is the evidence that the "
-            f"regenerative phase adds no material noise term beyond the injected "
-            f"device noise -- the regeneration-inclusiveness this record exists "
-            f"to establish."
-        )
-    else:
-        a(
-            f"- **Two statistics, one claim**: (a) pick-off MC at Vindiff=0, "
-            f"N={len(result.pickoff_diffs)} seeds, gain "
-            f"{result.gain_v_per_v:.4f} V/V -> input-referred sigma "
-            f"**{result.sigma_pickoff_mv:.4f} mV** (95% CI "
-            f"[{result.sigma_pickoff_ci95_mv[0]:.4f}, {result.sigma_pickoff_ci95_mv[1]:.4f}] mV). "
-            f"(b) The decision-transition cross-check is NOT MEASURABLE at this "
-            f"corner: every pair was degenerate (see the table below -- the "
-            f"sigma-scaled overdrives sit below this corner's resolvable-"
-            f"overdrive floor, so runs either never resolve within the window "
-            f"or all decide correctly). That is itself the physical statement: "
-            f"at this corner the input-referred noise sigma is far below the "
-            f"deterministic resolution floor DR-004 already documented, so "
-            f"noise does not bound the decision statistics here and the pick-"
-            f"off figure stands alone, with the cross-check deferred to the "
-            f"corners where it is measurable."
-        )
+    a(two_statistics_line(result))
     if _DUT_PROVENANCE == "extracted":
         a(
             "- **How the injection is made post-layout** (issue #65): on the "
