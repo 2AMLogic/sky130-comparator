@@ -10,11 +10,14 @@ verifies the composition (per-block DRC, composed DRC, ``klt extract``
 device count).  Running it writes scratch under ``layout/_gen/`` (gitignored)
 and refreshes the committed deliverables ``layout/comparator.gds``,
 ``layout/compose-report.json``, ``layout/route-summary.json``,
-``layout/extract-device-count.json``, ``layout/drc-report.json`` and
-``layout/lvs-request.json`` + ``layout/lvs-report.json`` (the last three
-re-run from the repo root against the *emitted* GDS, since they are the
-envelopes ``manifests/sky130-comparator.json`` cites for T1 items 3 and 4 --
-see ``emit_drc_evidence`` / ``emit_lvs_evidence``).
+``layout/extract-device-count.json``, ``layout/drc-report.json``,
+``layout/lvs-request.json`` + ``layout/lvs-report.json``, and
+``layout/lvs-coverage-probe.json`` (the last four re-run from the repo root
+against the *emitted* GDS -- see ``emit_drc_evidence`` /
+``emit_lvs_evidence`` / ``emit_lvs_coverage_probe``).
+``drc-report.json`` is what ``manifests/sky130-comparator.json`` cites for
+T1 item 3; ``lvs-report.json`` is committed but deliberately NOT cited for
+item 4, and layout/README.md's "Why item 4 is left uncited" says why.
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
     python3 layout/gen_comparator.py --check    # byte-compare against the
@@ -1084,56 +1087,292 @@ def _run_lvs(klt: str, request: dict, repo_root: Path) -> tuple[dict, int]:
     return json.loads(r.stdout), r.returncode
 
 
-def _perturbed_reference(text: str) -> str:
-    """The negative control's reference netlist: the committed one with the
-    first MOSFET card's ``W`` doubled.
+#: Negative controls for the LVS compare, each a textual perturbation of the
+#: committed reference netlist plus the verdict that perturbation MUST
+#: produce.  A compare that cannot fail grades nothing (``sim/selftest.sh``'s
+#: stage-4 discipline, applied to a signoff artifact), so ``mos_*`` and
+#: ``connectivity`` establish that this one bites.  The ``res_*`` rows go
+#: further and measure the compare's *reach*, which is the half that decides
+#: whether the verdict may be cited: at klt's default parameter scope the
+#: block's known drawn-versus-schematic resistor width delta is invisible,
+#: and the two ``res_width_forced_*`` rows show the same tool reports it as a
+#: ``device.property`` error as soon as the geometry is asked for.  That pair
+#: is why T1 item 4 is NOT claimed from this run -- see layout/README.md.
+#:
+#: ``rewrite_resistors`` restates the three ``XR_`` cards as the generic
+#: parent device at an explicit width -- exactly the expansion the PDK's own
+#: fixed-width wrapper model file performs -- so a probe can vary a width the
+#: signoff request structurally cannot express.  ``compare_parameters`` is
+#: ``klt lvs``'s own ``options.compare_parameters``.
+LVS_PROBES = (
+    {
+        "id": "res_width_as_schematic",
+        "perturbation": "reference resistors restated at the fixed-width "
+                        "wrapper's own w=0.35um against the drawn 0.42um",
+        "rewrite_resistors": 0.35,
+        "substitutions": (),
+        "expected_status": "match",
+        "covers": False,
+        "reads": "at the default parameter scope the drawn-versus-schematic "
+                 "width delta is NOT detected by this compare",
+    },
+    {
+        "id": "res_width_10x",
+        "perturbation": "reference resistors restated at w=3.5um, 10x the "
+                        "schematic device and 8.3x the drawn geometry",
+        "rewrite_resistors": 3.5,
+        "substitutions": (),
+        "expected_status": "match",
+        "covers": False,
+        "reads": "resistor width takes no part in the default compare at "
+                 "all -- the 0.35/0.42 delta is not merely inside a tolerance",
+    },
+    {
+        "id": "res_length_2x",
+        "perturbation": "R_LP length doubled, 22um -> 44um",
+        "rewrite_resistors": 0.35,
+        "substitutions": (("XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po L=22",
+                           "XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po L=44"),),
+        "expected_status": "match",
+        "covers": False,
+        "reads": "resistor length is not compared either -- a drawn "
+                 "resistor's whole geometry dimension is unverified here",
+    },
+    {
+        "id": "res_width_forced_schematic",
+        "perturbation": "as res_width_as_schematic, plus the resistor class's "
+                        "geometry forced into the compare via "
+                        "options.compare_parameters {res_high_po: [L, W]}",
+        "rewrite_resistors": 0.35,
+        "compare_parameters": {"res_high_po": ["L", "W"]},
+        "substitutions": (),
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "asked for, the compare DOES report the drawn-versus-"
+                 "schematic width delta -- device.property 'w_um', layout "
+                 "0.42 vs reference 0.35, on all three resistors. The delta "
+                 "is real and LVS-detectable; the signoff run's match rests "
+                 "on the default parameter scope not asking",
+    },
+    {
+        "id": "res_width_forced_drawn",
+        "perturbation": "the same forced compare, with the reference "
+                        "resistors restated at the DRAWN w=0.42um",
+        "rewrite_resistors": 0.42,
+        "compare_parameters": {"res_high_po": ["L", "W"]},
+        "substitutions": (),
+        "expected_status": "match",
+        "covers": True,
+        "reads": "attribution control for the row above: the same forced "
+                 "compare matches once the reference carries the drawn "
+                 "width, so that mismatch is the 0.35/0.42 delta itself and "
+                 "not an artifact of forcing parameters into the compare",
+    },
+    {
+        "id": "mos_width",
+        "perturbation": "M_PINN width 13um -> 12um",
+        "rewrite_resistors": None,
+        "substitutions": (("VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13",
+                           "VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=12"),),
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "MOSFET width IS compared",
+    },
+    {
+        "id": "mos_length",
+        "perturbation": "M_PINN length 0.5um -> 0.6um",
+        "rewrite_resistors": None,
+        "substitutions": (("VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13",
+                           "VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.6 W=13"),),
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "MOSFET length IS compared",
+    },
+    {
+        "id": "connectivity",
+        "perturbation": "M_RST_N drain moved from OUTN to OUTP",
+        "rewrite_resistors": None,
+        "substitutions": (("XM_RST_N OUTN CLKT VDD VDD",
+                           "XM_RST_N OUTP CLKT VDD VDD"),),
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "connectivity IS compared",
+    },
+)
 
-    A compare that cannot fail grades nothing (``sim/selftest.sh``'s stage-4
-    discipline, applied here to a signoff artifact).  This perturbation is
-    deliberately a *device parameter* one rather than a topology one, because
-    the parameter half is exactly the half this compare's disclosures are
-    about: it proves the run actually compares MOS geometry, on the same
-    netlist pair, seconds before the real verdict is committed.
+#: Matches one ``XR_<name> <n1> <n2> <n3> sky130_fd_pr__res_high_po_0p35 L=<l>``
+#: card head in the committed reference netlist.
+_RES_CARD_RE = re.compile(
+    rf"^(XR_\S+(?:\s+\S+){{3}}\s+){LVS_RESISTOR_WRAPPER}(\s+L=\S+)(.*)$",
+    re.MULTILINE)
+
+
+def _probe_reference(base: str, probe: dict) -> str:
+    """Apply one probe's perturbation to the reference netlist text.
+
+    Every substitution must actually bite -- a perturbation that silently
+    failed to apply would turn a negative control into a second copy of the
+    baseline and quietly assert nothing.
     """
-    match = re.search(r"(?m)^(XM_\S+\s.*?\bW=)([0-9.]+)", text)
-    if match is None:
+    text = base
+    width = probe["rewrite_resistors"]
+    if width is not None:
+        text, n = _RES_CARD_RE.subn(
+            rf"\g<1>sky130_fd_pr__res_high_po\g<2> w={width}\g<3>", text)
+        if n != 3:
+            raise RuntimeError(
+                f"LVS probe {probe['id']}: expected to rewrite 3 resistor "
+                f"cards, rewrote {n} -- the reference netlist moved")
+    for old, new in probe["substitutions"]:
+        if old not in text:
+            raise RuntimeError(
+                f"LVS probe {probe['id']}: perturbation target not found in "
+                f"the reference netlist ({old!r}) -- the netlist moved and "
+                "this control would assert nothing")
+        text = text.replace(old, new, 1)
+    return text
+
+
+def _property_findings(envelope: dict) -> list[dict]:
+    """Distinct ``device.property`` (parameter, layout, reference) triples.
+
+    One row per distinct compared-parameter disagreement, deduplicated over
+    the device instances reporting it -- so the probe record carries the
+    numbers a disagreement is actually about (``w_um`` 0.42 vs 0.35), not
+    just a category tally.
+    """
+    seen: list[dict] = []
+    for entry in envelope.get("mismatches") or ():
+        if entry.get("category") != "device.property":
+            continue
+        prop = entry.get("property") or {}
+
+        def rounded(value):
+            # 9 dp kills float-repr noise (0.35000000000000003) without
+            # touching any resolution a device parameter means anything at.
+            return round(value, 9) if isinstance(value, float) else value
+
+        row = {"class": (entry.get("device") or {}).get("class"),
+               "parameter": prop.get("name"),
+               "layout": rounded(prop.get("layout")),
+               "reference": rounded(prop.get("reference"))}
+        if row not in seen:
+            seen.append(row)
+    return seen
+
+
+def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
+    """Measure what the signoff LVS `match` does and does not cover.
+
+    A `klt lvs` envelope states its verdict, not its reach.  Two things about
+    this design's reach have to be stated with any claim and neither is
+    readable off the envelope: that the compare can fail at all, and that the
+    block's known drawn-versus-schematic resistor width delta (0.42um drawn
+    vs the schematic's ``res_high_po_0p35``) sits in a blind spot of it.
+    Both are measured here -- one compare per row of ``LVS_PROBES``, each
+    against a perturbed **scratch** copy of the reference netlist; the
+    committed ``sim/.../comparator_core.spice`` is never written to.
+
+    Writes ``layout/lvs-coverage-probe.json``, and raises if any row's
+    observed verdict differs from the one it asserts.
+    """
+    base = (repo_root / LVS_REFERENCE).read_text()
+    rows = []
+    with tempfile.TemporaryDirectory(prefix="loom-lvs-probe-") as tmp_str:
+        tmp = Path(tmp_str)
+        for probe in LVS_PROBES:
+            scratch = tmp / f"{probe['id']}.spice"
+            scratch.write_text(_probe_reference(base, probe))
+            request = json.loads(json.dumps(LVS_REQUEST))
+            request["reference"]["netlist"] = str(scratch)
+            if probe["rewrite_resistors"] is not None:
+                # The cards now name the curated generic device, so the
+                # fixed-width wrapper mapping no longer applies.
+                request["reference"]["device_map"] = {}
+            if probe.get("compare_parameters") is not None:
+                request["options"]["compare_parameters"] = \
+                    probe["compare_parameters"]
+            envelope, _rc = _run_lvs(klt, request, repo_root)
+            observed = envelope.get("status")
+            rows.append({
+                "id": probe["id"],
+                "perturbation": probe["perturbation"],
+                "compare_parameters": probe.get("compare_parameters"),
+                "compare_covers_this": probe["covers"],
+                "reads_as": probe["reads"],
+                "expected_status": probe["expected_status"],
+                "observed_status": observed,
+                "error_count": envelope.get("error_count"),
+                "category_counts": envelope.get("category_counts"),
+                "property_findings": _property_findings(envelope),
+                "pass": observed == probe["expected_status"],
+            })
+            print(f"    probe {probe['id']}: {observed} "
+                  f"(expected {probe['expected_status']}) "
+                  f"{'PASS' if rows[-1]['pass'] else 'FAIL'}")
+    ok = all(row["pass"] for row in rows)
+    evidence = {
+        "tool": {"klt_pin": KLT_PIN, "engine": signoff.get("engine"),
+                 "engine_version": (signoff.get("environment") or {})
+                 .get("engine_version")},
+        "method": (
+            "negative controls for layout/lvs-report.json: one klt lvs "
+            "compare per row, each against a perturbed scratch copy of "
+            f"{LVS_REFERENCE} (the committed netlist is never written to) "
+            "and the same layout/comparator.gds the signoff run used. A row "
+            "with compare_covers_this=true asserts the compare DETECTS that "
+            "defect (so the signoff match is not vacuous); a row with "
+            "compare_covers_this=false asserts it does NOT -- those are the "
+            "holes layout/README.md's LVS section discloses."),
+        "signoff_report": "layout/lvs-report.json",
+        "signoff_status": signoff.get("status"),
+        "signoff_layout_sha256": (signoff.get("environment") or {})
+        .get("layout_sha256"),
+        "signoff_reference_sha256": (signoff.get("environment") or {})
+        .get("reference_sha256"),
+        "probes": rows,
+        "pass": ok,
+    }
+    (repo_root / "layout" / "lvs-coverage-probe.json").write_text(
+        json.dumps(evidence, indent=2) + "\n")
+    if not ok:
         raise RuntimeError(
-            "LVS negative control: found no 'XM_... W=<value>' card in "
-            f"{LVS_REFERENCE} to perturb -- refusing to commit an LVS "
-            "verdict whose compare was never shown to bite"
-        )
-    doubled = f"{float(match.group(2)) * 2:g}"
-    return text[:match.start(2)] + doubled + text[match.end(2):]
+            "LVS coverage probe FAILED -- a negative control did not produce "
+            "the verdict it asserts; see layout/lvs-coverage-probe.json")
 
 
-def emit_lvs_evidence(klt: str, repo_root: Path) -> None:
-    """Run the signoff LVS over the *emitted* GDS and commit it (T1 item 4).
+def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
+    """Run the signoff LVS over the *emitted* GDS and commit it.
 
     Mirrors :func:`emit_drc_evidence`: run from the repo root against
     ``layout/comparator.gds`` so the committed envelope records both the path
     ``scripts/check-t1-signoff.py`` resolves and the
-    ``provenance.input.content_hash`` ``manifests/sky130-comparator.json``
-    pins -- regenerating the GDS without refreshing this file then renders
-    item 4 ``unmet`` (stale evidence) rather than grading a superseded run.
+    ``provenance.input.content_hash`` a manifest citation would pin --
+    regenerating the GDS without refreshing this file would then render any
+    such citation ``unmet`` (stale) rather than grading a superseded run.
 
     Writes two files.  ``layout/lvs-request.json`` is the request document
     itself, committed because the response echoes ``layout``/``reference``/
     ``options`` but **not** ``reference.form`` or ``reference.device_map`` --
     without it the committed envelope would not record the device-class
     mapping the compare was reached through.  ``layout/lvs-report.json`` is
-    the envelope the manifest cites.
+    the envelope.
 
-    Two guards, both after the envelope is on disk (so a failing run leaves
-    the evidence to read rather than nothing):
+    **The envelope is committed but NOT cited for T1 item 4.**  Its verdict
+    is real for connectivity and MOSFET geometry, and silent on drawn
+    resistor geometry -- where this block's known 0.42um-drawn versus
+    0.35um-schematic width delta sits.  :func:`emit_lvs_coverage_probe`
+    measures both halves of that statement; layout/README.md's "Why item 4 is
+    left uncited" carries the reasoning.
 
-    * the negative control above must report ``mismatch`` -- otherwise the
-      compare is not discriminating and its ``match`` means nothing;
-    * the real verdict must be the one item 4 is graded on, ``status:
-      "match"`` **and** ``power_connectivity.status != "mismatch"``
-      (``manifests/design-evidence-tiers.md`` item 4).  A regression here
-      must stop the generator loudly: the manifest cites this envelope, so
-      silently emitting a mismatch would leave a cited-but-unmet row that
-      only CI would catch.
+    The verdict guard fires after the envelope is on disk, so a failing run
+    leaves the evidence to read rather than nothing: the result must be the
+    one item 4 is graded on, ``status: "match"`` **and**
+    ``power_connectivity.status != "mismatch"``
+    (``manifests/design-evidence-tiers.md`` item 4).  Whether the compare can
+    fail at all is no longer asserted here -- ``emit_lvs_coverage_probe``'s
+    ``mos_*``/``connectivity`` rows are the same assertion, generalised, and
+    run immediately after.
     """
     (repo_root / "layout" / "lvs-request.json").write_text(
         json.dumps(LVS_REQUEST, indent=2) + "\n")
@@ -1153,36 +1392,16 @@ def emit_lvs_evidence(klt: str, repo_root: Path) -> None:
         print(f"    warning [{w.get('category')}]: "
               f"{str(w.get('description'))[:100]}")
 
-    reference = (repo_root / LVS_REFERENCE).read_text()
-    with tempfile.NamedTemporaryFile("w", suffix=".spice", delete=False,
-                                     encoding="utf-8") as handle:
-        handle.write(_perturbed_reference(reference))
-        control_path = handle.name
-    try:
-        control_request = json.loads(json.dumps(LVS_REQUEST))
-        control_request["reference"]["netlist"] = control_path
-        control, _rc = _run_lvs(klt, control_request, repo_root)
-    finally:
-        Path(control_path).unlink(missing_ok=True)
-    if control.get("status") != "mismatch":
-        raise RuntimeError(
-            "LVS negative control did NOT bite: a reference with the first "
-            f"MOSFET's W doubled still graded {control.get('status')!r} -- "
-            "refusing to commit a 'match' from a compare that cannot fail"
-        )
-    print(f"    negative control: doubled-W reference grades "
-          f"{control.get('status')} ({control.get('error_count')} errors) -- "
-          "the compare discriminates")
-
     if status != "match" or power == "mismatch":
         raise RuntimeError(
             f"signoff LVS over layout/comparator.gds is not clean "
             f"(rc={rc}, status={status!r}, power_connectivity={power!r}, "
             f"errors={envelope.get('error_count')}) -- the envelope was "
-            "written for inspection, but manifests/sky130-comparator.json "
-            "cites it for T1 item 4, so the citation must be removed before "
-            "this verdict can be committed"
+            "written for inspection, but layout/README.md's LVS section "
+            "describes a clean match, so both it and any manifest citation "
+            "must be revisited before this verdict is committed"
         )
+    return envelope
 
 
 def main() -> int:
@@ -1225,8 +1444,10 @@ def main() -> int:
     print("[emit] signoff DRC over the emitted GDS (T1 item 3 evidence)")
     emit_drc_evidence(args.klt, ["--pdk", PDK_VARIANT, "--pdk-root", str(pdk_root)],
                       repo_root)
-    print("[emit] signoff LVS over the emitted GDS (T1 item 4 evidence)")
-    emit_lvs_evidence(args.klt, repo_root)
+    print("[emit] signoff LVS over the emitted GDS (item 4 evidence, uncited)")
+    signoff_lvs = emit_lvs_evidence(args.klt, repo_root)
+    print("[emit] LVS coverage probe (what that match does and does not cover)")
+    emit_lvs_coverage_probe(args.klt, repo_root, signoff_lvs)
     area = None
     if bbox:
         area = round((bbox["x1"] - bbox["x0"]) * (bbox["y1"] - bbox["y0"]), 2)
