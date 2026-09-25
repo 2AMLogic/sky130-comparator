@@ -17,21 +17,49 @@ move.
 
 ## The current verdict, honestly
 
-**1 of 11 T1 items is `met`: item 3, "DRC clean"** (issue #46), cited from
-`layout/drc-report.json` — a committed `klt drc` envelope over
-`layout/comparator.gds`, `status: "clean"`, 0 violations, deck identified
-by content hash, with the cited input hash pinned in the manifest so a
-regenerated GDS renders the row `unmet` (stale) rather than grading a
-superseded run. Item 3's coverage disclosure is **claimant-enforced, not
-graded** (`design-evidence-tiers.md` item 3): the
-`layers_in_stream_without_rules` / `rules_skipped` / `deck_scope` fields
-that qualify that "clean" are quoted in full in
-[`layout/README.md`](../layout/README.md) → "DRC signoff, and the coverage
-gaps behind 'clean'". A `met` row here is **not** evidence that they were
-disclosed — read them against the claim.
+**2 of 11 T1 items are `met`: items 3 ("DRC clean") and 4 ("LVS clean")**
+(issues #46 and #49). Both are cited over the same artifact,
+`layout/comparator.gds`, at the same pinned input hash — so a regenerated
+GDS renders **both** rows `unmet` (stale) rather than grading a superseded
+run.
 
-The other ten items render `unmet` with `reason: no_evidence`: no LVS/PEX
-run exists, and this repo's `sim/` harness records evidence as append-only
+- **Item 3** is cited from `layout/drc-report.json` — a committed `klt drc`
+  envelope, `status: "clean"`, 0 violations, deck identified by content
+  hash. Its coverage disclosure is **claimant-enforced, not graded**
+  (`design-evidence-tiers.md` item 3): the
+  `layers_in_stream_without_rules` / `rules_skipped` / `deck_scope` fields
+  that qualify that "clean" are quoted in full in
+  [`layout/README.md`](../layout/README.md) → "DRC signoff, and the
+  coverage gaps behind 'clean'". A `met` row here is **not** evidence that
+  they were disclosed — read them against the claim.
+- **Item 4** is cited from `layout/lvs-report.json` — a committed `klt lvs`
+  envelope, `engine: "klayout"` (0.30.10), `status: "match"`, 0 errors,
+  16/16 devices and 12/12 nets paired, checked against the item-1 netlist
+  (`sim/comparator-decision/testbench/comparator_core.spice`, what
+  `design/netlist.sh` writes out of `design/comparator.sch`). Same
+  claimant-enforced shape: `klt signoff` grades it on `status == "match"`
+  and `power_connectivity.status != "mismatch"`, and nothing mechanical
+  checks the disclosures the item also requires. **Three of them are
+  load-bearing and are written out in
+  [`layout/README.md`](../layout/README.md) → "LVS signoff, and what this
+  `match` does not verify"**: (1) `power_connectivity.status:
+  "unchecked"` means the question was never asked, never "verified" — this
+  repo's reference is SPICE, not gate-level, so the check does not apply
+  and nothing here is a power-grid claim; (2) the two warnings-only
+  mismatches (`device.placeholder_value`, `topology`), quoted verbatim;
+  and (3) **resistor sizing is outside this compare entirely** — KLayout
+  compares only a resistor's primary parameter `R`, which this reference
+  form excludes as a documented `0` placeholder, and `L`/`W` are secondary
+  and never compared. The block's known drawn-versus-schematic resistor
+  width delta (0.42 µm drawn vs the schematic's 0.35 µm flavour) is
+  therefore **still open and undetected by this `match`** — it was not
+  absorbed by a tolerance (`parameter_tolerance: null`) or waived by an
+  option (`compare_parameters: null`); it is simply not a dimension the
+  tool compares. Item 4 must not be quoted as "the layout matches the
+  schematic including device sizing".
+
+The other nine items render `unmet` with `reason: no_evidence`: no PEX run
+exists, and this repo's `sim/` harness records evidence as append-only
 Markdown records, not `klt sim`/`klt yield` JSON envelopes, so nothing
 gradeable can be cited honestly for them yet. Those `unmet` rows are the
 correct result per issue #31's own "An all-`unmet` manifest is a correct

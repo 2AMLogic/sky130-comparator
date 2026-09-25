@@ -46,6 +46,20 @@ jobs:
       - name: Re-run T1 signoff against the committed manifest
         run: python3 scripts/check-t1-signoff.py gate
 
+      # Item 4's rot hole that the gate above cannot see (issue #49): the
+      # manifest pins the LVS envelope's *layout*-side hash only, so a change
+      # to the schematic (and therefore to design/netlist.sh's output, the
+      # compare's reference side) leaves item 4 grading `met` against a
+      # compare that no longer describes the design. `klt lvs --check`
+      # re-hashes BOTH sides plus the extraction deck and exits 3 on drift.
+      # Cheap mode on purpose: --rerun reconstructs the request from the
+      # report's own echoed fields, which do not include reference.form /
+      # reference.device_map (klayout-tools#2460), so it would report a
+      # reconstruction failure rather than real drift. No PDK needed --
+      # nothing here resolves one.
+      - name: Re-hash the committed LVS envelope's own inputs
+        run: klt lvs --check layout/lvs-report.json
+
       # Rule-9 integrator view (issue #36): stdlib-only, no klt needed.
       - name: Integrator-view selftest (hermetic)
         run: python3 scripts/check-integrator-view.py selftest

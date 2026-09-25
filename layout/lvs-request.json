@@ -1,0 +1,24 @@
+{
+  "engine": "klayout",
+  "layout": {
+    "file": "layout/comparator.gds",
+    "deck": "sky130",
+    "top": "gen_compose_0"
+  },
+  "reference": {
+    "netlist": "sim/comparator-decision/testbench/comparator_core.spice",
+    "form": "subckt-call",
+    "deck": "sky130",
+    "device_map": {
+      "sky130_fd_pr__res_high_po_0p35": {
+        "kind": "resistor",
+        "class": "res_high_po",
+        "length_param": "__geometry_not_on_card__",
+        "width_param": "__geometry_not_on_card__"
+      }
+    }
+  },
+  "options": {
+    "combine_devices": true
+  }
+}

@@ -5,6 +5,10 @@
     "3": {
       "file": "layout/drc-report.json",
       "content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4"
+    },
+    "4": {
+      "file": "layout/lvs-report.json",
+      "content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4"
     }
   }
 }
