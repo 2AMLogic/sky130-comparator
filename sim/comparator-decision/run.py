@@ -2374,9 +2374,14 @@ def write_noise_tran_evidence(
         + (
             f"**{result.sigma_decision_mv:.4f} mV**"
             if result.sigma_decision_mv == result.sigma_decision_mv else
-            "**not measurable at this corner** (every pair degenerate -- "
-            "sigma-scaled overdrives sit below the corner's resolvable-"
-            "overdrive floor; see the unresolved counts above)"
+            # Deliberately does NOT restate a cause. The cause is derived
+            # from these same counts in the "Two statistics" bullet above,
+            # and a second, independently-worded copy of it is exactly how
+            # this record grew a wrong one (issue #65).
+            "**not measurable at this corner** (every pair degenerate -- the "
+            "reason is derived from these counts in the **Two statistics** "
+            "bullet above, and is not restated here so the two cannot drift "
+            "apart)"
         )
     )
     a("")
