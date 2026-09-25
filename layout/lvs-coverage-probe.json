@@ -1,0 +1,296 @@
+{
+  "tool": {
+    "klt_pin": "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10",
+    "engine": "klayout",
+    "engine_version": "0.30.10"
+  },
+  "method": "negative controls for layout/lvs-report.json: one klt lvs compare per row, each against a perturbed scratch copy of sim/comparator-decision/testbench/comparator_core.spice (the committed netlist is never written to) and the same layout/comparator.gds the signoff run used. A row with compare_covers_this=true asserts the compare DETECTS that defect (so the signoff match is not vacuous); a row with compare_covers_this=false asserts it does NOT -- those are the holes layout/README.md's LVS section discloses.",
+  "signoff_report": "layout/lvs-report.json",
+  "signoff_status": "match",
+  "signoff_layout_sha256": "cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4",
+  "signoff_reference_sha256": "e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4",
+  "probes": [
+    {
+      "id": "res_width_as_schematic",
+      "perturbation": "reference resistors restated at the fixed-width wrapper's own w=0.35um against the drawn 0.42um",
+      "compare_parameters": null,
+      "compare_covers_this": false,
+      "reads_as": "at the default parameter scope the drawn-versus-schematic width delta is NOT detected by this compare",
+      "expected_status": "match",
+      "observed_status": "match",
+      "error_count": 0,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "topology": 1
+      },
+      "property_findings": [],
+      "pass": true
+    },
+    {
+      "id": "res_width_10x",
+      "perturbation": "reference resistors restated at w=3.5um, 10x the schematic device and 8.3x the drawn geometry",
+      "compare_parameters": null,
+      "compare_covers_this": false,
+      "reads_as": "resistor width takes no part in the default compare at all -- the 0.35/0.42 delta is not merely inside a tolerance",
+      "expected_status": "match",
+      "observed_status": "match",
+      "error_count": 0,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "topology": 1
+      },
+      "property_findings": [],
+      "pass": true
+    },
+    {
+      "id": "res_length_2x",
+      "perturbation": "R_LP length doubled, 22um -> 44um",
+      "compare_parameters": null,
+      "compare_covers_this": false,
+      "reads_as": "resistor length is not compared either -- a drawn resistor's whole geometry dimension is unverified here",
+      "expected_status": "match",
+      "observed_status": "match",
+      "error_count": 0,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "topology": 1
+      },
+      "property_findings": [],
+      "pass": true
+    },
+    {
+      "id": "res_width_forced_schematic",
+      "perturbation": "as res_width_as_schematic, plus the resistor class's geometry forced into the compare via options.compare_parameters {res_high_po: [L, W]}",
+      "compare_parameters": {
+        "res_high_po": [
+          "L",
+          "W"
+        ]
+      },
+      "compare_covers_this": true,
+      "reads_as": "asked for, the compare DOES report the drawn-versus-schematic width delta -- device.property 'w_um', layout 0.42 vs reference 0.35, on all three resistors. The delta is real and LVS-detectable; the signoff run's match rests on the default parameter scope not asking",
+      "expected_status": "mismatch",
+      "observed_status": "mismatch",
+      "error_count": 15,
+      "category_counts": {
+        "device.parameter_excluded": 3,
+        "device.placeholder_value": 1,
+        "device.property": 12,
+        "topology": 4
+      },
+      "property_findings": [
+        {
+          "class": "res_high_po",
+          "parameter": "r",
+          "layout": 1733.151997,
+          "reference": 0.0
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "w_um",
+          "layout": 0.42,
+          "reference": 0.35
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "a",
+          "layout": 0.735,
+          "reference": 0.0
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "p",
+          "layout": 4.34,
+          "reference": 0.0
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "r",
+          "layout": 17394.465547,
+          "reference": 0.0
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "a",
+          "layout": 9.24,
+          "reference": 0.0
+        },
+        {
+          "class": "res_high_po",
+          "parameter": "p",
+          "layout": 44.84,
+          "reference": 0.0
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "res_width_forced_drawn",
+      "perturbation": "the same forced compare, with the reference resistors restated at the DRAWN w=0.42um",
+      "compare_parameters": {
+        "res_high_po": [
+          "L",
+          "W"
+        ]
+      },
+      "compare_covers_this": true,
+      "reads_as": "attribution control for the row above: the same forced compare matches once the reference carries the drawn width, so that mismatch is the 0.35/0.42 delta itself and not an artifact of forcing parameters into the compare",
+      "expected_status": "match",
+      "observed_status": "match",
+      "error_count": 0,
+      "category_counts": {
+        "device.parameter_excluded": 3,
+        "device.placeholder_value": 1,
+        "topology": 1
+      },
+      "property_findings": [],
+      "pass": true
+    },
+    {
+      "id": "mos_width",
+      "perturbation": "M_PINN width 13um -> 12um",
+      "compare_parameters": null,
+      "compare_covers_this": true,
+      "reads_as": "MOSFET width IS compared",
+      "expected_status": "mismatch",
+      "observed_status": "mismatch",
+      "error_count": 7,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "device.property": 5,
+        "topology": 3
+      },
+      "property_findings": [
+        {
+          "class": "nfet",
+          "parameter": "w_um",
+          "layout": 13.0,
+          "reference": 12.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "as",
+          "layout": 5.46,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "ad",
+          "layout": 5.46,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "ps",
+          "layout": 27.68,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "pd",
+          "layout": 27.68,
+          "reference": 0.0
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "mos_length",
+      "perturbation": "M_PINN length 0.5um -> 0.6um",
+      "compare_parameters": null,
+      "compare_covers_this": true,
+      "reads_as": "MOSFET length IS compared",
+      "expected_status": "mismatch",
+      "observed_status": "mismatch",
+      "error_count": 7,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "device.property": 5,
+        "topology": 3
+      },
+      "property_findings": [
+        {
+          "class": "nfet",
+          "parameter": "l_um",
+          "layout": 0.5,
+          "reference": 0.6
+        },
+        {
+          "class": "nfet",
+          "parameter": "as",
+          "layout": 5.46,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "ad",
+          "layout": 5.46,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "ps",
+          "layout": 27.68,
+          "reference": 0.0
+        },
+        {
+          "class": "nfet",
+          "parameter": "pd",
+          "layout": 27.68,
+          "reference": 0.0
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "connectivity",
+      "perturbation": "M_RST_N drain moved from OUTN to OUTP",
+      "compare_parameters": null,
+      "compare_covers_this": true,
+      "reads_as": "connectivity IS compared",
+      "expected_status": "mismatch",
+      "observed_status": "mismatch",
+      "error_count": 7,
+      "category_counts": {
+        "device.placeholder_value": 1,
+        "device.property": 5,
+        "device.unmatched": 1,
+        "topology": 2
+      },
+      "property_findings": [
+        {
+          "class": "pfet",
+          "parameter": "w_um",
+          "layout": 8.0,
+          "reference": 16.0
+        },
+        {
+          "class": "pfet",
+          "parameter": "as",
+          "layout": 3.36,
+          "reference": 0.0
+        },
+        {
+          "class": "pfet",
+          "parameter": "ad",
+          "layout": 3.36,
+          "reference": 0.0
+        },
+        {
+          "class": "pfet",
+          "parameter": "ps",
+          "layout": 16.84,
+          "reference": 0.0
+        },
+        {
+          "class": "pfet",
+          "parameter": "pd",
+          "layout": 16.84,
+          "reference": 0.0
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}
