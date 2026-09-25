@@ -46,6 +46,9 @@
       "documentation"
     ]
   },
+  "buildGate": {
+    "command": "./sim/selftest.sh"
+  },
   "terminals": [
     {
       "id": "terminal-1",
