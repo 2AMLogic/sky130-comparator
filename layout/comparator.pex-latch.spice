@@ -1,0 +1,107 @@
+* GENERATED FILE -- do not hand-edit. Regenerate with
+* `python3 layout/extract_pex.py`; `--check` verifies the committed copy.
+*
+* the post-layout LATCH FRONT-END PARTITION of the comparator, as a FLAT device-level fragment
+* interchangeable with sim/comparator-decision/testbench/comparator_core.spice.
+* Derived from layout/comparator.extract.spice (`klt extract --parasitics`
+* over layout/comparator.gds) by a name-level rewrite only: nets renamed to
+* their schematic counterparts via layout/lvs-report.json's 12/12 net
+* correspondence, device instances renamed to the schematic instance they
+* pair with structurally. No R, C, or device parameter value is altered.
+* See layout/extract_pex.py's module docstring for the full derivation, for
+* why `klt pex` is not the path here, and for the disclosed res_high_po
+* w=0.42um-drawn vs w=0.35um-schematic delta this fragment deliberately
+* carries through.
+*
+* PARTITION: every device touching the latch tail node
+* (TAIL2) is KEPT -- the steering
+* pair and the latch tail switch -- together with the parasitics of
+* the nets those devices touch and their own star legs. Everything
+* else (preamp, cross-coupled PMOS, reset PMOS, clock shaper) is
+* omitted. This is the post-layout counterpart of run.py
+* `_latch_noise_deck`'s steering+tail AC sub-model, which gives
+* `noise-tran` its stage-2 gate-referred injection amplitude; the
+* schematic side names those three devices explicitly, this side
+* selects the same three by connectivity (issue #65).
+*
+* --- extractor's own parasitic-model disclosure, verbatim ---
+* extracted by klt extract --deck sky130
+* parasitic model (--parasitics):
+* - capacitance: net-to-ground for every net's own (non-coupled) area/perimeter, plus net-to-net for the vertical-overlap coupling `coupling` describes below -- a coupled net pair gets a direct capacitor between their two hub nodes, not just capacitors to the deck's ground/substrate net
+* - coupling: vertical overlap (crossover) unconditionally -- where one net's conductor on an adjacent metal level sits directly over another *distinct* net's conductor, that overlap area is charged between the two nets instead of to ground (issue #760) -- plus lateral (same-layer, sidewall) coupling, but only for a net pair naming one of the caller's declared `--critical-net` nets (issue #976): facing-edge length within that layer's own minimum-spacing lookback is charged between the two nets, *additively* (not deducted from either net's substrate fringe term, unlike the vertical case -- a known simplification). Any same-layer pair with neither side named `--critical-net`, and fringe shielding in general, are still not modelled
+* - resistance: single lumped series resistance per net, distributed as a star across that net's device terminals (issue #592) -- not a per-segment, distributed RC ladder, *unless* `--distributed-rc` names this net via `--critical-net` (issue #977, Epic #709 Phase 2b): then the net's terminals are ordered along their approximate physical spread and its total R/C is broken into a chain of per-segment resistors (segment length proportional to inter-terminal distance) with a ground capacitor at each terminal node (proportional to its adjacent segment length/2), instead of one star hub -- still an approximation (terminal position is a device-placement proxy, not true per-segment routing geometry), but a strictly finer-grained one than the single-hub star
+* - frequency: quasi-static -- one frequency-independent R and C per net; no skin effect, no distributed transmission-line behavior
+*
+* --- netlist ---
+* device instance $3 r0 *1 11.67,40.39 nfet
+XM_STN_P OUTP__t3 OUTP1__t4 TAIL2__t2 GND__t15 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
+* device instance $6 r0 *1 15.67,45 nfet
+XM_TAIL2 TAIL2__t0 CLKT__t0 GND__t5 GND__t16 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
+* device instance $9 r0 *1 11.67,49.61 nfet
+XM_STN_N OUTN__t0 OUTN1__t4 TAIL2__t1 GND__t17 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
+* device instance _10_t4 r0 *1 0,0
+R_OUTN1__t4_OUTN1 OUTN1__t4 OUTN1 97.4871203292
+* device instance _10 r0 *1 0,0
+C_OUTN1_vsubs OUTN1 vsubs 8.98701e-15
+* device instance _3_t0 r0 *1 0,0
+R_CLKT__t0_CLKT CLKT__t0 CLKT 323.124615029
+* device instance _3 r0 *1 0,0
+C_CLKT_vsubs CLKT vsubs 9.151286e-15
+* device instance _6_t4 r0 *1 0,0
+R_OUTP1__t4_OUTP1 OUTP1__t4 OUTP1 75.8687388416
+* device instance _6 r0 *1 0,0
+C_OUTP1_vsubs OUTP1 vsubs 8.461843e-15
+* device instance _7_t0 r0 *1 0,0
+R_TAIL2__t0_TAIL2 TAIL2__t0 TAIL2 172.298819269
+* device instance _7_t1 r0 *1 0,0
+R_TAIL2__t1_TAIL2 TAIL2__t1 TAIL2 310.069740366
+* device instance _7_t2 r0 *1 0,0
+R_TAIL2__t2_TAIL2 TAIL2__t2 TAIL2 310.069740366
+* device instance _7 r0 *1 0,0
+C_TAIL2_vsubs TAIL2 vsubs 4.013191e-15
+* device instance GND_t5 r0 *1 0,0
+R_GND__t5_GND GND__t5 GND 95.7763400152
+* device instance GND_t15 r0 *1 0,0
+R_GND__t15_GND GND__t15 GND 204.161437995
+* device instance GND_t16 r0 *1 0,0
+R_GND__t16_GND GND__t16 GND 95.7763400152
+* device instance GND_t17 r0 *1 0,0
+R_GND__t17_GND GND__t17 GND 171.881467668
+* device instance GND r0 *1 0,0
+C_GND_vsubs GND vsubs 3.5595668e-14
+* device instance OUTN_t0 r0 *1 0,0
+R_OUTN__t0_OUTN OUTN__t0 OUTN 284.046924274
+* device instance OUTN r0 *1 0,0
+C_OUTN_vsubs OUTN vsubs 1.1631209e-14
+* device instance OUTP_t3 r0 *1 0,0
+R_OUTP__t3_OUTP OUTP__t3 OUTP 283.716286553
+* device instance OUTP r0 *1 0,0
+C_OUTP_vsubs OUTP vsubs 1.1348877e-14
+* device instance cc__10__6 r0 *1 0,0
+C_OUTN1_OUTP1 OUTN1 OUTP1 8.9015e-17
+* device instance cc__3_GND r0 *1 0,0
+C_CLKT_GND CLKT GND 6.4921e-17
+* device instance cc__3_OUTN r0 *1 0,0
+C_CLKT_OUTN CLKT OUTN 2.4095e-17
+* device instance cc__3_OUTP r0 *1 0,0
+C_CLKT_OUTP CLKT OUTP 3.8484e-17
+* device instance cc__7_GND r0 *1 0,0
+C_TAIL2_GND TAIL2 GND 2.8778e-17
+* device instance cc__7_OUTN r0 *1 0,0
+C_TAIL2_OUTN TAIL2 OUTN 3.8484e-17
+* device instance cc__7_OUTP r0 *1 0,0
+C_TAIL2_OUTP TAIL2 OUTP 2.6437e-17
+* device instance cc_GND_OUTN r0 *1 0,0
+C_GND_OUTN GND OUTN 1.2047e-17
+* device instance cc_GND_OUTP r0 *1 0,0
+C_GND_OUTP GND OUTP 1.2047e-17
+* device instance cc_OUTN_OUTP r0 *1 0,0
+C_OUTN_OUTP OUTN OUTP 4.819e-17
+* device instance vsubs_dctie r0 *1 0,0
+R_vsubs_0 vsubs 0 1e+12
+*
+* Substrate tie: the extractor grounds `vsubs` only through a 1e12 ohm
+* DC tie, which leaves it floating for AC/transient and would couple
+* every net's ground capacitance net-to-net instead of to ground.
+* The physical substrate is at GND, so tie it.
+Vvsubs vsubs 0 dc 0

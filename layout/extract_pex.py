@@ -53,6 +53,10 @@ WHAT THIS SCRIPT EMITS
 4. `layout/comparator.pex-preamp.spice` -- the preamp partition of (3), the
    post-layout counterpart of the `noise` sub-command's loop-broken AC
    sub-model.
+5. `layout/comparator.pex-latch.spice` -- the latch front-end partition of
+   (3) (steering pair + latch tail), the post-layout counterpart of the
+   steering+tail AC sub-model `noise-tran` stage 2 builds on the schematic
+   side (`run.py`'s `_latch_noise_deck`). Added by issue #65.
 
 THE REWRITE IN (3), STEP BY STEP -- every step is name-level only; no R, C or
 device parameter value is ever altered:
@@ -160,6 +164,7 @@ EXTRACT_JSON = LAYOUT_DIR / "extract-parasitics.json"
 EXTRACT_SPICE = LAYOUT_DIR / "comparator.extract.spice"
 PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
 PEX_PREAMP_FRAGMENT = LAYOUT_DIR / "comparator.pex-preamp.spice"
+PEX_LATCH_FRAGMENT = LAYOUT_DIR / "comparator.pex-latch.spice"
 
 DECK = "sky130"
 TOP_CELL = "gen_compose_0"
@@ -198,6 +203,17 @@ LATCH_NETS = frozenset({"CLK", "CLKT", "TAIL2", "OUTP", "OUTN"})
 # device across the partition fails loudly here instead of quietly producing a
 # different sub-model than the schematic side's.
 EXPECTED_PREAMP_DEVICES = 9
+
+# The LATCH FRONT-END partition (issue #65), the post-layout counterpart of
+# `run.py`'s `_latch_noise_deck` -- the AC `.noise` sub-model that gives
+# `noise-tran` its stage-2 gate-referred injection amplitude. The schematic
+# side names its three devices explicitly (M_STN_P, M_STN_N, M_TAIL2); here,
+# as with the preamp partition, the same set is expressed as CONNECTIVITY so
+# it is checked against the layout rather than against a name list: the
+# steering pair and the latch tail are exactly the devices that touch the
+# latch tail node TAIL2.
+LATCH_FRONT_END_NETS = frozenset({"TAIL2"})
+EXPECTED_LATCH_DEVICES = 3
 
 
 def _fail(msg: str) -> None:
@@ -422,38 +438,64 @@ def _pair_device_names(elements: list[Element]) -> list[str]:
     return warnings
 
 
-def rewrite(raw_spice: str) -> tuple[str, str, list[str]]:
-    """Return (flat DUT fragment, flat preamp partition, warnings)."""
+def _partition(
+    elements: list[Element], keep_device, expected: int, what: str, detail: str,
+) -> list[Element]:
+    """The elements of one sub-model partition of the extracted netlist.
+
+    `keep_device` selects the partition's DEVICES by connectivity. Everything
+    else is DERIVED from that selection rather than listed, so a partition can
+    never quietly disagree with the device set it is supposed to carry: an
+    element survives iff every hub net it names is one the surviving devices
+    touch (plus the substrate node and ngspice's global ground, which the
+    extractor's own `vsubs` DC tie names and which belongs in every
+    partition), AND every star leg it names belongs to a surviving device.
+    The second clause is what stops a star-leg resistor whose device was
+    dropped from dangling on a one-connection node.
+    """
+    devices = [e for e in elements if e.is_device and keep_device(e)]
+    if len(devices) != expected:
+        _fail(
+            f"{what} partition holds {len(devices)} devices, expected "
+            f"{expected} ({detail}) -- the layout's partition has changed, so "
+            f"the post-layout sub-model would no longer be the schematic "
+            "sub-model's counterpart"
+        )
+    live_legs: set[str] = set().union(*(e.legs for e in devices))
+    live_hubs: set[str] = set().union(*(e.hub_nets for e in devices)) | {"vsubs", "0"}
+    return [
+        e for e in elements
+        if e.hub_nets <= live_hubs and e.legs <= live_legs
+    ]
+
+
+def rewrite(raw_spice: str) -> tuple[str, str, str, list[str]]:
+    """Return (flat DUT fragment, preamp partition, latch partition, warnings)."""
     elements = _parse_elements(raw_spice, _net_rename_map())
     warnings = _pair_device_names(elements)
 
     # The preamp partition: the same loop break the schematic-side `noise`
     # sub-model makes (omit everything past the preamp outputs), expressed
     # against connectivity instead of against a device-name list.
-    preamp_devices = [
-        e for e in elements if e.is_device and not (e.hub_nets & LATCH_NETS)
-    ]
-    if len(preamp_devices) != EXPECTED_PREAMP_DEVICES:
-        _fail(
-            f"preamp partition holds {len(preamp_devices)} devices, expected "
-            f"{EXPECTED_PREAMP_DEVICES} (preamp tail + 4 input-pair fingers + "
-            "2 poly loads + 2 absorber caps) -- the layout's partition against "
-            f"{sorted(LATCH_NETS)} has changed, so the post-layout `noise` "
-            "sub-model would no longer be the schematic sub-model's counterpart"
-        )
-    live_legs = set().union(*(e.legs for e in preamp_devices))
-    preamp = [
-        e for e in elements
-        if not (e.hub_nets & LATCH_NETS)
-        # A star-leg resistor whose device was dropped would otherwise dangle
-        # on a one-connection node.
-        and e.legs <= live_legs
-    ]
+    preamp = _partition(
+        elements, lambda e: not (e.hub_nets & LATCH_NETS),
+        EXPECTED_PREAMP_DEVICES, "preamp",
+        "preamp tail + 4 input-pair fingers + 2 poly loads + 2 absorber caps",
+    )
+    # The latch front-end partition (issue #65): the counterpart of the
+    # schematic-side steering+tail AC sub-model, selected as "every device on
+    # the latch tail node".
+    latch = _partition(
+        elements, lambda e: bool(e.hub_nets & LATCH_FRONT_END_NETS),
+        EXPECTED_LATCH_DEVICES, "latch front-end",
+        "steering pair + latch tail switch",
+    )
 
     header = _header(raw_spice)
     return (
         _render(header, elements, kind="full"),
         _render(header, preamp, kind="preamp"),
+        _render(header, latch, kind="latch"),
         warnings,
     )
 
@@ -469,15 +511,14 @@ def _header(raw_spice: str) -> list[str]:
 
 
 def _render(header: list[str], elements: list[Element], kind: str) -> str:
-    what = (
-        "the FULL post-layout comparator"
-        if kind == "full"
-        else "the post-layout PREAMPLIFIER PARTITION of the comparator"
-    )
-    extra = (
-        ""
-        if kind == "full"
-        else (
+    what = {
+        "full": "the FULL post-layout comparator",
+        "preamp": "the post-layout PREAMPLIFIER PARTITION of the comparator",
+        "latch": "the post-layout LATCH FRONT-END PARTITION of the comparator",
+    }[kind]
+    extra = {
+        "full": "",
+        "preamp": (
             "*\n* PARTITION: every device touching one of the latch nets\n"
             f"* ({', '.join(sorted(LATCH_NETS))}) is omitted, together with that\n"
             "* net's own parasitics and any star-leg resistor left dangling.\n"
@@ -488,8 +529,20 @@ def _render(header: list[str], elements: list[Element], kind: str) -> str:
             "* by the same loop break (omit everything past the preamp outputs)\n"
             "* applied to the extracted netlist instead of to the schematic\n"
             "* fragment's device lines.\n"
-        )
-    )
+        ),
+        "latch": (
+            "*\n* PARTITION: every device touching the latch tail node\n"
+            f"* ({', '.join(sorted(LATCH_FRONT_END_NETS))}) is KEPT -- the steering\n"
+            "* pair and the latch tail switch -- together with the parasitics of\n"
+            "* the nets those devices touch and their own star legs. Everything\n"
+            "* else (preamp, cross-coupled PMOS, reset PMOS, clock shaper) is\n"
+            "* omitted. This is the post-layout counterpart of run.py\n"
+            "* `_latch_noise_deck`'s steering+tail AC sub-model, which gives\n"
+            "* `noise-tran` its stage-2 gate-referred injection amplitude; the\n"
+            "* schematic side names those three devices explicitly, this side\n"
+            "* selects the same three by connectivity (issue #65).\n"
+        ),
+    }[kind]
     preamble = f"""* GENERATED FILE -- do not hand-edit. Regenerate with
 * `python3 layout/extract_pex.py`; `--check` verifies the committed copy.
 *
@@ -597,12 +650,13 @@ def main(argv: list[str] | None = None) -> int:
         raw_json_path = scratch_dir / "extract-parasitics.json"
         run_extraction(raw_spice_path, raw_json_path)
         raw_spice = raw_spice_path.read_text()
-        dut, preamp, warnings = rewrite(raw_spice)
+        dut, preamp, latch, warnings = rewrite(raw_spice)
 
         produced = {
             EXTRACT_SPICE: raw_spice,
             PEX_FRAGMENT: dut,
             PEX_PREAMP_FRAGMENT: preamp,
+            PEX_LATCH_FRAGMENT: latch,
         }
         for w in warnings:
             print(f"warning: {w}", file=sys.stderr)
@@ -639,6 +693,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {EXTRACT_JSON.relative_to(REPO_ROOT)}")
         print(f"wrote {PEX_FRAGMENT.relative_to(REPO_ROOT)}")
         print(f"wrote {PEX_PREAMP_FRAGMENT.relative_to(REPO_ROOT)}")
+        print(f"wrote {PEX_LATCH_FRAGMENT.relative_to(REPO_ROOT)}")
         print(
             f"  devices={report['device_count']} nets={report['net_count']} "
             f"R={par['r_count']} C={par['c_count']} Cc={par['cc_count']} "

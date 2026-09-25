@@ -196,18 +196,55 @@ only in the DUT. That property is what makes the delta attributable to the
 layout, and it is pinned by a test
 (`sim/tests/test_comparator_decision.py::TestDutProvenance`).
 
-**`regen`, `offset`, `noise` and `kickback` support both provenances.
-`reset` and `noise-tran` refuse `--dut extracted`** and say so, rather than
-silently falling back to the schematic DUT. Both build their decks by
-re-emitting *named* DUT device lines onto substituted nodes, which is not a
-well-defined operation on the extracted fragment: a schematic device can
-correspond to more than one drawn device (each W=13 input-pair device is two
-W=6.5 fingers) and every terminal sits on a per-terminal parasitic star leg
-rather than on the node itself, so "re-emit this device somewhere else" also
-needs its parasitics re-partitioned. A post-layout record that had quietly
-measured the schematic DUT would be worse than no record, so the refusal is
-loud. Giving those two a real post-layout deck form is follow-on work
-(issue #65).
+**All six sub-commands support both provenances.** Four did from issue #57;
+`reset` and `noise-tran` refused `--dut extracted` until issue #65, because
+both build their decks by re-emitting *named* DUT device lines onto
+substituted nodes and that is not a well-defined operation on the extracted
+fragment until three questions are answered. Refusing was the right first
+answer — a post-layout record that had quietly measured the schematic DUT
+would be worse than no record — and issue #65 answers them rather than
+guessing. The rules live next to the code that implements them (the
+POST-LAYOUT DECK SURGERY note in
+[`run.py`](run.py)) and are pinned by
+`sim/tests/test_comparator_decision.py::TestPostLayoutTerminalMoves`:
+
+1. **Which device, when the layout drew one schematic device as several.**
+   Naming a schematic device names **every** drawn instance of it
+   (`XM_PINP__a`, `XM_PINP__b`, …) and they are transformed together — one
+   device that happens to be drawn in pieces. Not exercised on this layout:
+   the steering pair is drawn unsplit (one W=8 device each), and the split
+   devices are the W=13 input pair, which neither sub-command moves. Both
+   records say so explicitly rather than leaving it implicit.
+2. **Where to cut, when no terminal sits on the logical node.** Every
+   extracted terminal hangs off its own star leg (`TAIL2__t2`) tied to the
+   net hub through that terminal's share of the net's series R. **The star
+   leg travels with the terminal**: moving a terminal re-points *that leg
+   resistor's hub end* at the new net and never edits the device line. So
+   nothing is stranded on a one-connection node, no extracted resistance is
+   deleted, and none is re-attributed to a net it was not extracted for. The
+   alternatives both lose information — dropping the leg deletes that
+   terminal's resistance, keeping it in place strands it. What the rule does
+   *not* claim is that this is the resistance a re-routed layout would have
+   had: it is a netlist-level counterfactual, exactly as the schematic-level
+   one is.
+3. **Which side of the leg a series source goes on.** This one has a
+   determinate answer, not a preference: a star-leg node carries exactly one
+   device terminal and exactly one star resistor (the deck builder *asserts*
+   this rather than assuming it), so the leg resistor and an inserted ideal
+   source are two-terminal elements in series and the two placements are the
+   same network. The deck inserts on the hub side, which is the same single
+   mechanism rule 2 uses and makes the source line (`Vstp GST_P OUTP1`)
+   textually identical in both provenances.
+
+In practice each transformation changes **two tokens** of the committed
+extracted fragment and nothing else — `reset --dut extracted`'s `gnd-tied`
+control re-points `R_TAIL2__t1`/`R_TAIL2__t2` from `TAIL2` to `GND`;
+`noise-tran --dut extracted` re-points `R_OUTP1__t4`/`R_OUTN1__t4` onto
+`GST_P`/`GST_N`. `noise-tran`'s stage-2 AC anchor uses a third committed
+fragment, `layout/comparator.pex-latch.spice` (the **latch front-end
+partition**: steering pair + latch tail with their extracted parasitics,
+selected by connectivity as "every device on the `TAIL2` node"), the
+counterpart of the preamp partition the AC `noise` sub-command already used.
 
 **Why not `klt pex`?** It is the canonical tool and it is not usable here,
 for a reason that is *not* the missing `.include` line that
@@ -628,13 +665,82 @@ Three post-layout facts beyond the deltas, each read off a committed record:
   the spec rows are stated at 50 mV overdrive, which resolves at both anchors.
 
 Scope of this pass, stated so the gaps are not mistaken for coverage: two
-corners, four sub-commands. `reset` and `noise-tran` have no post-layout deck
-form yet (above), so the regeneration-inclusive noise figure (0.1362 mV
-decision-referred at `tt`/27C) has **no** post-layout counterpart (issue
-#65). The five remaining graded PVT corners were unmeasured post-layout when
+corners, four sub-commands. `reset` and `noise-tran` had no post-layout deck
+form when this pass landed, so the regeneration-inclusive noise figure
+(0.1362 mV decision-referred at `tt`/27C) had **no** post-layout counterpart;
+**issue #65 has since closed that** -- see "Post-layout records (issue #65)"
+below. The five remaining graded PVT corners were unmeasured post-layout when
 this pass landed; **issue #64 has since closed that gap for `kickback` and
 `regen`** -- see the next section for the completed corner set and for which
 sub-commands were deliberately left at one corner.
+
+### Post-layout records (issue #65 -- the last two sub-commands)
+
+`reset` and `noise-tran` had no post-layout deck form until issue #65 decided
+the three star-leg / split-device rules stated under
+[Post-layout (extracted) DUT](#post-layout-extracted-dut----dut-extracted)
+above. They use the same deck template, the same corners and the same
+`## Post-layout delta` format as the five records above.
+
+**`reset` -- `records/20260925-165718-8ea399d.md`.** The DR-001 Decision 3
+reset-integrity screen, run against layout parasitics for the first time.
+Both controls survive: **5/5 corners hold reset as-drawn** (`tt`/27C,
+`ss`/-40C, `ss`/125C, `ff`/-40C, `ff`/125C -- the same five the
+schematic-level counterpart `records/20260922-070024-e084b55.md` used) and
+**5/5 positive-control corners still BREAK it** on all four criteria. The
+second half is the load-bearing one: a negative control whose paired positive
+control cannot be shown to fail is not evidence, so the port had to preserve
+the control's *sensitivity*, not just the screen's verdict. The one genuinely
+continuous column keeps its separation -- worst \|I(VDD)\| over the settle
+window is 4.789e-05…6.642e-05 A as-drawn (schematic-level
+4.228e-05…6.756e-05 A) against 7.856e-04…8.306e-04 A for the GND-tied control
+(schematic-level 8.376e-04…1.056e-03 A). There is no scalar delta table
+because `reset` is a four-criterion pass/fail screen, not a measurement.
+
+**`noise-tran` -- `records/20260925-214740-81f594b.md`** (`tt`/27C).
+
+| Sub-command | Corner | Schematic | Post-layout | Ratio | Record |
+|---|---|---|---|---|---|
+| `noise-tran` (decision-referred) | `tt`/27C | 0.1362 mV | **0.1448 mV** | 1.063x | `records/20260925-214740-81f594b.md` |
+
+Two things about this row must be read together, and the record says both on
+its own face:
+
+- **The sample size is smaller than its counterpart's, deliberately**: N=64
+  pick-off seeds and 16 seeds/sign/decision point, against
+  `records/20260922-192722-e23c509.md`'s N=128 and 64. The extracted decks are
+  several times slower than the schematic ones, and the counterpart's
+  (128 + 256) = 384 noise-seeded transients do not fit a shared dispatch host
+  held to two concurrent `ngspice` processes.
+- **The ratio is INSIDE the confidence interval.** The post-layout 95% CI is
+  [0.1224, 0.1641] mV and the schematic figure (0.1362 mV) sits within it. So
+  this record establishes the post-layout figure *and its uncertainty*; it does
+  **not** establish that this quantity moved between schematic and layout.
+  That is a weaker statement than the other post-layout rows make, and it is
+  stated rather than rounded away.
+
+**What this does and does not do for DR-006.** DR-006 re-opened this row's
+*compliance basis* and named the evidence that would close it: a
+regeneration-inclusive post-layout measurement **at `fs`/125 °C**, the corner
+that binds the row. This record supplies the *capability* DR-006 said issue
+#65 owned, and a first figure at `tt`/27 °C -- not the closing measurement.
+DR-006 stays open, and the run that would close it is now unblocked rather
+than impossible.
+
+**The decision-transition cross-check is degenerate here, for a different
+reason than at schematic-level `ss`/-40C, and the difference matters.** All 64
+decision runs *resolved* (0 unresolved) and all 64 decided the **same way** at
+**both** signs of the overdrive, so `p+ = p-` exactly. That is not the
+resolvable-overdrive floor the `ss`/-40C record hit; it says a
+**deterministic** term larger than the +/-0.109 and +/-0.217 mV sigma-scaled
+overdrives is setting the outcome. The obvious candidate is already measured:
+the post-layout `offset` record's mismatch-disabled negative control has a
+**0.6547 mV** input-referred systematic mean (zero by construction on the
+symmetric schematic fragment), 3-6x these overdrives. This is therefore
+independent evidence for the sub-20 mV polarity asymmetry issue #66 tracks, at
+a far smaller overdrive than the `regen` sweep probes. `run.py` derives that
+explanation from the counts (`degenerate_cross_check_reason()`) instead of
+asserting a canned one, so a record can no longer name the wrong cause.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
@@ -754,9 +860,14 @@ Stated here so the gap is a decision on the record, not a silent absence:
   post-layout `tt_mm` figure clears its stretch bound with 1.09x margin, so
   the corner spread matters, and measuring it is genuine open work rather
   than a closed question.
-- **`reset` and `noise-tran` have no post-layout deck form at all** and
-  refuse `--dut extracted` (issue #65, see "Post-layout (extracted) DUT"
-  above). Not a coverage choice -- there is nothing to run.
+- **`reset` and `noise-tran` had no post-layout deck form at all** when this
+  campaign ran, and refused `--dut extracted`. Not a coverage choice at the
+  time -- there was nothing to run. **Issue #65 has since built that deck
+  form** and run both: `reset` at all five of its corners and `noise-tran` at
+  `tt`/27C (see "Post-layout records (issue #65)" above). `noise-tran`'s
+  remaining six graded corners -- in particular `fs`/125 °C, the corner
+  DR-006 names as the one that would close the re-opened noise row -- are
+  still unmeasured post-layout.
 - **The supply nets' `--distributed-rc` re-extraction** was not done. The
   single lumped star R on `GND`/`VDD` is 52.0% of the block's total series R
   and is expected to be pessimistic, so every post-layout degradation above
@@ -768,8 +879,8 @@ Stated here so the gap is a decision on the record, not a silent absence:
 | `regen` | **7 of 7** graded corners | none |
 | `noise` (AC) | **7 of 7** graded corners | delta only at `tt`/27C (no AC counterpart elsewhere) |
 | `offset` | **1 of 5** `_mm` corners (`tt_mm`/27C) | 4 corners, deliberately skipped (cost) |
-| `noise-tran` | 0 | no post-layout deck form (#65) |
-| `reset` | 0 | no post-layout deck form (#65) |
+| `noise-tran` | **1 of 7** graded corners (`tt`/27C, #65) | 6 corners, incl. `fs`/125 °C (the corner DR-006 would close on) |
+| `reset` | **5 of 5** of its own corner set (#65) | none |
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder

@@ -2,11 +2,12 @@
 
 Hermetic: no `klt`, no PDK, no ngspice. The rewrite is exercised against the
 COMMITTED `layout/comparator.extract.spice` (the extractor's own verbatim
-output), which is exactly the input the committed `layout/comparator.pex.spice`
-and `layout/comparator.pex-preamp.spice` were derived from -- so these tests
-also pin the committed pair to its stated derivation without re-extracting.
+output), which is exactly the input the committed `layout/comparator.pex.spice`,
+`layout/comparator.pex-preamp.spice` and `layout/comparator.pex-latch.spice`
+were derived from -- so these tests also pin the committed set to its stated
+derivation without re-extracting.
 
-What is worth testing here is not "does it produce text" but the three
+What is worth testing here is not "does it produce text" but the four
 properties the post-layout evidence depends on:
 
   1. Every extracted device keeps its extracted PARAMETERS. The rewrite is
@@ -19,6 +20,9 @@ properties the post-layout evidence depends on:
   3. The preamp partition is the loop break the schematic-side `noise`
      sub-model makes -- and drops the latch nets' parasitics with the latch
      devices, leaving no dangling star leg.
+  4. The latch front-end partition (issue #65) is the counterpart of the
+     schematic-side steering+tail sub-model `noise-tran` stage 2 uses, under
+     the same no-dangling-leg property.
 """
 
 from __future__ import annotations
@@ -78,10 +82,10 @@ def _instances(fragment: str) -> dict[str, list[str]]:
 
 
 class TestRewriteMatchesCommittedOutput(unittest.TestCase):
-    """The committed pair must be reproducible from the committed input."""
+    """The committed set must be reproducible from the committed input."""
 
     def setUp(self):
-        self.dut, self.preamp, self.warnings = pex.rewrite(RAW)
+        self.dut, self.preamp, self.latch, self.warnings = pex.rewrite(RAW)
 
     def test_no_unpaired_devices(self):
         self.assertEqual(self.warnings, [])
@@ -96,12 +100,18 @@ class TestRewriteMatchesCommittedOutput(unittest.TestCase):
             self.preamp,
         )
 
+    def test_committed_latch_fragment_is_this_rewrite(self):
+        self.assertEqual(
+            (REPO_ROOT / "layout" / "comparator.pex-latch.spice").read_text(),
+            self.latch,
+        )
+
 
 class TestNameLevelOnly(unittest.TestCase):
     """Property 1: values pass through untouched."""
 
     def setUp(self):
-        self.dut, _, _ = pex.rewrite(RAW)
+        self.dut, _, _, _ = pex.rewrite(RAW)
 
     def test_every_extracted_parameter_survives(self):
         raw_params = sorted(
@@ -140,7 +150,7 @@ class TestSchematicPairing(unittest.TestCase):
     """Property 2: extracted devices carry schematic instance names."""
 
     def setUp(self):
-        self.dut, _, _ = pex.rewrite(RAW)
+        self.dut, _, _, _ = pex.rewrite(RAW)
         self.names = set(_instances(self.dut))
 
     def test_every_schematic_instance_is_represented(self):
@@ -176,7 +186,7 @@ class TestPreampPartition(unittest.TestCase):
     """Property 3: the partition is the schematic sub-model's loop break."""
 
     def setUp(self):
-        _, self.preamp, _ = pex.rewrite(RAW)
+        _, self.preamp, _, _ = pex.rewrite(RAW)
         self.instances = _instances(self.preamp)
 
     def test_holds_exactly_the_nine_drawn_preamp_devices(self):
@@ -207,8 +217,66 @@ class TestPreampPartition(unittest.TestCase):
                 self.assertGreaterEqual(count, 2)
 
 
+class TestLatchFrontEndPartition(unittest.TestCase):
+    """Issue #65's partition: the post-layout counterpart of `run.py`'s
+    steering+tail AC sub-model, which gives `noise-tran` its stage-2
+    gate-referred injection amplitude."""
+
+    def setUp(self):
+        _, _, self.latch, _ = pex.rewrite(RAW)
+        self.instances = _instances(self.latch)
+
+    def test_holds_exactly_the_three_latch_front_end_devices(self):
+        devices = {
+            n for n, t in self.instances.items()
+            if any(x.startswith("sky130_fd_pr__") for x in t)
+        }
+        self.assertEqual(devices, {"XM_STN_P", "XM_STN_N", "XM_TAIL2"})
+
+    def test_omits_the_preamp_and_the_latch_output_stage(self):
+        for absent in ("XM_PTAIL", "XM_PINN__a", "XM_PINP__a", "XR_LP",
+                       "XR_LN", "XM_C1P", "XM_C1N", "XM_LATP_P", "XM_LATP_N",
+                       "XM_RST_P", "XM_RST_N", "XR_CLKS", "XM_CLKCAP"):
+            with self.subTest(absent=absent):
+                self.assertNotIn(absent, self.instances)
+
+    def test_carries_the_steering_pairs_own_parasitics(self):
+        for parasitic in ("R_TAIL2__t0_TAIL2", "R_TAIL2__t1_TAIL2",
+                          "R_TAIL2__t2_TAIL2", "R_OUTP1__t4_OUTP1",
+                          "R_OUTN1__t4_OUTN1", "C_TAIL2_vsubs"):
+            with self.subTest(parasitic=parasitic):
+                self.assertIn(parasitic, self.instances)
+
+    def test_no_dangling_star_leg(self):
+        counts: dict[str, int] = {}
+        for tokens in self.instances.values():
+            for token in tokens:
+                if "__t" in token:
+                    counts[token] = counts.get(token, 0) + 1
+        self.assertTrue(counts, "partition has no star legs at all")
+        for node, count in sorted(counts.items()):
+            with self.subTest(node=node):
+                self.assertGreaterEqual(count, 2)
+
+    def test_substrate_is_tied(self):
+        self.assertIn("Vvsubs vsubs 0 dc 0", self.latch)
+
+
 class TestGuards(unittest.TestCase):
     """The failure modes the rewrite refuses to paper over."""
+
+    def test_latch_partition_drift_is_fatal(self):
+        original = pex.LATCH_FRONT_END_NETS
+        try:
+            # Pretend the latch tail node acquired the preamp's tail too:
+            # the partition would stop being the schematic sub-model's
+            # counterpart, so it must fail loudly rather than quietly
+            # measure a different circuit.
+            pex.LATCH_FRONT_END_NETS = frozenset(original | {"TAILP"})
+            with self.assertRaises(SystemExit):
+                pex.rewrite(RAW)
+        finally:
+            pex.LATCH_FRONT_END_NETS = original
 
     def test_partition_drift_is_fatal(self):
         original = pex.LATCH_NETS
@@ -229,7 +297,7 @@ class TestGuards(unittest.TestCase):
         # test exercises the pairing failure alone.
         mutated = RAW.replace("X$12 OUTP__t0 OUTN__t1", "X$12 OUTP__t0 OUTP__t1", 1)
         self.assertNotEqual(mutated, RAW)
-        _dut, _preamp, warnings = pex.rewrite(mutated)
+        _dut, _preamp, _latch, warnings = pex.rewrite(mutated)
         self.assertTrue(any("pairs with no single schematic device" in w
                             for w in warnings), warnings)
 
