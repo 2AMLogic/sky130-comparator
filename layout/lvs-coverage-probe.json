@@ -4,11 +4,20 @@
     "engine": "klayout",
     "engine_version": "0.30.10"
   },
-  "method": "negative controls for layout/lvs-report.json: one klt lvs compare per row, each against a perturbed scratch copy of sim/comparator-decision/testbench/comparator_core.spice (the committed netlist is never written to) and the same layout/comparator.gds the signoff run used. A row with compare_covers_this=true asserts the compare DETECTS that defect (so the signoff match is not vacuous); a row with compare_covers_this=false asserts it does NOT -- those are the holes layout/README.md's LVS section discloses.",
+  "method": "negative controls for layout/lvs-report.json: one klt lvs compare per row, each against a perturbed scratch copy of sim/comparator-decision/testbench/comparator_core.spice (the committed netlist is never written to) and the same layout/comparator.gds the signoff run used. A row with compare_covers_this=true asserts the compare DETECTS that defect (so the signoff match is not vacuous); a row with compare_covers_this=false asserts it does NOT -- those are the holes layout/README.md's LVS section discloses. Each row also records supply_pairing, the measurement T1 item 11's LVS half is graded on (klt signoff's _lvs_reference_carries_supplies): see layout/README.md -> 'Why item 11 is left uncited'.",
   "signoff_report": "layout/lvs-report.json",
   "signoff_status": "match",
   "signoff_layout_sha256": "cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4",
   "signoff_reference_sha256": "e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4",
+  "signoff_supply_pairing": {
+    "net_correspondence_rows": 12,
+    "nets_matched": 12,
+    "supplies_paired": {
+      "VDD": true,
+      "GND": true
+    },
+    "all_supplies_paired": true
+  },
   "probes": [
     {
       "id": "res_width_as_schematic",
@@ -24,6 +33,15 @@
         "topology": 1
       },
       "property_findings": [],
+      "supply_pairing": {
+        "net_correspondence_rows": 12,
+        "nets_matched": 12,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": true
+        },
+        "all_supplies_paired": true
+      },
       "pass": true
     },
     {
@@ -40,6 +58,15 @@
         "topology": 1
       },
       "property_findings": [],
+      "supply_pairing": {
+        "net_correspondence_rows": 12,
+        "nets_matched": 12,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": true
+        },
+        "all_supplies_paired": true
+      },
       "pass": true
     },
     {
@@ -56,6 +83,15 @@
         "topology": 1
       },
       "property_findings": [],
+      "supply_pairing": {
+        "net_correspondence_rows": 12,
+        "nets_matched": 12,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": true
+        },
+        "all_supplies_paired": true
+      },
       "pass": true
     },
     {
@@ -122,6 +158,15 @@
           "reference": 0.0
         }
       ],
+      "supply_pairing": {
+        "net_correspondence_rows": 6,
+        "nets_matched": 6,
+        "supplies_paired": {
+          "VDD": false,
+          "GND": false
+        },
+        "all_supplies_paired": false
+      },
       "pass": true
     },
     {
@@ -144,6 +189,15 @@
         "topology": 1
       },
       "property_findings": [],
+      "supply_pairing": {
+        "net_correspondence_rows": 12,
+        "nets_matched": 12,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": true
+        },
+        "all_supplies_paired": true
+      },
       "pass": true
     },
     {
@@ -192,6 +246,15 @@
           "reference": 0.0
         }
       ],
+      "supply_pairing": {
+        "net_correspondence_rows": 8,
+        "nets_matched": 8,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": false
+        },
+        "all_supplies_paired": false
+      },
       "pass": true
     },
     {
@@ -240,6 +303,15 @@
           "reference": 0.0
         }
       ],
+      "supply_pairing": {
+        "net_correspondence_rows": 8,
+        "nets_matched": 8,
+        "supplies_paired": {
+          "VDD": true,
+          "GND": false
+        },
+        "all_supplies_paired": false
+      },
       "pass": true
     },
     {
@@ -289,6 +361,15 @@
           "reference": 0.0
         }
       ],
+      "supply_pairing": {
+        "net_correspondence_rows": 8,
+        "nets_matched": 8,
+        "supplies_paired": {
+          "VDD": false,
+          "GND": true
+        },
+        "all_supplies_paired": false
+      },
       "pass": true
     }
   ],

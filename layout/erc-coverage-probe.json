@@ -1,0 +1,259 @@
+{
+  "tool": {
+    "klt_pin": "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10",
+    "klt_version": "0.6.0",
+    "klayout_version": "0.30.10",
+    "antenna_pdk": "sky130",
+    "deck": "sky130"
+  },
+  "method": "negative controls for layout/erc-report.json: one klt erc run per row against a perturbed scratch copy of layout/erc-spec.json (or, for the stream_second_vdd_label row, of layout/comparator.gds) -- neither committed artifact is written to. Each row asserts the exact set of erc_findings rules AND the exact set of erc_coverage.skipped reasons that perturbation must produce, because a supply check reports nothing both when it is clean and when it was never asked.",
+  "signoff_report": "layout/erc-report.json",
+  "signoff_spec": "layout/erc-spec.json",
+  "signoff_erc_status": "clean",
+  "signoff_skipped_reasons": [],
+  "signoff_layout_content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4",
+  "signoff_spec_content_hash": "sha256:21e14abfe732686acf311dac33f8ce7f10257eee3db12ecbedf0f9ac0946fd33",
+  "probes": [
+    {
+      "id": "tie_wrong_net",
+      "perturbation": "the n-well tie declares net GND instead of VDD",
+      "perturbs": "spec",
+      "reads_as": "the tie check verifies WHICH net the tap reaches, not merely that a tap exists",
+      "expected_rules": [
+        "erc.missing_tie"
+      ],
+      "observed_rules": [
+        "erc.missing_tie"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.missing_tie",
+          "description": "well/tub tap is not connected to declared net 'GND'",
+          "net": "GND",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "tap_boxes_no_geometry",
+      "perturbation": "the substrate tie's tap narrowed by tap_boxes to a 1x1um region with no tap geometry in it",
+      "perturbs": "spec",
+      "reads_as": "a tap assertion matching no drawn geometry is an honest 'no tap' finding, not a silent pass",
+      "expected_rules": [
+        "erc.missing_tie"
+      ],
+      "observed_rules": [
+        "erc.missing_tie"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.missing_tie",
+          "description": "well/tub region has no 'psub_gnd' tap contact drawn inside it",
+          "net": "GND",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "psub_split_untapped",
+      "perturbation": "the asserted substrate region split into two disjoint bands, only one of which holds the tap",
+      "perturbs": "spec",
+      "reads_as": "EVERY asserted substrate polygon must independently contain a tap that reaches the net -- one tap does not cover the die",
+      "expected_rules": [
+        "erc.missing_tie"
+      ],
+      "observed_rules": [
+        "erc.missing_tie"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.missing_tie",
+          "description": "well/tub region has no 'psub_gnd' tap contact drawn inside it",
+          "net": "GND",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "rail_split_no_via",
+      "perturbation": "the met1<->met2 via role removed from the stackup, cutting both rails at every layer change",
+      "perturbs": "spec",
+      "reads_as": "a rail severed between met1 and met2 is caught -- and caught on the TIE rule, because the label-bearing island survives (see stream_second_vdd_label)",
+      "expected_rules": [
+        "erc.missing_tie"
+      ],
+      "observed_rules": [
+        "erc.missing_tie"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.missing_tie",
+          "description": "well/tub tap is not connected to declared net 'VDD'",
+          "net": "VDD",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "supply_short_via_diff",
+      "perturbation": "diff (65/20) declared as a conductor role, so every MOS source conducts to its own drain",
+      "perturbs": "spec",
+      "reads_as": "the supply-short rule bites: VDD and GND resolving to one island is reported, so the committed run's two islands are a measurement",
+      "expected_rules": [
+        "erc.supply_short"
+      ],
+      "observed_rules": [
+        "erc.supply_short"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.supply_short",
+          "description": "declared nets 'GND' and 'VDD' are electrically the same net (shorted together)",
+          "net": "GND",
+          "other_net": "VDD"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "undeclared_supply_name",
+      "perturbation": "a third supply net 'VPWR' declared, which nothing in the stream labels",
+      "perturbs": "spec",
+      "reads_as": "a declared supply matching no labelled geometry is reported rather than passing vacuously",
+      "expected_rules": [
+        "erc.unconnected_net"
+      ],
+      "observed_rules": [
+        "erc.unconnected_net"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.unconnected_net",
+          "description": "declared net 'VPWR' matches no labelled geometry in this layout",
+          "net": "VPWR",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "degenerate_tap",
+      "perturbation": "tap_is_dedicated dropped from both ties, leaving the tap region 'whatever 65/44 draws inside the well'",
+      "perturbs": "spec",
+      "reads_as": "klayout-tools#2199's unfalsifiability rejection fires against THIS spec -- zero findings, but the work is recorded as skipped and item 11 would render supply_spec_incomplete",
+      "expected_rules": [],
+      "observed_rules": [],
+      "expected_skipped_reasons": [
+        "degenerate_tap_declaration"
+      ],
+      "observed_skipped_reasons": [
+        "degenerate_tap_declaration"
+      ],
+      "erc_status": "clean_partial",
+      "erc_finding_count": 0,
+      "exit_status": 0,
+      "findings": [],
+      "pass": true
+    },
+    {
+      "id": "degenerate_well",
+      "perturbation": "the asserted substrate region widened to the whole top-cell extent",
+      "perturbs": "spec",
+      "reads_as": "klayout-tools#2255's counterpart rejection: 'the entire die is the substrate' is skipped work, not a clean tie",
+      "expected_rules": [],
+      "observed_rules": [],
+      "expected_skipped_reasons": [
+        "degenerate_well_assertion"
+      ],
+      "observed_skipped_reasons": [
+        "degenerate_well_assertion"
+      ],
+      "erc_status": "clean_partial",
+      "erc_finding_count": 0,
+      "exit_status": 0,
+      "findings": [],
+      "pass": true
+    },
+    {
+      "id": "stream_second_vdd_label",
+      "perturbation": "a second VDD label drawn on met1.pin over the CLK label, in a scratch copy of the GDS",
+      "perturbs": "stream",
+      "reads_as": "the multi-island branch bites -- and bounds the rule: klt counts islands CARRYING THE LABEL, so a one-label rail can never report a labelled/orphan split",
+      "expected_rules": [
+        "erc.unconnected_net"
+      ],
+      "observed_rules": [
+        "erc.unconnected_net"
+      ],
+      "expected_skipped_reasons": [],
+      "observed_skipped_reasons": [],
+      "erc_status": "violations",
+      "erc_finding_count": 1,
+      "exit_status": 3,
+      "findings": [
+        {
+          "rule": "erc.unconnected_net",
+          "description": "declared net 'VDD' resolves to 2 disconnected electrical islands (expected exactly one)",
+          "net": "VDD",
+          "other_net": null
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "signoff_if_cited": {
+    "method": "klt signoff --manifest <scratch copy of manifests/sky130-comparator.json with an item-11 citation of layout/erc-report.json + layout/lvs-report.json> --tiers-doc manifests/design-evidence-tiers.md. The committed manifest is NOT modified: this row records what the grader would say, so 'left uncited' is a disclosed choice rather than an ungradeable envelope. Why the choice went that way is in layout/README.md -> 'Why item 11 is left uncited'.",
+    "cited_parts": [
+      "layout/erc-report.json",
+      "layout/lvs-report.json"
+    ],
+    "item_11_status": "met",
+    "item_11_reason": null,
+    "t1_met_count_if_cited": 2,
+    "t1_item_count": 11,
+    "supply_nets_graded": [
+      "VDD",
+      "GND"
+    ],
+    "power_connectivity_status": "unchecked",
+    "ties_checked_by_well_assertion": [
+      "erc.missing_tie:[\"psub_gnd\"]"
+    ],
+    "committed_manifest_cites_item_11": false
+  },
+  "pass": true
+}
