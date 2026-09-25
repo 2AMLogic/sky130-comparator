@@ -497,7 +497,7 @@ def run_extraction(out_spice: Path, out_json: Path) -> None:
         "-o", str(out_spice),
         "--format", "json",
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         _fail(f"klt extract failed ({proc.returncode}):\n{proc.stderr}")
     report = json.loads(proc.stdout)

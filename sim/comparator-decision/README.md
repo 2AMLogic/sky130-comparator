@@ -146,6 +146,67 @@ target-spec table**, because that table is DRAFT and unratified. Records
 written since issue #24 do quote the DRAFT rows, but only as the design
 intent the sizing pass aimed at -- never as a pass/fail grade.
 
+### Post-layout (extracted) DUT -- `--dut extracted`
+
+Since issue #57 (T1 item 7) there is a **second DUT provenance**: the
+parasitics-annotated netlist extracted from the committed
+[`layout/comparator.gds`](../../layout/comparator.gds).
+
+```sh
+python3 layout/extract_pex.py                  # (re-)extract + rewrite
+python3 layout/extract_pex.py --check          # verify the committed copy
+
+SIM_NGSPICE_TIMEOUT_S=900 \
+  python3 sim/comparator-decision/run.py regen --dut extracted --record
+```
+
+`--dut schematic` is the default and its deck text is **byte-identical** to
+what it was before the switch existed, so a post-layout figure and the
+schematic-level record it is differenced against come from decks that differ
+only in the DUT. That property is what makes the delta attributable to the
+layout, and it is pinned by a test
+(`sim/tests/test_comparator_decision.py::TestDutProvenance`).
+
+**`regen`, `offset`, `noise` and `kickback` support both provenances.
+`reset` and `noise-tran` refuse `--dut extracted`** and say so, rather than
+silently falling back to the schematic DUT. Both build their decks by
+re-emitting *named* DUT device lines onto substituted nodes, which is not a
+well-defined operation on the extracted fragment: a schematic device can
+correspond to more than one drawn device (each W=13 input-pair device is two
+W=6.5 fingers) and every terminal sits on a per-terminal parasitic star leg
+rather than on the node itself, so "re-emit this device somewhere else" also
+needs its parasitics re-partitioned. A post-layout record that had quietly
+measured the schematic DUT would be worse than no record, so the refusal is
+loud. Giving those two a real post-layout deck form is follow-on work
+(issue #65).
+
+**Why not `klt pex`?** It is the canonical tool and it is not usable here,
+for a reason that is *not* the missing `.include` line that
+`testbench/comparator_core.spice` lacks. `klt pex` re-runs **`klt sim`
+request JSON** testbenches, whose `measurements[]` entries are verbatim
+`.meas` cards graded against limits. None of this bench's five measurements
+is expressible that way -- `regen` locates a threshold crossing by a
+caller-side rule (sign-corrected per point, with "unresolved" a first-class
+outcome), `offset` divides a Monte Carlo pick-off statistic by a gain fitted
+from a companion calibration sweep, `noise` analyses a loop-broken sub-model
+that does not exist as a file until the harness assembles it, and so on.
+Adding an `.include` line would let `klt pex` *rewrite* a file it still could
+not *drive*. So this takes the other path issue #57 sanctions: `klt extract
+--parasitics` (the same extraction engine `klt pex` calls) plus a documented,
+committed swap -- the same choice `2AMLogic/gf180-sar-adc`'s
+comparator-regeneration bench made. The full derivation, and what the rewrite
+does and does not touch, is in
+[`layout/extract_pex.py`](../../layout/extract_pex.py)'s module docstring.
+The grading consequence is real and is filed as friction rather than hidden:
+`klt signoff` accepts **only** a `klt pex` envelope for T1 item 7, so this
+evidence cannot be cited there
+([`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478)).
+
+The extracted decks need a longer per-deck ngspice budget than the 120 s
+default -- hence `SIM_NGSPICE_TIMEOUT_S=900` above. That is a wall-clock
+budget, not a numerical setting: no deck text, solver option or tolerance
+differs from the schematic-side runs.
+
 ## Sub-commands
 
 `regen`, `offset` and `noise` are the ported methodology (above). `reset`
@@ -401,6 +462,72 @@ All at the same DR-004 topology (netlist-identical, campaign commit
   DR-004 recorded, so noise does not bound decisions there),
   `records/20260923-010427-ebea4e2.md` (`ff`/125C: **0.1754 mV**, CI
   [0.1594, 0.1905], cross-check 0.1515 mV -- agrees).
+
+### Post-layout records (issue #57 -- T1 item 7, `--dut extracted`)
+
+The first records against a DUT that is **not** `design/comparator.sch`'s
+netlist: the parasitics-annotated extraction of `layout/comparator.gds` (see
+[Post-layout (extracted) DUT](#post-layout-extracted-dut----dut-extracted)).
+Each names its schematic-level counterpart record and the numeric delta in
+its own `## Post-layout delta` section; the pairs below are the same anchors
+DR-004/DR-005 used, so nothing but the DUT differs.
+
+| Sub-command | Corner | Schematic | Post-layout | Ratio | Record |
+|---|---|---|---|---|---|
+| `regen` @ 50 mV | `tt`/27C | 0.4025 ns | **0.5025 ns** | 1.248x | `records/20260925-065137-87f0013.md` |
+| `regen` @ 50 mV | `ss`/-40C | 0.3575 ns | **0.4475 ns** | 1.252x | `records/20260925-070429-87f0013.md` |
+| `kickback` | `tt`/27C | 1.8902 mV | **2.5532 mV** | 1.351x | `records/20260925-070601-2e2ef84.md` |
+| `offset` stdev | `tt_mm`/27C | 1.7857 mV | **2.4886 mV** | 1.394x | `records/20260925-072520-2e2ef84.md` |
+| `noise` (AC) | `tt`/27C | 0.5704 mV rms | **0.6434 mV rms** | 1.128x | `records/20260925-072817-2e2ef84.md` |
+
+Every ratified row still clears its **target** bound. Two now sit over their
+**stretch** figures, recorded rather than legislated away (`CLAUDE.md`:
+agents do not relax the ratified spec to make results pass):
+
+- **Kickback 2.5532 mV** against the <= 2 mV stretch bound (<= 5 mV target
+  cleared 1.96x). This is precisely the row DR-002/DR-005 named as the
+  standing layout-stage risk: its governing mechanism is input-node parasitic
+  capacitance, the schematic-level stretch margin was already only 1.06-1.13x,
+  and a 1 % breach was already recorded at `sf`/-40C. The layout moves it the
+  predicted way. The `ideal` control still collapses to exactly 0.0000 mV.
+- **Input-referred noise 0.6434 mV rms** against the <= 0.6 mV stretch bound
+  (<= 1.0 mV target cleared 1.55x), still the loop-broken lower bound.
+
+Offset 3-sigma is 7.4659 mV against the 8 mV stretch bound -- cleared, with
+1.07x left. Decision time clears both bounds at both anchors.
+
+Three post-layout facts beyond the deltas, each read off a committed record:
+
+- **The pick-off gain falls 64.4571 -> 28.8193 V/V (2.24x)**, which is the
+  common cause behind offset sigma, noise and decision time all degrading
+  together: parasitic loading on the long `OUTP1`/`OUTN1` nets the floorplan
+  deliberately traded for short input routes, plus the disclosed
+  drawn-vs-schematic load-resistor width delta (PR #55; ~19 % less load R).
+  See [`layout/README.md`](../../layout/README.md)'s "Floorplan against the
+  input-node parasitic-capacitance risk", which predicted this axis would pay.
+- **A systematic, layout-induced input offset now exists.** The
+  mismatch-disabled negative control's mean is 0.0000 mV on the schematic
+  fragment (symmetric by construction) and **0.4763 mV** post-layout, its
+  stdev still exactly 0. First measurement of this term on this block -- the
+  schematic bench had nothing to measure, so it is new information, not a
+  regression against a prior figure.
+- **The sub-20 mV decision polarity is asymmetric.** `tt`/27C resolves 6/8
+  sweep points (+1 mV and +0.5 mV no longer do; the schematic anchor was 8/8)
+  and `ss`/-40C resolves 3/8 (+2 through +10 mV do not, while -10 mV resolves
+  in 2.1725 ns). The sweeps *bracket* the asymmetry rather than measuring it:
+  `regen`'s criterion is sign-corrected, so a wrong-polarity decision and a
+  non-decision both read `UNRESOLVED` and this evidence cannot tell them
+  apart. Nor does the 0.4763 mV pick-off-referred systematic term above
+  explain the `ss`/-40C magnitude on its own. Open question, tracked as
+  issue #66;
+  the spec rows are stated at 50 mV overdrive, which resolves at both anchors.
+
+Scope of this pass, stated so the gaps are not mistaken for coverage: two
+corners, four sub-commands. `reset` and `noise-tran` have no post-layout deck
+form yet (above), so the regeneration-inclusive noise figure (0.1362 mV
+decision-referred at `tt`/27C) has **no** post-layout counterpart. The five
+remaining graded PVT corners are unmeasured post-layout (issue #64). Both are
+follow-on work, not claims made here.
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder

@@ -65,8 +65,32 @@ item 4 is still not claimed". The row becomes honestly citable once
 klayout-tools#2436 reaches a released `klt` pin and the resistors are
 re-drawn at 0.35 µm, removing the delta instead of disclosing it.
 
+**Item 7 ("Post-layout verification") is the second row with real evidence
+that cannot be cited — and here the blocker is the grader's own input
+contract, not a defect in the evidence** (issue #57). Post-layout
+re-simulation has run: `layout/extract-parasitics.json` and
+`layout/comparator.extract.spice` are a committed `klt extract --parasitics`
+envelope and netlist over `layout/comparator.gds`, and five append-only
+records under `sim/comparator-decision/records/` re-measure four spec rows
+against it with the schematic-vs-extracted delta stated per row
+(`sim/comparator-decision/README.md` → "Post-layout records").
+
+Item 7 is *kind-restricted*: for an `analog` partition `klt signoff` accepts
+**only** a `klt pex` envelope, and a `klt extract` citation renders `unmet`
+with `reason: "wrong_kind"` no matter how much post-layout work stands behind
+it. `klt pex` in turn can only be driven by `klt sim` **request JSON**
+testbenches, whose `measurements[]` entries are verbatim `.meas` cards — and
+none of this bench's five measurements is expressible as a `.meas` card (see
+`sim/comparator-decision/README.md` → "Why not `klt pex`?"). So the envelope
+item 7 wants cannot be produced here at all. Filed generically per
+`CLAUDE.md`'s friction protocol as
+[2AMLogic/klayout-tools#2478](https://github.com/2AMLogic/klayout-tools/issues/2478);
+the row stays `unmet`/`no_evidence` rather than being decorated with a
+citation of the wrong kind.
+
 The other ten items render `unmet` with `reason: no_evidence`: apart from
-item 4's uncited envelope above, no LVS/PEX citation exists, and this repo's
+item 4's uncited envelope and item 7's ungradeable one above, no LVS/PEX
+citation exists, and this repo's
 `sim/` harness records evidence as append-only Markdown records, not
 `klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
 honestly for them yet. Those `unmet` rows are the correct result per issue
