@@ -20,7 +20,10 @@ loaded module's own `sys.path.insert(0, SIM_DIR)` for `from harness import
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -332,7 +335,6 @@ class TestPairSigmaEstimator(unittest.TestCase):
     def test_recovers_sigma_from_exact_gaussian_fractions(self):
         # Phi(1) ~= 0.8413: at v = sigma exactly, p+ - p- ~= 0.683.
         # All quantities in mV (sigma = 0.6 mV).
-        import math
         sigma = 0.6
         v = 1.0 * sigma
         p_plus = 0.5 * (1 + math.erf(1 / math.sqrt(2)))
@@ -345,7 +347,6 @@ class TestPairSigmaEstimator(unittest.TestCase):
         # The same offset shift on both signs moves p+ and p- together and
         # their difference is unchanged to first order -- the reason the
         # estimator is pair-symmetric. mV units throughout.
-        import math
         sigma = 0.6
         v = sigma
         mu = 0.05  # mV offset
@@ -378,8 +379,6 @@ class TestJobsPlumbing(unittest.TestCase):
         # Parse-level only: a real offset run would invoke the PDK; the
         # harness's own selftest covers the real path. argparse rejecting
         # the flag exits 2.
-        import contextlib
-        import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             with self.assertRaises(SystemExit) as cm:
@@ -388,19 +387,6 @@ class TestJobsPlumbing(unittest.TestCase):
         self.assertIn("--jobs", buf.getvalue())
 
     def test_noise_tran_mode_in_choices(self):
-        import contextlib
-        import io
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            with self.assertRaises(SystemExit) as cm:
-                cd_run.main(["noise-tran", "--help"])
-        self.assertEqual(cm.exception.code, 0)
-        self.assertIn("noise-tran", buf.getvalue())
-        self.assertIn("--jobs", buf.getvalue())
-
-    def test_noise_tran_mode_in_choices(self):
-        import contextlib
-        import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             with self.assertRaises(SystemExit) as cm:
