@@ -1014,27 +1014,17 @@ LATCH_NOISE_CL_FF = 10.0        # steering-sub-model drain load (bandwidth only 
 NOISE_TRAN_RETRY_TS = 0.41e-9    # perturbed update grid for the per-deck retry
 
 
-def _run_ts_retry(
-    build, scratch_dir: Path, name: str,
-) -> str:
-    """Run one noise-tran deck, retrying once at the perturbed update
-    interval on ngspice failure. `build(ts)` returns the deck text. The
-    retry exists because a noise-update jump coinciding with a solver
-    breakpoint can collapse the transient timestep (the t=5.0ns exact
-    coincidence that ruled out the 0.5ns grid -- see NOISE_TRAN_TS); a
-    different grid with identical statistics resolves it. A deck that
-    fails BOTH grids is a real failure and propagates."""
-    try:
-        return _run(build(NOISE_TRAN_TS), scratch_dir, name)
-    except RuntimeError:
-        return _run(build(NOISE_TRAN_RETRY_TS), scratch_dir, name)
-
-
 def _run_many_ts_retry(builds, scratch_dir: Path, workers: int = 1) -> dict[str, str]:
-    """Parallel batch of _run_ts_retry jobs. `builds` is a list of
+    """Parallel batch of noise-tran decks, each retried once at the
+    perturbed update interval on ngspice failure. `builds` is a list of
     (name, build(ts)->deck). First pass runs everything at the default ts
     in parallel; decks that failed are retried individually at the
-    perturbed ts (rare, so sequential retry is fine)."""
+    perturbed ts (rare, so sequential retry is fine). The retry exists
+    because a noise-update jump coinciding with a solver breakpoint can
+    collapse the transient timestep (the t=5.0ns exact coincidence that
+    ruled out the 0.5ns grid -- see NOISE_TRAN_TS); a different grid with
+    identical statistics resolves it. A deck that fails BOTH grids is a
+    real failure and propagates."""
     from concurrent.futures import ThreadPoolExecutor
     results: dict[str, str] = {}
     failed: list[tuple[str, object]] = []
