@@ -172,7 +172,13 @@ then the live gate). It fails on a missing required key, on any non-null
 cited path that does not exist in-tree (a stale netlist/GDS/schematic
 reference — the view must never point an integrator at a vanished file),
 and on a `maturity_rung` that disagrees with `t1-signoff-report.json`'s
-graded `tier`. Honest nulls (`gds`, `measured_area`) are accepted only
+graded `tier`. It also holds `maturity_rung_basis` to that same report
+(issue #50): the field is required, must name the report's path (checked
+for existence like any other cited path), and if it states an
+`N/M T1 items met` figure, that figure must agree with the report's
+`t1_met_count`/`t1_item_count` or the gate fails — a hand-maintained
+sentence about a machine-graded verdict can no longer drift from the
+record unnoticed. Honest nulls (`gds`, `measured_area`) are accepted only
 with their "not yet produced" notes; when layout lands and the fields
 flip to real values, the same existence check applies. The gate is
 stdlib-only Python and needs no klt install.

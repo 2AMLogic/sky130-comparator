@@ -66,13 +66,13 @@
     "note": "composed bbox 40.59 x 82.04 um from the gen-compose report (layout/compose-report.json), issue #44"
   },
   "maturity_rung": "pre-T1",
-  "maturity_rung_basis": "manifests/t1-signoff-report.json: tier null, 0/11 T1 items met (all unmet/no_evidence) - the honest pre-T1 state per issue #31's all-unmet-is-correct convention; rung vocabulary per manifests/design-evidence-tiers.md (T1/bronze = sim-validated, T2/silver, T3/gold)",
+  "maturity_rung_basis": "manifests/t1-signoff-report.json is the graded verdict of record for T1 item status (see the report's t1_met_count/t1_item_count and per-item status; tier null is the honest pre-T1 state per issue #31); rung vocabulary per manifests/design-evidence-tiers.md (T1/bronze = sim-validated, T2/silver, T3/gold)",
   "provenance": {
     "generated_from": [
       "design/comparator.sch",
       "manifests/t1-signoff-report.json"
     ],
-    "refresh_rule": "hand-maintained view (issue #36). Refresh: re-derive the port list from design/comparator.sch, re-check maturity_rung against manifests/t1-signoff-report.json, re-read 2am repos.yml consumes: entries for spec/consumers.md, and flip gds/measured_area from null when layout lands. scripts/check-integrator-view.py gate (CI) fails on a missing key, a dangling path, or a rung that disagrees with the signoff report.",
+    "refresh_rule": "hand-maintained view (issue #36). Refresh: re-derive the port list from design/comparator.sch, re-check maturity_rung against manifests/t1-signoff-report.json, re-read 2am repos.yml consumes: entries for spec/consumers.md, and flip gds/measured_area from null when layout lands. scripts/check-integrator-view.py gate (CI) fails on a missing key, a dangling path, a rung that disagrees with the signoff report, or a maturity_rung_basis that misnames the report or states a T1-items-met count the report does not carry (issue #50).",
     "generated": "2026-09-22, issue #36, against origin/main e084b55"
   }
 }
