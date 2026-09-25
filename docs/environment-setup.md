@@ -74,6 +74,30 @@ that is identical field-for-field apart from that version string and
 boolean — but the committed envelope should not carry a self-declared
 reproducibility warning, so the pin names the engine klt expects.
 
+**For `klt extract --parasitics` the pin is load-bearing, not cosmetic**
+(issue #57). Measured on this repo's own `layout/comparator.gds`, klt `0.6.0`
+on klayout `0.30.10` and an unreleased klt `0.6.0+g1828313bdf02` on klayout
+`0.30.12` produce **bit-identical capacitances** but total series resistance
+**17.52 kΩ vs 14.70 kΩ** — 1.19× overall and up to **2.30×** on an individual
+net. Post-layout simulation results are therefore not comparable across
+builds, so `layout/extract_pex.py` *asserts* the two versions above out of
+the extraction envelope's own `provenance` block and refuses to write
+anything off-pin; `layout/extract_pex.py --check` re-asserts it against the
+committed `layout/extract-parasitics.json` and runs as a CI gate in
+`t1-signoff.yml`'s `layout-device-count` job. If the host `klt` is off-pin,
+use a **throwaway** environment rather than changing host tooling:
+
+```sh
+uv venv /tmp/pex-pin-env
+uv pip install --python /tmp/pex-pin-env/bin/python \
+    "klayout-tools==0.6.0" "klayout==0.30.10"
+PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
+```
+
+Bumping the pin is deliberate and lands in one change: this doc, both CI
+installs, `layout/extract_pex.py`'s `PINNED_*` constants, and the regenerated
+artifacts together — the same policy `t1-signoff.yml`'s own header states.
+
 Signoff runs pass `--tiers-doc manifests/design-evidence-tiers.md` — a
 vendored, pinned copy of the klayout-tools checklist doc — so the record is
 graded against a fixed checklist revision rather than whatever the installed

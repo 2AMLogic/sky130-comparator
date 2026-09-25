@@ -101,6 +101,35 @@ difference (weff 0.4009 vs 0.3262 um -> ~19 % lower load resistance, i.e.
 paper over it: normalising the extracted width to 0.35 um would make this
 script's output stop being a measurement of the committed layout.
 
+THE TOOLCHAIN PIN IS PART OF THE MEASUREMENT (issue #57, PR #67 review)
+-----------------------------------------------------------------------
+The parasitic R values this script commits are NOT stable across klt/klayout
+builds. Measured on this repo's own GDS: klt `0.6.0` on klayout `0.30.10`
+(the pin) and klt `0.6.0+g1828313bdf02` on klayout `0.30.12` (an unreleased
+dev build) produce BIT-IDENTICAL capacitances but total series resistance
+17.52 kohm vs 14.70 kohm -- 1.19x overall and up to 2.30x on an individual
+net (CLKT), 1.55-1.86x on OUTP1/OUTN1/VINP/VINN. Those are exactly the nets
+the post-layout causal story rests on, so an off-pin extraction silently
+changes every downstream number.
+
+`run_extraction()` therefore ASSERTS the pin (`PINNED_KLT_VERSION` /
+`PINNED_KLAYOUT_VERSION` below) and refuses to write anything off it, and
+`--check` re-asserts it against the committed envelope as well. The pins are
+the same ones `docs/environment-setup.md` records and both
+`.github/workflows/t1-signoff.yml` jobs install; bumping them is deliberate
+and goes in one change, exactly as that workflow's own header prescribes:
+bump the doc + both CI installs + these constants, re-run the regeneration,
+and commit the refreshed artifacts together.
+
+If the host `klt` is off-pin -- which it may legitimately be; host tooling is
+provisioned fleet-wide and must not be changed to suit this repo -- run this
+script against a THROWAWAY environment instead:
+
+    uv venv /tmp/pex-pin-env
+    uv pip install --python /tmp/pex-pin-env/bin/python \
+        "klayout-tools==0.6.0" "klayout==0.30.10"
+    PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
+
 Usage:
 
     python3 layout/extract_pex.py             # re-extract and rewrite
@@ -135,6 +164,23 @@ PEX_PREAMP_FRAGMENT = LAYOUT_DIR / "comparator.pex-preamp.spice"
 DECK = "sky130"
 TOP_CELL = "gen_compose_0"
 PDK_VARIANT = "sky130A"
+
+# The toolchain this repo pins for every committed layout envelope --
+# `docs/environment-setup.md` "Signoff tooling (klt)", and both jobs of
+# `.github/workflows/t1-signoff.yml`. Asserted rather than merely recorded,
+# because the extracted resistances are not stable across builds (see the
+# module docstring). Bump these only together with the doc and both CI
+# installs, in the same change that re-commits the regenerated artifacts.
+PINNED_KLT_VERSION = "0.6.0"
+PINNED_KLAYOUT_VERSION = "0.30.10"
+
+PIN_HINT = (
+    "Run against a throwaway environment rather than changing host tooling:\n"
+    "  uv venv /tmp/pex-pin-env\n"
+    "  uv pip install --python /tmp/pex-pin-env/bin/python "
+    f'"klayout-tools=={PINNED_KLT_VERSION}" "klayout=={PINNED_KLAYOUT_VERSION}"\n'
+    "  PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py"
+)
 
 # Nets that belong to the clocked LATCH half of the DUT. The `noise`
 # sub-command's sub-model is the preamplifier with everything past its outputs
@@ -485,6 +531,29 @@ def _render(header: list[str], elements: list[Element], kind: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _assert_pinned(report: dict, where: str) -> None:
+    """Refuse an extraction envelope produced off the documented tool pin.
+
+    Capacitances are reproducible across builds; resistances are not (see the
+    module docstring), so an off-pin envelope is not a cosmetic provenance
+    difference -- it is a different measurement.
+    """
+    provenance = report.get("provenance") or {}
+    klt_version = provenance.get("klt_version")
+    klayout_version = provenance.get("klayout_version")
+    if (klt_version, klayout_version) != (
+        PINNED_KLT_VERSION, PINNED_KLAYOUT_VERSION
+    ):
+        _fail(
+            f"{where} records klt {klt_version!r} on klayout "
+            f"{klayout_version!r}, but this repo pins klt "
+            f"{PINNED_KLT_VERSION!r} on klayout {PINNED_KLAYOUT_VERSION!r} "
+            "(docs/environment-setup.md, .github/workflows/t1-signoff.yml). "
+            "Extracted resistances differ by up to 2.3x per net between "
+            f"builds, so this would be a different measurement.\n{PIN_HINT}"
+        )
+
+
 def run_extraction(out_spice: Path, out_json: Path) -> None:
     if shutil.which("klt") is None:
         _fail("klt not found on PATH")
@@ -503,6 +572,7 @@ def run_extraction(out_spice: Path, out_json: Path) -> None:
     report = json.loads(proc.stdout)
     if report.get("status") != "extracted":
         _fail(f"klt extract status is {report.get('status')!r}")
+    _assert_pinned(report, "this klt extract run")
     # The netlist path is an absolute host path in the envelope; normalise it
     # to the repo-relative committed location so the JSON carries no home dir
     # (the same rule `klt env-provenance --lint` enforces on committed
@@ -538,15 +608,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"warning: {w}", file=sys.stderr)
 
         if args.check:
-            # The JSON envelope carries a fresh timestamp/tool build, so only
-            # the verdict-bearing netlists are diffed here -- the envelope's
-            # own `klt extract --check` is the tool-side equivalent.
+            # The JSON envelope carries a fresh timestamp, so only the
+            # verdict-bearing netlists are diffed here -- but the committed
+            # envelope's TOOL PIN is checked, because a netlist match against
+            # an off-pin fresh extraction would be the wrong kind of "OK".
+            if not EXTRACT_JSON.exists():
+                _fail(f"{EXTRACT_JSON} is missing")
+            _assert_pinned(
+                json.loads(EXTRACT_JSON.read_text()),
+                f"the committed {EXTRACT_JSON.relative_to(REPO_ROOT)}",
+            )
             drift = [p.name for p, text in produced.items()
                      if not p.exists() or p.read_text() != text]
             if drift:
                 print(f"DRIFT: {', '.join(drift)} differ from a fresh extraction")
                 return 3
-            print("OK: committed post-layout netlists match a fresh extraction")
+            print(
+                "OK: committed post-layout netlists match a fresh extraction "
+                f"on the pinned klt {PINNED_KLT_VERSION} / klayout "
+                f"{PINNED_KLAYOUT_VERSION}"
+            )
             return 0
 
         for path, text in produced.items():

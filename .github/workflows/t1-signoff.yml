@@ -69,6 +69,18 @@ jobs:
       - name: Validate manifests/integrator-view.json
         run: python3 scripts/check-integrator-view.py gate
 
+      # The post-layout rewrite's own unit tests (issue #57). Hermetic and
+      # stdlib-only -- no klt, no PDK, no ngspice, no pytest -- so they gate
+      # here for free alongside the other PDK-free checks. They pin the
+      # committed layout/comparator.pex{,-preamp}.spice to the committed
+      # layout/comparator.extract.spice by re-deriving them, which is the
+      # cheap half of the layout-device-count job's `extract_pex.py --check`
+      # (that one re-runs the extractor itself). NOTE: the rest of
+      # `sim/tests/` still runs nowhere in CI -- pre-existing and repo-wide,
+      # tracked separately; only the hermetic file added by #57 is wired here.
+      - name: Post-layout rewrite unit tests (hermetic)
+        run: python3 -m unittest discover -s sim/tests -p 'test_extract_pex.py' -t .
+
   # Layout device-count assertion (issue #44, T1 item 2's evidence):
   # klt extract over the committed layout/comparator.gds must re-derive the
   # schematic's 16 devices counted by model. Separate job because the live
@@ -94,3 +106,16 @@ jobs:
 
       - name: Re-run the device-count assertion over the committed GDS
         run: python3 scripts/check-layout-device-count.py gate --pdk-root ~/.volare
+
+      # Post-layout (parasitics) reproducibility gate (issue #57, T1 item 7).
+      # Re-extracts the committed GDS and diffs the result against the
+      # committed layout/comparator.extract.spice + .pex.spice +
+      # .pex-preamp.spice, and asserts the committed
+      # layout/extract-parasitics.json carries this job's own pinned klt +
+      # klayout. The pin assertion is not decoration: extracted resistances
+      # differ up to 2.3x per net between klt/klayout builds (the committed
+      # envelope's capacitances are bit-stable, its resistances are not), so
+      # an off-pin extraction is a different measurement, not a different
+      # version string. Exit 3 on drift.
+      - name: Re-extract the parasitics and diff against the committed netlists
+        run: PDK_ROOT="$HOME/.volare" python3 layout/extract_pex.py --check

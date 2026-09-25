@@ -5,7 +5,7 @@
   "top": "gen_compose_0",
   "dbu_um": 0.001,
   "netlist_path": "layout/comparator.extract.spice",
-  "netlist_sha256": "cb632a0c95e8c6b1bfb6f97ad6ee56318a48db593428d813b32077ec514460a5",
+  "netlist_sha256": "04cb67a0334aa45e39dad073ea1b69b3a18c52e1134525b01723d668639e97ef",
   "status": "extracted",
   "device_count": 18,
   "net_count": 12,
@@ -703,8 +703,8 @@
     "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
   },
   "provenance": {
-    "klt_version": "0.6.0+g1828313bdf02",
-    "klayout_version": "0.30.12",
+    "klt_version": "0.6.0",
+    "klayout_version": "0.30.10",
     "pdk": {
       "name": "sky130A",
       "source": "search root: ~/.volare",
@@ -712,7 +712,7 @@
     },
     "deck": {
       "name": "sky130",
-      "content_hash": "sha256:d7a9ddfa4785e2427553cc8701f9ed547d1b68abb21aef2c8c9fb6c8d8ca3791",
+      "content_hash": "sha256:a1d90e066e822d0a8f36e2d4f4969b83df4360692f689b5815be9c3f151f7c8e",
       "released": false
     },
     "input": {
@@ -725,7 +725,7 @@
     "c_count": 12,
     "cc_count": 21,
     "l_count": 0,
-    "total_resistance_ohm": 14695.7902,
+    "total_resistance_ohm": 17523.7487,
     "total_capacitance_ff": 117.652713,
     "total_coupling_capacitance_ff": 0.74934,
     "total_inductance_nh": 0.0,
@@ -733,27 +733,27 @@
       {
         "net": "\\$10",
         "net_id": 10,
-        "resistance_ohm": 704.7542,
+        "resistance_ohm": 1094.5374,
         "capacitance_ff": 8.98701,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 236.4095,
+            "resistance_ohm": 513.1266,
             "capacitance_ff": 0.459569
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 434.5905,
+            "resistance_ohm": 546.1154,
             "capacitance_ff": 1.54398
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 14.1292,
+            "resistance_ohm": 15.418,
             "capacitance_ff": 3.137031
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 19.625,
+            "resistance_ohm": 19.8774,
             "capacitance_ff": 3.846429
           }
         ],
@@ -767,31 +767,31 @@
             "device": "$17",
             "terminal": "A",
             "leg_net": "\\$10__t0",
-            "resistance_ohm": 132.242
+            "resistance_ohm": 205.3819
           },
           {
             "device": "$1",
             "terminal": "D",
             "leg_net": "\\$10__t1",
-            "resistance_ohm": 180.4365
+            "resistance_ohm": 280.2317
           },
           {
             "device": "$8",
             "terminal": "D",
             "leg_net": "\\$10__t2",
-            "resistance_ohm": 99.539
+            "resistance_ohm": 154.5917
           },
           {
             "device": "$11",
             "terminal": "G",
             "leg_net": "\\$10__t3",
-            "resistance_ohm": 229.7664
+            "resistance_ohm": 356.8449
           },
           {
             "device": "$9",
             "terminal": "G",
             "leg_net": "\\$10__t4",
-            "resistance_ohm": 62.7703
+            "resistance_ohm": 97.4871
           }
         ],
         "segments": [],
@@ -849,27 +849,27 @@
       {
         "net": "\\$3",
         "net_id": 3,
-        "resistance_ohm": 527.4169,
+        "resistance_ohm": 1215.1091,
         "capacitance_ff": 9.151286,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 424.619,
+            "resistance_ohm": 944.5432,
             "capacitance_ff": 0.80741
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 64.0,
+            "resistance_ohm": 229.6867,
             "capacitance_ff": 0.374514
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 12.0479,
+            "resistance_ohm": 13.3704,
             "capacitance_ff": 2.698029
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 26.75,
+            "resistance_ohm": 27.5088,
             "capacitance_ff": 5.271333
           }
         ],
@@ -883,31 +883,31 @@
             "device": "$6",
             "terminal": "G",
             "leg_net": "\\$3__t0",
-            "resistance_ohm": 140.2519
+            "resistance_ohm": 323.1246
           },
           {
             "device": "$10",
             "terminal": "G",
             "leg_net": "\\$3__t1",
-            "resistance_ohm": 90.966
+            "resistance_ohm": 209.5754
           },
           {
             "device": "$13",
             "terminal": "G",
             "leg_net": "\\$3__t2",
-            "resistance_ohm": 74.4748
+            "resistance_ohm": 171.5816
           },
           {
             "device": "$16",
             "terminal": "A",
             "leg_net": "\\$3__t3",
-            "resistance_ohm": 147.2493
+            "resistance_ohm": 339.2458
           },
           {
             "device": "$14",
             "terminal": "G",
             "leg_net": "\\$3__t4",
-            "resistance_ohm": 74.4748
+            "resistance_ohm": 171.5816
           }
         ],
         "segments": [],
@@ -973,17 +973,17 @@
       {
         "net": "\\$4",
         "net_id": 4,
-        "resistance_ohm": 824.1702,
+        "resistance_ohm": 932.2179,
         "capacitance_ff": 4.373331,
         "by_layer": [
           {
             "layer": "metal0",
-            "resistance_ohm": 816.7619,
+            "resistance_ohm": 923.9995,
             "capacitance_ff": 2.751527
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 3.95,
+            "resistance_ohm": 4.76,
             "capacitance_ff": 0.928757
           },
           {
@@ -1002,31 +1002,31 @@
             "device": "$1",
             "terminal": "S",
             "leg_net": "\\$4__t0",
-            "resistance_ohm": 161.5906
+            "resistance_ohm": 182.7749
           },
           {
             "device": "$5",
             "terminal": "D",
             "leg_net": "\\$4__t1",
-            "resistance_ohm": 146.3524
+            "resistance_ohm": 165.5391
           },
           {
             "device": "$8",
             "terminal": "S",
             "leg_net": "\\$4__t2",
-            "resistance_ohm": 177.3183
+            "resistance_ohm": 200.5645
           },
           {
             "device": "$7",
             "terminal": "S",
             "leg_net": "\\$4__t3",
-            "resistance_ohm": 161.5906
+            "resistance_ohm": 182.7749
           },
           {
             "device": "$2",
             "terminal": "S",
             "leg_net": "\\$4__t4",
-            "resistance_ohm": 177.3183
+            "resistance_ohm": 200.5645
           }
         ],
         "segments": [],
@@ -1073,27 +1073,27 @@
       {
         "net": "\\$6",
         "net_id": 6,
-        "resistance_ohm": 702.2125,
+        "resistance_ohm": 1092.0005,
         "capacitance_ff": 8.461843,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 236.4095,
+            "resistance_ohm": 513.1266,
             "capacitance_ff": 0.459569
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 434.5905,
+            "resistance_ohm": 546.1154,
             "capacitance_ff": 1.53994
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 12.6292,
+            "resistance_ohm": 13.9226,
             "capacitance_ff": 2.819405
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 18.5833,
+            "resistance_ohm": 18.8359,
             "capacitance_ff": 3.642929
           }
         ],
@@ -1107,31 +1107,31 @@
             "device": "$4",
             "terminal": "G",
             "leg_net": "\\$6__t0",
-            "resistance_ohm": 257.5525
+            "resistance_ohm": 400.5162
           },
           {
             "device": "$18",
             "terminal": "B",
             "leg_net": "\\$6__t1",
-            "resistance_ohm": 222.5947
+            "resistance_ohm": 346.1538
           },
           {
             "device": "$2",
             "terminal": "D",
             "leg_net": "\\$6__t2",
-            "resistance_ohm": 74.9579
+            "resistance_ohm": 116.5659
           },
           {
             "device": "$7",
             "terminal": "D",
             "leg_net": "\\$6__t3",
-            "resistance_ohm": 98.3199
+            "resistance_ohm": 152.8958
           },
           {
             "device": "$3",
             "terminal": "G",
             "leg_net": "\\$6__t4",
-            "resistance_ohm": 48.7875
+            "resistance_ohm": 75.8687
           }
         ],
         "segments": [],
@@ -1200,17 +1200,17 @@
       {
         "net": "\\$7",
         "net_id": 7,
-        "resistance_ohm": 738.8911,
+        "resistance_ohm": 792.4383,
         "capacitance_ff": 4.013191,
         "by_layer": [
           {
             "layer": "metal0",
-            "resistance_ohm": 731.4286,
+            "resistance_ohm": 784.4357,
             "capacitance_ff": 2.424462
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 3.1708,
+            "resistance_ohm": 3.711,
             "capacitance_ff": 0.737292
           },
           {
@@ -1229,19 +1229,19 @@
             "device": "$6",
             "terminal": "D",
             "leg_net": "\\$7__t0",
-            "resistance_ohm": 160.6561
+            "resistance_ohm": 172.2988
           },
           {
             "device": "$9",
             "terminal": "S",
             "leg_net": "\\$7__t1",
-            "resistance_ohm": 289.1175
+            "resistance_ohm": 310.0697
           },
           {
             "device": "$3",
             "terminal": "S",
             "leg_net": "\\$7__t2",
-            "resistance_ohm": 289.1175
+            "resistance_ohm": 310.0697
           }
         ],
         "segments": [],
@@ -1335,22 +1335,22 @@
       {
         "net": "GND",
         "net_id": 13,
-        "resistance_ohm": 6562.8911,
+        "resistance_ohm": 6757.1793,
         "capacitance_ff": 35.595668,
         "by_layer": [
           {
             "layer": "metal0",
-            "resistance_ohm": 6491.4286,
+            "resistance_ohm": 6683.9356,
             "capacitance_ff": 21.17103
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 19.0042,
+            "resistance_ohm": 20.283,
             "capacitance_ff": 4.194027
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 52.4583,
+            "resistance_ohm": 52.9607,
             "capacitance_ff": 10.230611
           }
         ],
@@ -1364,133 +1364,133 @@
             "device": "$11",
             "terminal": "S",
             "leg_net": "GND__t0",
-            "resistance_ohm": 388.6515
+            "resistance_ohm": 400.1572
           },
           {
             "device": "$11",
             "terminal": "D",
             "leg_net": "GND__t1",
-            "resistance_ohm": 388.6515
+            "resistance_ohm": 400.1572
           },
           {
             "device": "$10",
             "terminal": "S",
             "leg_net": "GND__t2",
-            "resistance_ohm": 261.5074
+            "resistance_ohm": 269.2491
           },
           {
             "device": "$10",
             "terminal": "D",
             "leg_net": "GND__t3",
-            "resistance_ohm": 261.5074
+            "resistance_ohm": 269.2491
           },
           {
             "device": "$5",
             "terminal": "S",
             "leg_net": "GND__t4",
-            "resistance_ohm": 324.9443
+            "resistance_ohm": 334.5639
           },
           {
             "device": "$6",
             "terminal": "S",
             "leg_net": "GND__t5",
-            "resistance_ohm": 93.0225
+            "resistance_ohm": 95.7763
           },
           {
             "device": "$4",
             "terminal": "D",
             "leg_net": "GND__t6",
-            "resistance_ohm": 449.7139
+            "resistance_ohm": 463.0273
           },
           {
             "device": "$4",
             "terminal": "S",
             "leg_net": "GND__t7",
-            "resistance_ohm": 449.7139
+            "resistance_ohm": 463.0273
           },
           {
             "device": "$16",
             "terminal": "W",
             "leg_net": "GND__t8",
-            "resistance_ohm": 345.1406
+            "resistance_ohm": 355.3582
           },
           {
             "device": "$17",
             "terminal": "W",
             "leg_net": "GND__t9",
-            "resistance_ohm": 339.7588
+            "resistance_ohm": 349.817
           },
           {
             "device": "$18",
             "terminal": "W",
             "leg_net": "GND__t10",
-            "resistance_ohm": 354.429
+            "resistance_ohm": 364.9215
           },
           {
             "device": "$1",
             "terminal": "B",
             "leg_net": "GND__t11",
-            "resistance_ohm": 279.653
+            "resistance_ohm": 287.9318
           },
           {
             "device": "$2",
             "terminal": "B",
             "leg_net": "GND__t12",
-            "resistance_ohm": 250.5511
+            "resistance_ohm": 257.9685
           },
           {
             "device": "$7",
             "terminal": "B",
             "leg_net": "GND__t13",
-            "resistance_ohm": 261.9505
+            "resistance_ohm": 269.7053
           },
           {
             "device": "$8",
             "terminal": "B",
             "leg_net": "GND__t14",
-            "resistance_ohm": 230.6255
+            "resistance_ohm": 237.453
           },
           {
             "device": "$3",
             "terminal": "B",
             "leg_net": "GND__t15",
-            "resistance_ohm": 198.2912
+            "resistance_ohm": 204.1614
           },
           {
             "device": "$6",
             "terminal": "B",
             "leg_net": "GND__t16",
-            "resistance_ohm": 93.0225
+            "resistance_ohm": 95.7763
           },
           {
             "device": "$9",
             "terminal": "B",
             "leg_net": "GND__t17",
-            "resistance_ohm": 166.9394
+            "resistance_ohm": 171.8815
           },
           {
             "device": "$4",
             "terminal": "B",
             "leg_net": "GND__t18",
-            "resistance_ohm": 449.7139
+            "resistance_ohm": 463.0273
           },
           {
             "device": "$11",
             "terminal": "B",
             "leg_net": "GND__t19",
-            "resistance_ohm": 388.6515
+            "resistance_ohm": 400.1572
           },
           {
             "device": "$5",
             "terminal": "B",
             "leg_net": "GND__t20",
-            "resistance_ohm": 324.9443
+            "resistance_ohm": 334.5639
           },
           {
             "device": "$10",
             "terminal": "B",
             "leg_net": "GND__t21",
-            "resistance_ohm": 261.5074
+            "resistance_ohm": 269.2491
           }
         ],
         "segments": [],
@@ -1548,7 +1548,7 @@
       {
         "net": "OUTN",
         "net_id": 2,
-        "resistance_ohm": 1122.9762,
+        "resistance_ohm": 1203.5824,
         "capacitance_ff": 11.631209,
         "by_layer": [
           {
@@ -1558,17 +1558,17 @@
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 988.0381,
+            "resistance_ohm": 1067.3378,
             "capacitance_ff": 3.269779
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 6.8333,
+            "resistance_ohm": 7.8885,
             "capacitance_ff": 1.557666
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 34.0,
+            "resistance_ohm": 34.2514,
             "capacitance_ff": 6.629844
           }
         ],
@@ -1582,25 +1582,25 @@
             "device": "$9",
             "terminal": "D",
             "leg_net": "OUTN__t0",
-            "resistance_ohm": 265.0238
+            "resistance_ohm": 284.0469
           },
           {
             "device": "$12",
             "terminal": "G",
             "leg_net": "OUTN__t1",
-            "resistance_ohm": 413.7147
+            "resistance_ohm": 443.4107
           },
           {
             "device": "$14",
             "terminal": "D",
             "leg_net": "OUTN__t2",
-            "resistance_ohm": 203.7386
+            "resistance_ohm": 218.3627
           },
           {
             "device": "$15",
             "terminal": "D",
             "leg_net": "OUTN__t3",
-            "resistance_ohm": 240.4992
+            "resistance_ohm": 257.762
           }
         ],
         "segments": [],
@@ -1673,7 +1673,7 @@
       {
         "net": "OUTP",
         "net_id": 8,
-        "resistance_ohm": 1121.572,
+        "resistance_ohm": 1202.1814,
         "capacitance_ff": 11.348877,
         "by_layer": [
           {
@@ -1683,17 +1683,17 @@
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 988.0381,
+            "resistance_ohm": 1067.3378,
             "capacitance_ff": 3.265117
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 6.4708,
+            "resistance_ohm": 7.5291,
             "capacitance_ff": 1.480345
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 32.9583,
+            "resistance_ohm": 33.2098,
             "capacitance_ff": 6.429494
           }
         ],
@@ -1707,25 +1707,25 @@
             "device": "$12",
             "terminal": "D",
             "leg_net": "OUTP__t0",
-            "resistance_ohm": 240.1985
+            "resistance_ohm": 257.462
           },
           {
             "device": "$13",
             "terminal": "D",
             "leg_net": "OUTP__t1",
-            "resistance_ohm": 203.4838
+            "resistance_ohm": 218.1086
           },
           {
             "device": "$15",
             "terminal": "G",
             "leg_net": "OUTP__t2",
-            "resistance_ohm": 413.1973
+            "resistance_ohm": 442.8946
           },
           {
             "device": "$3",
             "terminal": "D",
             "leg_net": "OUTP__t3",
-            "resistance_ohm": 264.6924
+            "resistance_ohm": 283.7163
           }
         ],
         "segments": [],
@@ -1802,27 +1802,27 @@
       {
         "net": "VDD",
         "net_id": 9,
-        "resistance_ohm": 1889.5327,
+        "resistance_ohm": 2357.2406,
         "capacitance_ff": 20.145914,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 190.5048,
+            "resistance_ohm": 488.3036,
             "capacitance_ff": 0.397377
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 1629.2571,
+            "resistance_ohm": 1796.3215,
             "capacitance_ff": 5.671034
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 13.8542,
+            "resistance_ohm": 15.9445,
             "capacitance_ff": 3.167023
           },
           {
             "layer": "metal2",
-            "resistance_ohm": 55.9167,
+            "resistance_ohm": 56.6709,
             "capacitance_ff": 10.910479
           }
         ],
@@ -1836,67 +1836,67 @@
             "device": "$5",
             "terminal": "G",
             "leg_net": "VDD__t0",
-            "resistance_ohm": 275.7092
+            "resistance_ohm": 343.9543
           },
           {
             "device": "$12",
             "terminal": "S",
             "leg_net": "VDD__t1",
-            "resistance_ohm": 206.9363
+            "resistance_ohm": 258.1583
           },
           {
             "device": "$12",
             "terminal": "B",
             "leg_net": "VDD__t2",
-            "resistance_ohm": 206.9363
+            "resistance_ohm": 258.1583
           },
           {
             "device": "$13",
             "terminal": "S",
             "leg_net": "VDD__t3",
-            "resistance_ohm": 158.4874
+            "resistance_ohm": 197.7171
           },
           {
             "device": "$13",
             "terminal": "B",
             "leg_net": "VDD__t4",
-            "resistance_ohm": 158.4874
+            "resistance_ohm": 197.7171
           },
           {
             "device": "$18",
             "terminal": "A",
             "leg_net": "VDD__t5",
-            "resistance_ohm": 290.7064
+            "resistance_ohm": 362.6637
           },
           {
             "device": "$14",
             "terminal": "B",
             "leg_net": "VDD__t6",
-            "resistance_ohm": 75.9142
+            "resistance_ohm": 94.7049
           },
           {
             "device": "$14",
             "terminal": "S",
             "leg_net": "VDD__t7",
-            "resistance_ohm": 75.9142
+            "resistance_ohm": 94.7049
           },
           {
             "device": "$15",
             "terminal": "B",
             "leg_net": "VDD__t8",
-            "resistance_ohm": 81.6892
+            "resistance_ohm": 101.9094
           },
           {
             "device": "$15",
             "terminal": "S",
             "leg_net": "VDD__t9",
-            "resistance_ohm": 81.6892
+            "resistance_ohm": 101.9094
           },
           {
             "device": "$17",
             "terminal": "B",
             "leg_net": "VDD__t10",
-            "resistance_ohm": 277.063
+            "resistance_ohm": 345.6432
           }
         ],
         "segments": [],
@@ -1973,22 +1973,22 @@
       {
         "net": "VINN",
         "net_id": 12,
-        "resistance_ohm": 218.9804,
+        "resistance_ohm": 406.9253,
         "capacitance_ff": 1.601158,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 188.2095,
+            "resistance_ohm": 326.8778,
             "capacitance_ff": 0.347841
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 25.6,
+            "resistance_ohm": 74.6039,
             "capacitance_ff": 0.149806
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 2.1292,
+            "resistance_ohm": 2.402,
             "capacitance_ff": 0.494385
           },
           {
@@ -2007,13 +2007,13 @@
             "device": "$1",
             "terminal": "G",
             "leg_net": "VINN__t0",
-            "resistance_ohm": 109.4902
+            "resistance_ohm": 203.4626
           },
           {
             "device": "$8",
             "terminal": "G",
             "leg_net": "VINN__t1",
-            "resistance_ohm": 109.4902
+            "resistance_ohm": 203.4626
           }
         ],
         "segments": [],
@@ -2049,22 +2049,22 @@
       {
         "net": "VINP",
         "net_id": 5,
-        "resistance_ohm": 219.7304,
+        "resistance_ohm": 407.674,
         "capacitance_ff": 1.757421,
         "by_layer": [
           {
             "layer": "poly",
-            "resistance_ohm": 188.2095,
+            "resistance_ohm": 326.8778,
             "capacitance_ff": 0.347841
           },
           {
             "layer": "metal0",
-            "resistance_ohm": 25.6,
+            "resistance_ohm": 74.6039,
             "capacitance_ff": 0.149806
           },
           {
             "layer": "metal1",
-            "resistance_ohm": 2.2542,
+            "resistance_ohm": 2.5257,
             "capacitance_ff": 0.529492
           },
           {
@@ -2083,13 +2083,13 @@
             "device": "$2",
             "terminal": "G",
             "leg_net": "VINP__t0",
-            "resistance_ohm": 109.8652
+            "resistance_ohm": 203.837
           },
           {
             "device": "$7",
             "terminal": "G",
             "leg_net": "VINP__t1",
-            "resistance_ohm": 109.8652
+            "resistance_ohm": 203.837
           }
         ],
         "segments": [],
@@ -2154,7 +2154,7 @@
     "extract__capacitor__count": 12,
     "extract__coupling__capacitor__count": 21,
     "extract__inductor__count": 0,
-    "extract__resistance__ohm": 14695.7902,
+    "extract__resistance__ohm": 17523.7487,
     "extract__capacitance__ff": 117.652713,
     "extract__coupling__capacitance__ff": 0.74934,
     "extract__inductance__nh": 0.0
