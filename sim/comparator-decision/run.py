@@ -74,6 +74,79 @@ EXPERIMENT_DIR = Path(__file__).resolve().parent
 TESTBENCH_DIR = EXPERIMENT_DIR / "testbench"
 DUT_FRAGMENT = TESTBENCH_DIR / "comparator_core.spice"
 
+# --- DUT provenance: schematic-level vs. post-layout (issue #57, T1 item 7).
+#
+# Both fragments are FLAT device-level SPICE that inlines at the same place in
+# every deck below, expose the same node names (CLK/VDD/GND/VINP/VINN/OUTP/
+# OUTN plus the internal TAILP/OUTP1/OUTN1/TAIL2/CLKT), and are selected by
+# `--dut`. The post-layout pair is generated and documented by
+# `layout/extract_pex.py` -- read that module's docstring for the derivation,
+# for why `klt pex` is not the path here, and for the disclosed res_high_po
+# drawn-width delta the extracted fragment deliberately carries.
+#
+# The schematic path is BYTE-IDENTICAL to what it was before this switch
+# existed: `--dut schematic` (the default) inlines exactly the same fragment
+# into exactly the same deck text, so a post-layout figure and the committed
+# schematic-level record it is differenced against come from decks that
+# differ only in the DUT. That is the whole point of the comparison, so it is
+# a property worth stating rather than assuming.
+REPO_ROOT = EXPERIMENT_DIR.parent.parent
+LAYOUT_DIR = REPO_ROOT / "layout"
+PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
+PEX_PREAMP_FRAGMENT = LAYOUT_DIR / "comparator.pex-preamp.spice"
+
+DUT_PROVENANCES = ("schematic", "extracted")
+# Module-level rather than threaded through ~15 deck builders and their
+# callers: provenance is a property of the whole run, set once by main() (or
+# by set_dut_provenance() from a test), never varied mid-run.
+_DUT_PROVENANCE = "schematic"
+
+
+def set_dut_provenance(which: str) -> None:
+    global _DUT_PROVENANCE
+    if which not in DUT_PROVENANCES:
+        raise ValueError(f"unknown DUT provenance {which!r}")
+    if which == "extracted":
+        missing = [p for p in (PEX_FRAGMENT, PEX_PREAMP_FRAGMENT) if not p.exists()]
+        if missing:
+            raise SystemExit(
+                "post-layout DUT requested but "
+                + ", ".join(str(p.relative_to(REPO_ROOT)) for p in missing)
+                + " is missing -- run `python3 layout/extract_pex.py` first"
+            )
+    _DUT_PROVENANCE = which
+
+
+def dut_provenance() -> str:
+    return _DUT_PROVENANCE
+
+
+def _dut_fragment() -> Path:
+    return PEX_FRAGMENT if _DUT_PROVENANCE == "extracted" else DUT_FRAGMENT
+
+
+def _require_schematic_dut(mode: str) -> None:
+    """Refuse a sub-command whose deck construction has no post-layout form.
+
+    `reset` and `noise-tran` build counterfactual/injection decks by
+    re-emitting NAMED DUT device lines onto substituted nodes
+    (`_dut_device_line(name, nodes=...)`). On the extracted fragment a
+    schematic instance can correspond to more than one drawn device (each
+    W=13 input-pair device is two W=6.5 fingers) and every terminal sits on a
+    per-terminal parasitic star leg rather than on the node itself, so
+    "re-emit this device somewhere else" is not a well-defined operation
+    without also re-partitioning its parasitics. Refusing loudly is the point:
+    silently falling back to the schematic DUT would produce a post-layout
+    record that is not a post-layout measurement. Tracked as follow-on work,
+    not smuggled in here.
+    """
+    raise SystemExit(
+        f"`{mode}` has no post-layout deck form yet and this run would "
+        "otherwise silently measure the schematic DUT -- see "
+        "`_require_schematic_dut` in this file for why, and run it with "
+        "`--dut schematic`"
+    )
+
 # --- Fixed testbench constants. This repo's target-spec table (top-level
 # README) is DRAFT (spec/README.md), so nothing here is graded against a
 # ratified line -- these are planning values only, matching the constants
@@ -133,15 +206,127 @@ CLAIM_TEXT = (
     "DR-005). Any statement about a ratified row's compliance made below "
     "cites the bound and the number side by side."
 )
-NETLIST_PROVENANCE = (
+SCHEMATIC_NETLIST_PROVENANCE = (
     "- **Netlist provenance**: schematic-derived "
     "(`design/comparator.sch` -> `./design/netlist.sh` -> "
     "`sim/comparator-decision/testbench/comparator_core.spice`)"
 )
+EXTRACTED_NETLIST_PROVENANCE = (
+    "- **Netlist provenance**: POST-LAYOUT / EXTRACTED "
+    "(`layout/comparator.gds` -> `klt extract --parasitics` -> "
+    "`layout/comparator.extract.spice` -> `layout/extract_pex.py` -> "
+    "`layout/comparator.pex.spice`). Lumped-RC parasitics: 69 star "
+    "resistors, 12 net-to-ground capacitors and 21 net-to-net coupling "
+    "capacitors, 117.65 fF total ground capacitance and 14.70 kohm total "
+    "series resistance over 12 nets (`layout/extract-parasitics.json`). "
+    "Net names are the SCHEMATIC names, carried across by the 12/12 net "
+    "correspondence in the committed `layout/lvs-report.json`, so every "
+    "probe in this deck names the same circuit node the schematic-level "
+    "record's probe named. This fragment deliberately carries the "
+    "`res_high_po` w=0.42 um drawn vs. w=0.35 um schematic delta disclosed "
+    "by PR #55 / `layout/lvs-coverage-probe.json` -- it is what the layout "
+    "actually draws, so it is what a post-layout measurement must see."
+)
+
+
+def netlist_provenance() -> str:
+    return (
+        EXTRACTED_NETLIST_PROVENANCE if _DUT_PROVENANCE == "extracted"
+        else SCHEMATIC_NETLIST_PROVENANCE
+    )
+
+
+# --- Schematic-level anchors the post-layout re-runs are differenced against
+# (issue #57 acceptance criteria: "each post-layout record documents its
+# schematic-level counterpart record path AND the numeric delta -- not just
+# the new number in isolation"). Every entry names a COMMITTED record under
+# records/ measured at the same corner/temperature/methodology constants by
+# the same sub-command, so the difference is attributable to the DUT and not
+# to the bench. Values are transcribed from those records (and are the same
+# figures the top-level README's target-spec rows cite). ---
+@dataclass(frozen=True)
+class Baseline:
+    record_id: str
+    quantity: str
+    value: float
+    unit: str
+    conditions: str
+
+
+SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
+    ("regen", "tt", 27.0): Baseline(
+        "20260922-070800-e084b55", "regeneration time at 50 mV overdrive",
+        0.4025, "ns", "8/8 sweep points resolved",
+    ),
+    ("regen", "ss", -40.0): Baseline(
+        "20260922-071313-e084b55", "regeneration time at 50 mV overdrive",
+        0.3575, "ns", "7/8 sweep points resolved (0.5 mV does not resolve)",
+    ),
+    ("kickback", "tt", 27.0): Baseline(
+        "20260922-070119-e084b55", "peak `loaded` input-node disturbance",
+        1.8902, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    ("offset", "tt", 27.0): Baseline(
+        "20260922-065300-e084b55", "input-referred offset stdev",
+        1.7857, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
+        "same-seed negative control stdev exactly 0",
+    ),
+    ("noise", "tt", 27.0): Baseline(
+        "20260922-065534-e084b55", "differential input-referred noise",
+        0.5704, "mV rms", "loop-broken AC sub-model of the DR-004 preamp, "
+        "1 kHz-1 GHz",
+    ),
+}
+
+
+def baseline_for(mode: str, corner: str, temp_c: float) -> Baseline | None:
+    return SCHEMATIC_BASELINES.get((mode, corner, float(temp_c)))
+
+
+def post_layout_delta_lines(
+    mode: str, corner: str, temp_c: float, measured: float, unit_scale: float = 1.0,
+) -> list[str]:
+    """The "## Post-layout delta" section every `--dut extracted` record
+    carries. Returns [] on a schematic-provenance run, and an explicit
+    "no committed counterpart" note when the anchor is missing -- a
+    post-layout number with nothing to difference it against is still worth
+    recording, but must not look like it was compared when it was not."""
+    if _DUT_PROVENANCE != "extracted":
+        return []
+    out = ["", "## Post-layout delta vs. the schematic-level record", ""]
+    base = baseline_for(mode, corner, temp_c)
+    if base is None:
+        out.append(
+            f"No committed schematic-level `{mode}` record exists at "
+            f"{corner}/{temp_c}C to difference this figure against, so this "
+            "record states the post-layout number alone. It is not a delta."
+        )
+        return out
+    value = measured * unit_scale
+    delta = value - base.value
+    ratio = value / base.value if base.value else float("nan")
+    out.extend([
+        "| Quantity | Schematic-level | Post-layout | Delta | Ratio |",
+        "|---|---|---|---|---|",
+        f"| {base.quantity} | {base.value:.4f} {base.unit} | "
+        f"{value:.4f} {base.unit} | {delta:+.4f} {base.unit} | "
+        f"{ratio:.3f}x |",
+        "",
+        f"- **Schematic-level counterpart record**: "
+        f"`sim/comparator-decision/records/{base.record_id}.md` "
+        f"({base.conditions})",
+        "- **What differs between the two runs**: the DUT fragment, and "
+        "nothing else. Same sub-command, same corner/temperature/supply, "
+        "same methodology constants, same deck template -- the "
+        "schematic-side deck text is byte-identical to the one that "
+        "produced the counterpart record.",
+    ])
+    return out
 
 
 def _dut_lines() -> str:
-    return DUT_FRAGMENT.read_text()
+    return _dut_fragment().read_text()
 
 
 def _dut_devices() -> dict[str, list[str]]:
@@ -341,8 +526,8 @@ def write_regen_evidence(
 ) -> Path:
     info = pdk.resolve()
     record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    netlist_sha = evidence.sha256_file(_dut_fragment())
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
     corners_dir = EXPERIMENT_DIR / "corners" / record_id
     corners_dir.mkdir(parents=True, exist_ok=True)
     for p in points:
@@ -355,7 +540,7 @@ def write_regen_evidence(
     a("")
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
-    a(NETLIST_PROVENANCE)
+    a(netlist_provenance())
     a(
         f"- **Corner matrix run**: process=['{corner}'], temperature_c=[{temp_c}], "
         f"supply_v=[{VDD}] (1 PVT point -- **subset-corner justification**: "
@@ -392,6 +577,14 @@ def write_regen_evidence(
         "check for that, not a quantitative claim against any spec row."
     )
     a("")
+    ref = next(
+        (p.regen_time_ns for p in points
+         if p.vindiff_mv == 50 and p.regen_time_ns is not None),
+        None,
+    )
+    if ref is not None:
+        lines.extend(post_layout_delta_lines("regen", corner, temp_c, ref))
+        a("")
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "regen", supersedes=supersedes,
@@ -560,8 +753,8 @@ def write_offset_evidence(
 ) -> Path:
     info = pdk.resolve()
     record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    netlist_sha = evidence.sha256_file(_dut_fragment())
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
     draws_dir = EXPERIMENT_DIR / "mc-draws" / record_id
     draws_dir.mkdir(parents=True, exist_ok=True)
     for name, text in result.logs.items():
@@ -578,7 +771,7 @@ def write_offset_evidence(
     a("")
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
-    a(NETLIST_PROVENANCE)
+    a(netlist_provenance())
     rel_se_pct = 100.0 / (2 * (result.n - 1)) ** 0.5 if result.n > 1 else float("inf")
     a(
         f"- **Statistical convention**: mismatch corner `{result.mismatch_corner}`, "
@@ -677,6 +870,9 @@ def write_offset_evidence(
     a("|---|---|---|")
     a(f"| {len(result.negctrl_offset_v)} | {negctrl_mean * 1000:.4f} | {negctrl_stdev * 1000:.6g} |")
     a("")
+    lines.extend(post_layout_delta_lines(
+        "offset", result.corner, result.temp_c, draws_stdev, unit_scale=1000.0))
+    a("")
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "offset",
@@ -739,11 +935,57 @@ VBIAS_NOTE = (
     "a dynamic input stage), this stage holds its own real continuous DC "
     "operating point; noise taken at v(OUTP1,OUTN1)"
 )
+VBIAS_NOTE_PEX = (
+    VBIAS_NOTE
+    + ". POST-LAYOUT form: the same loop break applied to the EXTRACTED "
+    "netlist instead of to the schematic fragment's device lines -- "
+    "`layout/comparator.pex-preamp.spice`, generated by "
+    "`layout/extract_pex.py` by dropping every extracted device that "
+    "touches a latch net (CLK/CLKT/TAIL2/OUTP/OUTN) together with those "
+    "nets' parasitics, and asserting that exactly the nine expected drawn "
+    "devices survive (tail, four input-pair fingers, two poly loads, two "
+    "absorber caps). The surviving nets keep their full extracted lumped-RC "
+    "parasitics, including the per-terminal star legs on VINP/VINN/TAILP/"
+    "OUTP1/OUTN1 and the net-to-net coupling capacitors among them"
+)
+
+
+def _noise_sub_model_lines() -> list[str]:
+    """The loop-broken preamp sub-model, in the active DUT provenance.
+
+    Schematic: built from the committed DUT fragment's OWN device lines
+    (issue #24) -- tail, input pair, poly loads, absorber caps -- with
+    everything past the preamp outputs omitted (the loop break; see the
+    methodology note above). Sizing therefore tracks design/comparator.sch
+    automatically; it is not transcribed here. The preamp contains no
+    clocked device, so no CLK/CLKT steady-bias source is needed (the
+    pre-DR-004 sub-model's Vclkfix/Vclkfixt lines existed to bias the
+    omitted-from-latch tail's soft-clock gate; that device is no longer in
+    the sub-model).
+
+    Post-layout: the identical partition, but taken once at generation time
+    by `layout/extract_pex.py` against the extracted netlist and committed,
+    because on the extracted side "the preamp devices" is a connectivity
+    question (a schematic device can be several drawn fingers, and each
+    terminal hangs off a parasitic star leg) rather than a name lookup.
+    """
+    if _DUT_PROVENANCE == "extracted":
+        return [PEX_PREAMP_FRAGMENT.read_text()]
+    return [
+        _dut_device_line("XM_PTAIL"),
+        _dut_device_line("XM_PINN"),
+        _dut_device_line("XM_PINP"),
+        _dut_device_line("XR_LP"),
+        _dut_device_line("XR_LN"),
+        _dut_device_line("XM_C1P"),
+        _dut_device_line("XM_C1N"),
+    ]
 
 
 def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
+    note = VBIAS_NOTE_PEX if _DUT_PROVENANCE == "extracted" else VBIAS_NOTE
     lines = [
-        f"* comparator-decision input-referred noise ({VBIAS_NOTE}) "
+        f"* comparator-decision input-referred noise ({note}) "
         f"corner={corner} temp={temp_c}C supply={VDD}V (issue #9)",
         f".lib {info.ngspice_lib} {corner}",
         f".temp {temp_c}",
@@ -753,22 +995,7 @@ def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
-        # Built from the committed DUT fragment's OWN device lines (issue
-        # #24): the DR-004 preamp stage verbatim -- tail, input pair, poly
-        # loads, absorber caps -- with everything past the preamp outputs
-        # omitted (the loop break; see the methodology note above). Sizing
-        # therefore tracks design/comparator.sch automatically; it is not
-        # transcribed here. The preamp contains no clocked device, so no
-        # CLK/CLKT steady-bias source is needed (the pre-DR-004 sub-model's
-        # Vclkfix/Vclkfixt lines existed to bias the omitted-from-latch
-        # tail's soft-clock gate; that device is no longer in the sub-model).
-        _dut_device_line("XM_PTAIL"),
-        _dut_device_line("XM_PINN"),
-        _dut_device_line("XM_PINP"),
-        _dut_device_line("XR_LP"),
-        _dut_device_line("XR_LN"),
-        _dut_device_line("XM_C1P"),
-        _dut_device_line("XM_C1N"),
+        *_noise_sub_model_lines(),
         "",
         ".control",
         # sim/spiceinit sets 'option klu' repo-wide for corner-sweep speed,
@@ -845,19 +1072,30 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
     a(
-        "- **Netlist provenance**: schematic-derived, reduced sub-model -- the "
-        "DR-004 preamplifier stage's device lines (tail, input pair, poly "
-        "loads, OUT1 absorber caps) are taken "
-        "verbatim from `sim/comparator-decision/testbench/comparator_core.spice` "
-        "(itself generated from `design/comparator.sch` by `./design/netlist.sh`); "
-        "everything past the preamp outputs is the loop break; "
-        "see Methodology for what that omits."
+        (
+            "- **Netlist provenance**: POST-LAYOUT / EXTRACTED, reduced "
+            "sub-model -- the preamp partition of the extracted netlist "
+            "(`layout/comparator.pex-preamp.spice`, from `layout/comparator.gds` "
+            "via `klt extract --parasitics` and `layout/extract_pex.py`), WITH "
+            "its extracted lumped-RC parasitics; everything past the preamp "
+            "outputs is the loop break; see Methodology for what that omits "
+            "and for how the partition is taken."
+        ) if _DUT_PROVENANCE == "extracted" else (
+            "- **Netlist provenance**: schematic-derived, reduced sub-model -- the "
+            "DR-004 preamplifier stage's device lines (tail, input pair, poly "
+            "loads, OUT1 absorber caps) are taken "
+            "verbatim from `sim/comparator-decision/testbench/comparator_core.spice` "
+            "(itself generated from `design/comparator.sch` by `./design/netlist.sh`); "
+            "everything past the preamp outputs is the loop break; "
+            "see Methodology for what that omits."
+        )
     )
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
         f"- **Noise methodology**: `ac-based`, integration bandwidth "
         f"{NOISE_FSTART_HZ:g}Hz-{NOISE_FSTOP_HZ:g}Hz. REDUCED SUB-MODEL, not "
-        f"the full comparator_core.spice fragment: {VBIAS_NOTE}. This is a "
+        f"the full comparator_core.spice fragment: "
+        f"{VBIAS_NOTE_PEX if _DUT_PROVENANCE == 'extracted' else VBIAS_NOTE}. This is a "
         "named, flagged simplification (excludes the cross-coupled latch "
         "pair's own regenerative-phase noise contribution) -- a LOWER BOUND "
         "on the true regeneration-inclusive noise, per the port source's own "
@@ -904,6 +1142,10 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
             "silently superseding DR-002's disposition."
         )
     )
+    a("")
+    lines.extend(post_layout_delta_lines(
+        "noise", result.corner, result.temp_c, result.differential_rms_v,
+        unit_scale=1000.0))
     a("")
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
@@ -1555,7 +1797,7 @@ def write_noise_tran_evidence(
     a("")
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
-    a(NETLIST_PROVENANCE)
+    a(netlist_provenance())
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
         f"- **Noise methodology**: `tran-noise-mc` (issue #41), REGENERATION-"
@@ -1954,8 +2196,8 @@ def write_reset_evidence(
 ) -> Path:
     info = pdk.resolve()
     record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    netlist_sha = evidence.sha256_file(_dut_fragment())
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
     corners_dir = EXPERIMENT_DIR / "corners" / record_id
     corners_dir.mkdir(parents=True, exist_ok=True)
     for p in points:
@@ -1973,7 +2215,7 @@ def write_reset_evidence(
     a("")
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
-    a(NETLIST_PROVENANCE)
+    a(netlist_provenance())
     a(
         "- **Corner matrix run**: "
         + ", ".join(f"{c}/{t}C" for c, t in corner_set)
@@ -2301,8 +2543,8 @@ def write_kickback_evidence(
 ) -> Path:
     info = pdk.resolve()
     record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(DUT_FRAGMENT)
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, DUT_FRAGMENT)
+    netlist_sha = evidence.sha256_file(_dut_fragment())
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
     corners_dir = EXPERIMENT_DIR / "corners" / record_id
     corners_dir.mkdir(parents=True, exist_ok=True)
     for p in points:
@@ -2318,7 +2560,7 @@ def write_kickback_evidence(
     a("")
     a(f"- **Record ID**: {record_id}")
     a(CLAIM_TEXT)
-    a(NETLIST_PROVENANCE)
+    a(netlist_provenance())
     a(
         f"- **Corner matrix run**: process=['{loaded.corner}'], "
         f"temperature_c=[{loaded.temp_c}], supply_v=[{VDD}] (1 PVT point, "
@@ -2422,6 +2664,10 @@ def write_kickback_evidence(
         "remains open work per DR-002."
     )
     a("")
+    lines.extend(post_layout_delta_lines(
+        "kickback", loaded.corner, loaded.temp_c, loaded.peak_dev_v,
+        unit_scale=1000.0))
+    a("")
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "kickback", supersedes=supersedes,
@@ -2456,8 +2702,23 @@ def main(argv: list[str] | None = None) -> int:
         "(offset draws/negctrl, regen sweep points, kickback variants, "
         "noise-tran MC). Issue #41's campaign support.",
     )
+    ap.add_argument(
+        "--dut", choices=DUT_PROVENANCES, default="schematic",
+        help="which DUT netlist to simulate: `schematic` (the default -- "
+        "design/comparator.sch via testbench/comparator_core.spice) or "
+        "`extracted` (post-layout, parasitics-included -- "
+        "layout/comparator.pex.spice, generated by layout/extract_pex.py "
+        "from layout/comparator.gds). Issue #57 / T1 item 7. `regen`, "
+        "`offset`, `noise` and `kickback` support both; `reset` and "
+        "`noise-tran` are schematic-only and say so rather than silently "
+        "falling back.",
+    )
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
+
+    set_dut_provenance(args.dut)
+    if args.dut == "extracted" and args.mode in ("reset", "noise-tran"):
+        _require_schematic_dut(args.mode)
 
     if args.check_env:
         result = toolchain.check_env()
