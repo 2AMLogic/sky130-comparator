@@ -396,5 +396,102 @@ class TestJobsPlumbing(unittest.TestCase):
         self.assertIn("--jobs", buf.getvalue())
 
 
+class TestDutProvenance(unittest.TestCase):
+    """`--dut schematic|extracted` -- the post-layout swap (issue #57).
+
+    The whole value of the post-layout comparison is that the ONLY thing
+    differing between a schematic-level record and its post-layout
+    counterpart is the DUT. These tests pin that: the schematic deck text is
+    unchanged by the switch existing, the extracted deck really does carry
+    the extracted netlist (and its parasitics), and the two sub-commands with
+    no post-layout deck form refuse rather than quietly measuring the
+    schematic DUT.
+    """
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+
+    def test_default_provenance_is_schematic(self):
+        self.assertEqual(cd_run.dut_provenance(), "schematic")
+        self.assertEqual(cd_run._dut_fragment(), cd_run.DUT_FRAGMENT)
+
+    def test_schematic_decks_are_unchanged_by_the_switch(self):
+        before = cd_run._regen_deck(self.info, "tt", 27.0, 50.0, "x")
+        cd_run.set_dut_provenance("extracted")
+        cd_run.set_dut_provenance("schematic")
+        self.assertEqual(before, cd_run._regen_deck(self.info, "tt", 27.0, 50.0, "x"))
+        self.assertIn(cd_run.DUT_FRAGMENT.read_text(), before)
+
+    def test_extracted_decks_inline_the_extracted_fragment(self):
+        cd_run.set_dut_provenance("extracted")
+        for deck in (
+            cd_run._regen_deck(self.info, "tt", 27.0, 50.0, "x"),
+            cd_run._pickoff_deck(self.info, "tt_mm", 27.0, 0.0, "x", rndseed=1),
+            cd_run._kickback_deck(self.info, "tt", 27.0, "loaded", "x"),
+        ):
+            self.assertIn(cd_run.PEX_FRAGMENT.read_text(), deck)
+            self.assertNotIn(cd_run.DUT_FRAGMENT.read_text(), deck)
+            # Parasitics actually present, not merely a renamed schematic.
+            self.assertIn("vsubs", deck)
+
+    def test_extracted_noise_deck_uses_the_committed_preamp_partition(self):
+        cd_run.set_dut_provenance("extracted")
+        deck = cd_run._noise_deck(self.info, "tt", 27.0)
+        self.assertIn(cd_run.PEX_PREAMP_FRAGMENT.read_text(), deck)
+        # Same loop break, same probe as the schematic sub-model.
+        self.assertIn("noise v(outp1,outn1) Vinp", deck)
+        for absent in ("XM_STN_P", "XM_STN_N", "XM_TAIL2",
+                       "XM_LATP_P", "XM_LATP_N", "XM_RST_P", "XM_RST_N",
+                       "XR_CLKS", "XM_CLKCAP"):
+            self.assertNotIn(absent, deck)
+
+    def test_unknown_provenance_raises(self):
+        with self.assertRaises(ValueError):
+            cd_run.set_dut_provenance("post-layout")
+
+    def test_reset_and_noise_tran_refuse_the_extracted_dut(self):
+        for mode in ("reset", "noise-tran"):
+            with self.subTest(mode=mode):
+                with self.assertRaises(SystemExit) as cm:
+                    cd_run.main([mode, "--dut", "extracted"])
+                self.assertIn("no post-layout deck form", str(cm.exception))
+
+
+class TestPostLayoutDelta(unittest.TestCase):
+    """`post_layout_delta_lines()` -- issue #57's "not just the new number
+    in isolation" acceptance criterion, as code."""
+
+    def setUp(self):
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+
+    def test_schematic_runs_emit_no_delta_section(self):
+        self.assertEqual(
+            cd_run.post_layout_delta_lines("regen", "tt", 27.0, 0.5), [])
+
+    def test_every_baseline_names_a_committed_record(self):
+        records = cd_run.EXPERIMENT_DIR / "records"
+        for key, base in cd_run.SCHEMATIC_BASELINES.items():
+            with self.subTest(key=key):
+                self.assertTrue((records / f"{base.record_id}.md").exists(),
+                                f"{base.record_id} is not a committed record")
+
+    def test_delta_section_states_record_path_delta_and_ratio(self):
+        cd_run.set_dut_provenance("extracted")
+        text = "\n".join(
+            cd_run.post_layout_delta_lines("regen", "tt", 27.0, 0.4425))
+        self.assertIn("20260922-070800-e084b55", text)
+        self.assertIn("0.4025 ns", text)
+        self.assertIn("+0.0400 ns", text)
+        self.assertIn("1.099x", text)
+
+    def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
+        cd_run.set_dut_provenance("extracted")
+        text = "\n".join(
+            cd_run.post_layout_delta_lines("regen", "ff", 125.0, 0.5))
+        self.assertIn("No committed schematic-level", text)
+        self.assertNotIn("Ratio", text)
+
+
 if __name__ == "__main__":
     unittest.main()
