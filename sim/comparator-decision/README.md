@@ -684,6 +684,93 @@ degrades most. A single-corner post-layout ratio is therefore not a safe
 basis for extrapolating this row, which is precisely why the row needed
 measuring at every corner rather than scaling from one.
 
+#### `regen` -- all seven graded corners now measured post-layout
+
+50 mV overdrive is the point both bounds are stated at.
+
+| Corner | Schematic | Post-layout | Ratio | Sweep points resolved | Record |
+|---|---|---|---|---|---|
+| `tt`/27C | 0.4025 ns | 0.5325 ns | 1.323x | 6/8 | `records/20260925-085247-4694692.md` (#57) |
+| `ss`/-40C | 0.3575 ns | 0.4725 ns | 1.322x | 3/8 | `records/20260925-093624-4694692.md` (#57) |
+| `ff`/125C | 0.4975 ns | **0.6475 ns** | 1.302x | 8/8 | `records/20260925-175622-bec714a.md` |
+| `sf`/-40C | 0.3475 ns | **0.4425 ns** | 1.273x | 5/8 | `records/20260925-192610-bec714a.md` |
+| `sf`/125C | 0.4725 ns | **0.6375 ns** | 1.349x | 7/8 | `records/20260925-182949-bec714a.md` |
+| `fs`/-40C | 0.3725 ns | **0.4875 ns** | 1.309x | 5/8 | `records/20260925-185950-bec714a.md` |
+| `fs`/125C | 0.5375 ns | **0.7725 ns** | **1.437x** | 7/8 | `records/20260925-173228-bec714a.md` |
+
+**Against the ratified bounds.** The slowest corner is `fs`/125C at **0.7725
+ns**. The `<= 1.5 ns` **target** bound is cleared at all seven corners (worst
+case 1.94x), and the `<= 0.8 ns` **stretch** bound is *also* still cleared at
+all seven -- but at `fs`/125C **with only 1.04x margin (3.4%)**. The row is
+**not** re-opened: both ratified bounds hold everywhere. The thin stretch
+margin is flagged here rather than smoothed over, because it is the figure
+that would move first if the supply-net parasitic model were refined (see
+"Parasitic model, and where it is coarse" above -- the lumped star R on
+`GND`/`VDD` is expected to be *pessimistic*, so `fs`/125C's true margin is
+plausibly better than 1.04x, not worse; that is an argument for re-measuring
+it with `--distributed-rc`, not for assuming it).
+
+**The ratio is corner-dependent here too, and in the opposite direction to
+`kickback`.** `regen`'s post-layout penalty spans 1.273x-1.437x and is
+largest at the **hot** corner `fs`/125C, where `kickback`'s was largest at
+the **cold** corners. So the two rows do not share a worst corner, and
+neither row's PVT shape can be inferred from the other's -- another reason
+one anchor corner is not a basis for extrapolation.
+
+**Sub-20 mV resolution degrades further at the skew corners.** #57 recorded
+`tt`/27C falling to 6/8 resolved points and `ss`/-40C to 3/8 post-layout. The
+new corners continue that: 8/8 at `ff`/125C, 7/8 at both 125C skews (the
++0.5 mV point does not resolve), and **5/8 at both -40C skews** (+0.5, +1 and
++2 mV do not resolve, while -10 mV does in ~1.21 ns). As #57 recorded, the
+sweep *brackets* this asymmetry rather than measuring it -- `regen`'s
+criterion is sign-corrected, so a wrong-polarity decision and a genuine
+non-decision both read `UNRESOLVED`. The new data localises the cold-corner
+bracket to **between 2 and 5 mV** at both `sf`/-40C and `fs`/-40C. This does
+not touch either bound (both are stated at 50 mV overdrive, which resolves at
+every corner), and quantifying the mechanism remains issue #66.
+
+#### `noise` -- all seven graded corners, stated without a delta at six
+
+`noise` is the loop-broken AC sub-model. It is cheap (one deck, ~20 s per
+corner), so every graded corner was run. **Six of the seven carry no
+post-layout *delta*, by construction**: DR-005's corner campaign measured
+`noise-tran` (the regeneration-inclusive Monte Carlo figure) at the non-`tt`
+corners, not this AC sub-model, so there is no committed schematic-level AC
+counterpart to difference against. Each record says exactly that instead of
+inventing a ratio, and the figure is still graded against the ratified bound.
+
+#### Deliberately skipped, and why
+
+Stated here so the gap is a decision on the record, not a silent absence:
+
+- **`offset` is measured post-layout at `tt_mm`/27C only** (issue #57). The
+  other four `_mm` corners were **not** run. Reason: `offset` is the
+  campaign's most expensive sub-command by an order of magnitude (~37 decks
+  per corner, ~25 min each serially), and under the serial dispatch decision
+  above the four remaining corners cost ~100 min of additional host time on
+  a shared dispatch worker. The two rows whose ratified compliance the layout
+  was *expected* to move -- `kickback` (DR-002/DR-005's named layout-stage
+  gate) and `regen` -- were prioritised for that budget instead. Offset's
+  post-layout `tt_mm` figure clears its stretch bound with 1.09x margin, so
+  the corner spread matters, and measuring it is genuine open work rather
+  than a closed question.
+- **`reset` and `noise-tran` have no post-layout deck form at all** and
+  refuse `--dut extracted` (issue #65, see "Post-layout (extracted) DUT"
+  above). Not a coverage choice -- there is nothing to run.
+- **The supply nets' `--distributed-rc` re-extraction** was not done. The
+  single lumped star R on `GND`/`VDD` is 52.0% of the block's total series R
+  and is expected to be pessimistic, so every post-layout degradation above
+  is an upper bound on the supply-network contribution.
+
+| Sub-command | Post-layout corner coverage | Gap |
+|---|---|---|
+| `kickback` | **7 of 7** graded corners | none |
+| `regen` | **7 of 7** graded corners | none |
+| `noise` (AC) | **7 of 7** graded corners | delta only at `tt`/27C (no AC counterpart elsewhere) |
+| `offset` | **1 of 5** `_mm` corners (`tt_mm`/27C) | 4 corners, deliberately skipped (cost) |
+| `noise-tran` | 0 | no post-layout deck form (#65) |
+| `reset` | 0 | no post-layout deck form (#65) |
+
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder
 DUT**; they remain, unedited, as append-only evidence. See [The DUT](#the-dut)

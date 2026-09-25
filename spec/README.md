@@ -54,6 +54,23 @@ regeneration-inclusive noise evidence, and the `sf`/−40 °C kickback
 stretch breach (2.0208 mV vs the non-binding 2 mV stretch figure —
 recorded, not relaxed).
 
+**Update (issue #64,
+[DR-006](decision-records/DR-006-post-layout-noise-headroom-reopened.md),
+2026-09-25).** The post-layout corner campaign record. It changes **no
+bound**. What it does change is a *disposition*: DR-002 §2 ratified the
+Input-referred noise target on an explicit, quantified headroom argument
+(a regeneration-phase contribution of ~0.90 mV rms would be needed to
+threaten the 1.0 mV target), and the post-layout AC figure at `fs`/125 °C
+— 0.9423 mV rms, a *lower* bound — reduces that required contribution to
+0.335 mV. No measured figure breaches any ratified bound at any corner,
+so nothing is de-ratified and nothing is relaxed; the row's **compliance
+basis** is re-opened pending a regeneration-inclusive post-layout
+measurement (issue #65). This is the first record here triggered by a
+ratification's *reasoning* going stale rather than by a number crossing a
+line, which is the case `spec/README.md`'s "A DR is owed the first time
+that table's rows are ratified, changed, or rescoped" should be read to
+cover.
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar
