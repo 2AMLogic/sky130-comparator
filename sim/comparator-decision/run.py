@@ -150,7 +150,7 @@ def _dut_fragment() -> Path:
 #   transformation names EVERY drawn instance of it, and they are transformed
 #   together -- they are one device that happens to be drawn in pieces, and
 #   splitting them would build a circuit the schematic counterfactual does
-#   not describe. `_dut_instance_names()` implements it and refuses a name
+#   not describe. `_instance_names()` implements it and refuses a name
 #   that resolves to nothing. On the committed layout neither sub-command
 #   exercises the convention: the steering pair (W=8) is drawn unsplit, and
 #   the split devices are the input pair, which neither sub-command moves.
