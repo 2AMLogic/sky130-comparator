@@ -113,24 +113,26 @@ The extraction and re-simulation this section anticipated has since run — see
 The trade above is **confirmed, and it cost more on the kickback axis than the
 floorplan assumed**:
 
-- **Kickback rose 1.8902 → 2.5532 mV** at `tt`/27 °C (1.35×), clearing the
-  ≤ 5 mV target with 1.96× margin but **breaching the ≤ 2 mV stretch figure by
-  28 %**. Keeping the clock shaper and the two W=40 caps off the input region
+- **Kickback rose 1.8902 → 2.6767 mV** at `tt`/27 °C (1.42×), clearing the
+  ≤ 5 mV target with 1.87× margin but **breaching the ≤ 2 mV stretch figure by
+  34 %**. Keeping the clock shaper and the two W=40 caps off the input region
   did not make the input nodes parasitic-free: `klt extract --parasitics`
-  reports 117.65 fF of ground capacitance and 14.70 kΩ of series resistance
+  reports 117.65 fF of ground capacitance and 17.52 kΩ of series resistance
   across the 12 nets, and the input pair's own routing and star-leg resistance
   are enough to widen the disturbance. This was the predicted direction; the
-  magnitude is the new information.
+  magnitude is the new information. (The series-R figure is the extractor's
+  coarse single-lumped-star default, dominated by the supply nets and expected
+  to be pessimistic there — see the sim README.)
 - **The axis "with margin" paid as expected, and then some.** The long
-  `OUTP1`/`OUTN1` nets cost 2.24× of pick-off gain (64.4571 → 28.8193 V/V) —
+  `OUTP1`/`OUTN1` nets cost 2.12× of pick-off gain (64.4571 → 30.4600 V/V) —
   together with the drawn-vs-schematic load-resistor width delta below — which
-  is what pushes decision time 0.4025 → 0.5025 ns (both bounds still cleared),
-  offset σ 1.7857 → 2.4886 mV, and input-referred noise 0.5704 → 0.6434 mV rms
+  is what pushes decision time 0.4025 → 0.5325 ns (both bounds still cleared),
+  offset σ 1.7857 → 2.4446 mV, and input-referred noise 0.5704 → 0.6576 mV rms
   (over the 0.6 mV stretch figure). So the trade landed on the axis it was
   aimed at; that axis simply had less margin against the *stretch* figures than
   against the targets.
 - **The 7.82 % `OUTP1`/`OUTN1` wire-area imbalance is not free.** The extracted
-  DUT has a **systematic** input-referred offset of 0.4763 mV where the
+  DUT has a **systematic** input-referred offset of 0.6547 mV where the
   symmetric schematic netlist has exactly 0, and the sub-20 mV decision is
   polarity-asymmetric (see the sim README). Wire-area imbalance was committed
   here as a proxy for capacitance imbalance; this is the first measurement of

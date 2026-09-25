@@ -160,6 +160,34 @@ SIM_NGSPICE_TIMEOUT_S=900 \
   python3 sim/comparator-decision/run.py regen --dut extracted --record
 ```
 
+**The extraction is pinned to `klayout-tools==0.6.0` on `klayout==0.30.10`**
+-- the same pin `docs/environment-setup.md` records and both
+`.github/workflows/t1-signoff.yml` jobs install -- and `extract_pex.py`
+*asserts* it rather than merely recording it. That is not provenance hygiene:
+measured on this repo's own GDS, the pin and an unreleased `0.6.0+g1828313`
+/ klayout `0.30.12` dev build give bit-identical capacitances but total
+series resistance 17.52 kΩ vs 14.70 kΩ -- 1.19× overall, up to 2.30× on an
+individual net (`CLKT`), 1.55-1.86× on `OUTP1`/`OUTN1`/`VINP`/`VINN`, i.e. on
+exactly the nets the post-layout deltas below are attributed to. If your host
+`klt` is off-pin, run the script under a throwaway env (the script's error
+message prints the exact `uv venv` + `uv pip install` invocation); do not
+change host tooling. `extract_pex.py --check` is a CI gate in the
+`layout-device-count` job, which installs that pin.
+
+**Parasitic model, and where it is coarse.** The extractor's default is a
+single lumped star R per net (its own header in each fragment says so
+verbatim: "not a per-segment, distributed RC ladder"). On the *signal* nets
+that is a reasonable first-order model. On the **supply nets it is the coarse
+default and is expected to be pessimistic**: `GND` carries 6.56 kΩ and `VDD`
+1.89 kΩ of lumped star R, i.e. 93-450 Ω per device leg in series with every
+source/body tie, where the real drawn supply is a wide low-impedance shape
+whose distributed resistance a single star node cannot represent. So the
+post-layout degradations below should be read as an **upper bound on the
+supply-network contribution**, not a best estimate of it. `klt extract`
+offers `--distributed-rc` with `--critical-net` for a per-segment ladder;
+re-running the supply nets that way is follow-on work (issue #64), not done
+here.
+
 `--dut schematic` is the default and its deck text is **byte-identical** to
 what it was before the switch existed, so a post-layout figure and the
 schematic-level record it is differenced against come from decks that differ
@@ -474,31 +502,40 @@ DR-004/DR-005 used, so nothing but the DUT differs.
 
 | Sub-command | Corner | Schematic | Post-layout | Ratio | Record |
 |---|---|---|---|---|---|
-| `regen` @ 50 mV | `tt`/27C | 0.4025 ns | **0.5025 ns** | 1.248x | `records/20260925-065137-87f0013.md` |
-| `regen` @ 50 mV | `ss`/-40C | 0.3575 ns | **0.4475 ns** | 1.252x | `records/20260925-070429-87f0013.md` |
-| `kickback` | `tt`/27C | 1.8902 mV | **2.5532 mV** | 1.351x | `records/20260925-070601-2e2ef84.md` |
-| `offset` stdev | `tt_mm`/27C | 1.7857 mV | **2.4886 mV** | 1.394x | `records/20260925-072520-2e2ef84.md` |
-| `noise` (AC) | `tt`/27C | 0.5704 mV rms | **0.6434 mV rms** | 1.128x | `records/20260925-072817-2e2ef84.md` |
+| `regen` @ 50 mV | `tt`/27C | 0.4025 ns | **0.5325 ns** | 1.323x | `records/20260925-085247-4694692.md` |
+| `regen` @ 50 mV | `ss`/-40C | 0.3575 ns | **0.4725 ns** | 1.322x | `records/20260925-093624-4694692.md` |
+| `kickback` | `tt`/27C | 1.8902 mV | **2.6767 mV** | 1.416x | `records/20260925-094700-4694692.md` |
+| `offset` stdev | `tt_mm`/27C | 1.7857 mV | **2.4446 mV** | 1.369x | `records/20260925-112809-4694692.md` |
+| `noise` (AC) | `tt`/27C | 0.5704 mV rms | **0.6576 mV rms** | 1.153x | `records/20260925-112827-4694692.md` |
+
+**These five supersede an earlier post-layout set** (`20260925-065137-87f0013`
+… `20260925-072817-2e2ef84`, each named in the corresponding new record's
+`Supersedes` field). The superseded set measured the same DUT topology but
+was extracted on an **off-pin** klt/klayout build (`0.6.0+g1828313bdf02` on
+klayout `0.30.12`) whose per-net series resistances differ from the pinned
+build's by up to 2.30x -- see "Post-layout (extracted) DUT" above. The older
+records stay in place, unedited, per `sim/README.md`'s append-only rule; they
+are **not** the figures any row cites.
 
 Every ratified row still clears its **target** bound. Two now sit over their
 **stretch** figures, recorded rather than legislated away (`CLAUDE.md`:
 agents do not relax the ratified spec to make results pass):
 
-- **Kickback 2.5532 mV** against the <= 2 mV stretch bound (<= 5 mV target
-  cleared 1.96x). This is precisely the row DR-002/DR-005 named as the
+- **Kickback 2.6767 mV** against the <= 2 mV stretch bound (<= 5 mV target
+  cleared 1.87x). This is precisely the row DR-002/DR-005 named as the
   standing layout-stage risk: its governing mechanism is input-node parasitic
   capacitance, the schematic-level stretch margin was already only 1.06-1.13x,
   and a 1 % breach was already recorded at `sf`/-40C. The layout moves it the
   predicted way. The `ideal` control still collapses to exactly 0.0000 mV.
-- **Input-referred noise 0.6434 mV rms** against the <= 0.6 mV stretch bound
-  (<= 1.0 mV target cleared 1.55x), still the loop-broken lower bound.
+- **Input-referred noise 0.6576 mV rms** against the <= 0.6 mV stretch bound
+  (<= 1.0 mV target cleared 1.52x), still the loop-broken lower bound.
 
-Offset 3-sigma is 7.4659 mV against the 8 mV stretch bound -- cleared, with
-1.07x left. Decision time clears both bounds at both anchors.
+Offset 3-sigma is 7.3338 mV against the 8 mV stretch bound -- cleared, with
+1.09x left. Decision time clears both bounds at both anchors.
 
 Three post-layout facts beyond the deltas, each read off a committed record:
 
-- **The pick-off gain falls 64.4571 -> 28.8193 V/V (2.24x)**, which is the
+- **The pick-off gain falls 64.4571 -> 30.4600 V/V (2.12x)**, which is the
   common cause behind offset sigma, noise and decision time all degrading
   together: parasitic loading on the long `OUTP1`/`OUTN1` nets the floorplan
   deliberately traded for short input routes, plus the disclosed
@@ -507,17 +544,17 @@ Three post-layout facts beyond the deltas, each read off a committed record:
   input-node parasitic-capacitance risk", which predicted this axis would pay.
 - **A systematic, layout-induced input offset now exists.** The
   mismatch-disabled negative control's mean is 0.0000 mV on the schematic
-  fragment (symmetric by construction) and **0.4763 mV** post-layout, its
+  fragment (symmetric by construction) and **0.6547 mV** post-layout, its
   stdev still exactly 0. First measurement of this term on this block -- the
   schematic bench had nothing to measure, so it is new information, not a
   regression against a prior figure.
 - **The sub-20 mV decision polarity is asymmetric.** `tt`/27C resolves 6/8
   sweep points (+1 mV and +0.5 mV no longer do; the schematic anchor was 8/8)
   and `ss`/-40C resolves 3/8 (+2 through +10 mV do not, while -10 mV resolves
-  in 2.1725 ns). The sweeps *bracket* the asymmetry rather than measuring it:
+  in 2.3725 ns). The sweeps *bracket* the asymmetry rather than measuring it:
   `regen`'s criterion is sign-corrected, so a wrong-polarity decision and a
   non-decision both read `UNRESOLVED` and this evidence cannot tell them
-  apart. Nor does the 0.4763 mV pick-off-referred systematic term above
+  apart. Nor does the 0.6547 mV pick-off-referred systematic term above
   explain the `ss`/-40C magnitude on its own. Open question, tracked as
   issue #66;
   the spec rows are stated at 50 mV overdrive, which resolves at both anchors.
