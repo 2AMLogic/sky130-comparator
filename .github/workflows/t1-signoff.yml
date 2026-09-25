@@ -91,7 +91,7 @@ jobs:
       # The post-layout rewrite's own unit tests (issue #57). Hermetic and
       # stdlib-only -- no klt, no PDK, no ngspice, no pytest -- so they gate
       # here for free alongside the other PDK-free checks. They pin the
-      # committed layout/comparator.pex{,-preamp}.spice to the committed
+      # committed layout/comparator.pex{,-preamp,-latch}.spice to the committed
       # layout/comparator.extract.spice by re-deriving them, which is the
       # cheap half of the layout-device-count job's `extract_pex.py --check`
       # (that one re-runs the extractor itself). NOTE: the rest of
@@ -129,7 +129,7 @@ jobs:
       # Post-layout (parasitics) reproducibility gate (issue #57, T1 item 7).
       # Re-extracts the committed GDS and diffs the result against the
       # committed layout/comparator.extract.spice + .pex.spice +
-      # .pex-preamp.spice, and asserts the committed
+      # .pex-preamp.spice + .pex-latch.spice, and asserts the committed
       # layout/extract-parasitics.json carries this job's own pinned klt +
       # klayout. The pin assertion is not decoration: extracted resistances
       # differ up to 2.3x per net between klt/klayout builds (the committed

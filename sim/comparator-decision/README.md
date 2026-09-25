@@ -196,18 +196,55 @@ only in the DUT. That property is what makes the delta attributable to the
 layout, and it is pinned by a test
 (`sim/tests/test_comparator_decision.py::TestDutProvenance`).
 
-**`regen`, `offset`, `noise` and `kickback` support both provenances.
-`reset` and `noise-tran` refuse `--dut extracted`** and say so, rather than
-silently falling back to the schematic DUT. Both build their decks by
-re-emitting *named* DUT device lines onto substituted nodes, which is not a
-well-defined operation on the extracted fragment: a schematic device can
-correspond to more than one drawn device (each W=13 input-pair device is two
-W=6.5 fingers) and every terminal sits on a per-terminal parasitic star leg
-rather than on the node itself, so "re-emit this device somewhere else" also
-needs its parasitics re-partitioned. A post-layout record that had quietly
-measured the schematic DUT would be worse than no record, so the refusal is
-loud. Giving those two a real post-layout deck form is follow-on work
-(issue #65).
+**All six sub-commands support both provenances.** Four did from issue #57;
+`reset` and `noise-tran` refused `--dut extracted` until issue #65, because
+both build their decks by re-emitting *named* DUT device lines onto
+substituted nodes and that is not a well-defined operation on the extracted
+fragment until three questions are answered. Refusing was the right first
+answer — a post-layout record that had quietly measured the schematic DUT
+would be worse than no record — and issue #65 answers them rather than
+guessing. The rules live next to the code that implements them (the
+POST-LAYOUT DECK SURGERY note in
+[`run.py`](run.py)) and are pinned by
+`sim/tests/test_comparator_decision.py::TestPostLayoutTerminalMoves`:
+
+1. **Which device, when the layout drew one schematic device as several.**
+   Naming a schematic device names **every** drawn instance of it
+   (`XM_PINP__a`, `XM_PINP__b`, …) and they are transformed together — one
+   device that happens to be drawn in pieces. Not exercised on this layout:
+   the steering pair is drawn unsplit (one W=8 device each), and the split
+   devices are the W=13 input pair, which neither sub-command moves. Both
+   records say so explicitly rather than leaving it implicit.
+2. **Where to cut, when no terminal sits on the logical node.** Every
+   extracted terminal hangs off its own star leg (`TAIL2__t2`) tied to the
+   net hub through that terminal's share of the net's series R. **The star
+   leg travels with the terminal**: moving a terminal re-points *that leg
+   resistor's hub end* at the new net and never edits the device line. So
+   nothing is stranded on a one-connection node, no extracted resistance is
+   deleted, and none is re-attributed to a net it was not extracted for. The
+   alternatives both lose information — dropping the leg deletes that
+   terminal's resistance, keeping it in place strands it. What the rule does
+   *not* claim is that this is the resistance a re-routed layout would have
+   had: it is a netlist-level counterfactual, exactly as the schematic-level
+   one is.
+3. **Which side of the leg a series source goes on.** This one has a
+   determinate answer, not a preference: a star-leg node carries exactly one
+   device terminal and exactly one star resistor (the deck builder *asserts*
+   this rather than assuming it), so the leg resistor and an inserted ideal
+   source are two-terminal elements in series and the two placements are the
+   same network. The deck inserts on the hub side, which is the same single
+   mechanism rule 2 uses and makes the source line (`Vstp GST_P OUTP1`)
+   textually identical in both provenances.
+
+In practice each transformation changes **two tokens** of the committed
+extracted fragment and nothing else — `reset --dut extracted`'s `gnd-tied`
+control re-points `R_TAIL2__t1`/`R_TAIL2__t2` from `TAIL2` to `GND`;
+`noise-tran --dut extracted` re-points `R_OUTP1__t4`/`R_OUTN1__t4` onto
+`GST_P`/`GST_N`. `noise-tran`'s stage-2 AC anchor uses a third committed
+fragment, `layout/comparator.pex-latch.spice` (the **latch front-end
+partition**: steering pair + latch tail with their extracted parasitics,
+selected by connectivity as "every device on the `TAIL2` node"), the
+counterpart of the preamp partition the AC `noise` sub-command already used.
 
 **Why not `klt pex`?** It is the canonical tool and it is not usable here,
 for a reason that is *not* the missing `.include` line that

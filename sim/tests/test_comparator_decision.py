@@ -402,10 +402,8 @@ class TestDutProvenance(unittest.TestCase):
     The whole value of the post-layout comparison is that the ONLY thing
     differing between a schematic-level record and its post-layout
     counterpart is the DUT. These tests pin that: the schematic deck text is
-    unchanged by the switch existing, the extracted deck really does carry
-    the extracted netlist (and its parasitics), and the two sub-commands with
-    no post-layout deck form refuse rather than quietly measuring the
-    schematic DUT.
+    unchanged by the switch existing, and the extracted deck really does
+    carry the extracted netlist (and its parasitics).
     """
 
     def setUp(self):
@@ -450,12 +448,189 @@ class TestDutProvenance(unittest.TestCase):
         with self.assertRaises(ValueError):
             cd_run.set_dut_provenance("post-layout")
 
-    def test_reset_and_noise_tran_refuse_the_extracted_dut(self):
-        for mode in ("reset", "noise-tran"):
-            with self.subTest(mode=mode):
-                with self.assertRaises(SystemExit) as cm:
-                    cd_run.main([mode, "--dut", "extracted"])
-                self.assertIn("no post-layout deck form", str(cm.exception))
+    def test_no_sub_command_refuses_the_extracted_dut_any_more(self):
+        # Issue #65 gave `reset` and `noise-tran` a post-layout deck form,
+        # so the `_require_schematic_dut` refusal has no callers left. If a
+        # future sub-command needs one back, it must come back with the
+        # refusal's own test -- not by silently falling back.
+        self.assertFalse(hasattr(cd_run, "_require_schematic_dut"))
+
+
+class TestPostLayoutTerminalMoves(unittest.TestCase):
+    """The three rules issue #57 deferred and issue #65 decided, as code:
+    which device a schematic name means when the layout split it (RULE 1),
+    what happens to a moved terminal's parasitic star leg (RULE 2), and
+    which side of that leg a series source is inserted on (RULE 3).
+
+    See the POST-LAYOUT DECK SURGERY note in `run.py` for the rules
+    themselves; these tests exist so the rules cannot drift away from the
+    decks silently.
+    """
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+        cd_run.set_dut_provenance("extracted")
+        self.fragment = cd_run.PEX_FRAGMENT.read_text()
+
+    @staticmethod
+    def _changed(before: str, after: str) -> list[tuple[str, str]]:
+        b, a = before.splitlines(), after.splitlines()
+        assert len(b) == len(a), "a terminal move must not add or drop lines"
+        return [(x, y) for x, y in zip(b, a) if x != y]
+
+    # --- RULE 1: a schematic name means every drawn instance of it --------
+
+    def test_instance_names_resolves_an_unsplit_device_to_itself(self):
+        devices = cd_run._parse_devices(self.fragment)
+        self.assertEqual(cd_run._instance_names(devices, "XM_STN_P"), ["XM_STN_P"])
+
+    def test_instance_names_resolves_a_split_device_to_all_its_fingers(self):
+        devices = cd_run._parse_devices(self.fragment)
+        self.assertEqual(cd_run._instance_names(devices, "XM_PINP"),
+                         ["XM_PINP__a", "XM_PINP__b"])
+
+    def test_instance_names_refuses_a_name_that_resolves_to_nothing(self):
+        devices = cd_run._parse_devices(self.fragment)
+        with self.assertRaises(KeyError):
+            cd_run._instance_names(devices, "XM_NOT_A_DEVICE")
+
+    def test_the_moved_devices_are_unsplit_on_this_layout(self):
+        # The convention ("all fingers move together") is implemented, but
+        # both records must be able to say whether it was EXERCISED. On the
+        # committed layout it is not: the steering pair is drawn unsplit.
+        devices = cd_run._parse_devices(self.fragment)
+        for base, _node, _drain, _gate in cd_run.STEERING_GATE_INJECTION:
+            with self.subTest(base=base):
+                self.assertEqual(cd_run._instance_names(devices, base), [base])
+
+    # --- RULE 2: the star leg travels with the terminal -------------------
+
+    def test_gnd_tie_repoints_exactly_the_two_source_star_legs(self):
+        moved = cd_run._reset_device_block("gnd-tied")
+        changed = self._changed(self.fragment, moved)
+        self.assertEqual(len(changed), 2, changed)
+        for before, after in changed:
+            b, a = before.split(), after.split()
+            self.assertTrue(b[0].startswith("R_TAIL2__t"), before)
+            self.assertEqual(b[1], a[1])       # same star-leg node
+            self.assertEqual(b[2], "TAIL2")    # old hub
+            self.assertEqual(a[2], "GND")      # new net
+            self.assertEqual(b[3], a[3])       # SAME extracted resistance
+            self.assertEqual(a[0], f"R_{a[1]}_GND")
+
+    def test_gnd_tie_leaves_every_device_line_untouched(self):
+        moved = cd_run._reset_device_block("gnd-tied")
+        before = cd_run._parse_devices(self.fragment)
+        after = cd_run._parse_devices(moved)
+        devices = [n for n, t in before.items()
+                   if any(x.startswith("sky130_fd_pr__") for x in t)]
+        self.assertEqual(len(devices), 18)
+        for name in devices:
+            with self.subTest(name=name):
+                self.assertEqual(before[name], after[name])
+
+    def test_gnd_tie_strands_no_star_leg_and_deletes_no_resistance(self):
+        moved = cd_run._reset_device_block("gnd-tied")
+
+        def leg_uses(text):
+            counts = {}
+            for tokens in cd_run._parse_devices(text).values():
+                for token in tokens:
+                    if "__t" in token and "=" not in token:
+                        counts[token] = counts.get(token, 0) + 1
+            return counts
+
+        self.assertEqual(leg_uses(self.fragment), leg_uses(moved))
+        for node, count in leg_uses(moved).items():
+            with self.subTest(node=node):
+                self.assertGreaterEqual(count, 2)
+
+        def resistances(text):
+            return sorted(
+                t[2] for n, t in cd_run._parse_devices(text).items()
+                if n.startswith("R_") and len(t) == 3
+            )
+        self.assertEqual(resistances(self.fragment), resistances(moved))
+
+    def test_a_bare_net_terminal_is_refused_not_silently_accepted(self):
+        # The schematic fragment has no star legs at all; asking for a
+        # post-layout terminal move on it must fail loudly rather than
+        # produce something that looks like a post-layout deck.
+        with self.assertRaises(RuntimeError):
+            cd_run._retie_star_legs(
+                cd_run.DUT_FRAGMENT.read_text(), cd_run.RESET_GND_TIE_MOVES)
+
+    def test_a_shared_star_leg_node_is_refused(self):
+        # RULE 3's premise is that a leg node carries exactly one device
+        # terminal and one star resistor. Break it and the deck builder must
+        # stop, because series commutation (and hence "which side of the leg
+        # does not matter") would no longer hold.
+        tampered = self.fragment.replace(
+            "C_TAIL2_GND TAIL2 GND", "C_TAIL2_GND TAIL2__t2 GND", 1)
+        self.assertNotEqual(tampered, self.fragment)
+        with self.assertRaises(RuntimeError):
+            cd_run._retie_star_legs(tampered, cd_run.RESET_GND_TIE_MOVES)
+
+    # --- RULE 3: the series source goes on the hub side of the leg --------
+
+    def test_injection_repoints_exactly_the_two_gate_star_legs(self):
+        block = "\n".join(cd_run._noise_tran_dut_block()) + "\n"
+        changed = self._changed(self.fragment, block)
+        self.assertEqual(len(changed), 2, changed)
+        expected = {("R_OUTP1__t4_OUTP1", "OUTP1", "GST_P"),
+                    ("R_OUTN1__t4_OUTN1", "OUTN1", "GST_N")}
+        got = set()
+        for before, after in changed:
+            b, a = before.split(), after.split()
+            got.add((b[0], b[2], a[2]))
+            self.assertEqual(b[1], a[1])
+            self.assertEqual(b[3], a[3])
+        self.assertEqual(got, expected)
+
+    def test_injection_sources_name_the_gate_net_in_both_provenances(self):
+        # The consequence of inserting on the HUB side: the two source lines
+        # are textually the same for schematic and extracted decks.
+        cd_run.set_dut_provenance("schematic")
+        schematic = cd_run._noise_tran_pickoff_deck(
+            self.info, "tt", 27.0, 0.0, 1, 1e-3, 1e-3, "x")
+        cd_run.set_dut_provenance("extracted")
+        extracted = cd_run._noise_tran_pickoff_deck(
+            self.info, "tt", 27.0, 0.0, 1, 1e-3, 1e-3, "x")
+        for line in ("Vstp GST_P OUTP1 dc 0 TRNOISE",
+                     "Vstn GST_N OUTN1 dc 0 TRNOISE"):
+            self.assertIn(line, schematic)
+            self.assertIn(line, extracted)
+
+    def test_extracted_latch_sub_model_is_the_committed_latch_partition(self):
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        partition = cd_run.PEX_LATCH_FRAGMENT.read_text()
+        self.assertEqual(
+            sorted(n for n, t in cd_run._parse_devices(partition).items()
+                   if any(x.startswith("sky130_fd_pr__") for x in t)),
+            ["XM_STN_N", "XM_STN_P", "XM_TAIL2"],
+        )
+        # Same three devices, same drive point, and the partition's own
+        # parasitics really are in the deck.
+        for name in ("XM_STN_P", "XM_STN_N", "XM_TAIL2"):
+            self.assertIn(name, deck)
+        for absent in ("XM_PINP", "XM_PINN", "XM_LATP_P", "XM_RST_P", "XR_LP"):
+            self.assertNotIn(absent, deck)
+        self.assertIn("R_TAIL2__t0_TAIL2", deck)
+        # No terminal move here: the partition already ENDS at the gate net,
+        # so the ideal drive attaches to the hub and the gates keep their own
+        # extracted leg resistance between the drive and the channel.
+        self.assertIn("R_OUTP1__t4_OUTP1", deck)
+        self.assertIn("R_OUTN1__t4_OUTN1", deck)
+        self.assertIn("Vstp OUTP1 0 dc", deck)
+        self.assertIn("Vstn OUTN1 0 dc", deck)
+        self.assertNotIn("GST_P", deck)
+
+    def test_schematic_latch_sub_model_still_drives_the_gst_nodes(self):
+        cd_run.set_dut_provenance("schematic")
+        deck = cd_run._latch_noise_deck(self.info, "tt", 27.0, 1.18, 10.0)
+        self.assertIn("Vstp GST_P 0 dc", deck)
+        self.assertIn("Vstn GST_N 0 dc", deck)
 
 
 class TestPostLayoutDelta(unittest.TestCase):

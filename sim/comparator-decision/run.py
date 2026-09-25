@@ -95,6 +95,7 @@ REPO_ROOT = EXPERIMENT_DIR.parent.parent
 LAYOUT_DIR = REPO_ROOT / "layout"
 PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
 PEX_PREAMP_FRAGMENT = LAYOUT_DIR / "comparator.pex-preamp.spice"
+PEX_LATCH_FRAGMENT = LAYOUT_DIR / "comparator.pex-latch.spice"
 PEX_ENVELOPE = LAYOUT_DIR / "extract-parasitics.json"
 
 DUT_PROVENANCES = ("schematic", "extracted")
@@ -109,7 +110,10 @@ def set_dut_provenance(which: str) -> None:
     if which not in DUT_PROVENANCES:
         raise ValueError(f"unknown DUT provenance {which!r}")
     if which == "extracted":
-        missing = [p for p in (PEX_FRAGMENT, PEX_PREAMP_FRAGMENT) if not p.exists()]
+        missing = [
+            p for p in (PEX_FRAGMENT, PEX_PREAMP_FRAGMENT, PEX_LATCH_FRAGMENT)
+            if not p.exists()
+        ]
         if missing:
             raise SystemExit(
                 "post-layout DUT requested but "
@@ -127,27 +131,189 @@ def _dut_fragment() -> Path:
     return PEX_FRAGMENT if _DUT_PROVENANCE == "extracted" else DUT_FRAGMENT
 
 
-def _require_schematic_dut(mode: str) -> None:
-    """Refuse a sub-command whose deck construction has no post-layout form.
+# --- POST-LAYOUT DECK SURGERY: moving a terminal of the extracted DUT
+# (issue #65; issue #57 refused to guess these three rules, this is the
+# answer it deferred).
+#
+# `reset` and `noise-tran` do not simulate the DUT fragment as committed:
+# each builds a deck in which ONE terminal of the latch steering pair is
+# attached somewhere else. On the schematic fragment that is a text edit with
+# no ambiguity in it -- the terminal names the node. On the extracted
+# fragment it is three separate questions, and all three are answered here,
+# next to the code that implements them, rather than in a commit message.
+#
+#   RULE 1 -- WHICH DEVICE, when the layout drew one schematic device as
+#   several. `layout/extract_pex.py` names the parallel fingers of a split
+#   schematic device `NAME__a`, `NAME__b`, ... (each W=13 input-pair device
+#   is two W=6.5 fingers, which is why the extraction reports 18 devices
+#   against the schematic's 16). CONVENTION: naming a schematic device in a
+#   transformation names EVERY drawn instance of it, and they are transformed
+#   together -- they are one device that happens to be drawn in pieces, and
+#   splitting them would build a circuit the schematic counterfactual does
+#   not describe. `_dut_instance_names()` implements it and refuses a name
+#   that resolves to nothing. On the committed layout neither sub-command
+#   exercises the convention: the steering pair (W=8) is drawn unsplit, and
+#   the split devices are the input pair, which neither sub-command moves.
+#   That is a fact about this layout, not a property of the rule, so it is
+#   asserted by a test rather than assumed.
+#
+#   RULE 2 -- WHERE TO CUT, when no terminal sits on the node. The extractor
+#   gives every device terminal its own star leg node (`TAIL2__t2`) tied to
+#   the net's hub (`TAIL2`) through that terminal's share of the net's series
+#   resistance (`R_TAIL2__t2_TAIL2`). Nothing is attached to the logical node
+#   directly. CONVENTION: THE STAR LEG TRAVELS WITH THE TERMINAL. Moving a
+#   terminal to a new net re-points that leg resistor's HUB end at the new
+#   net (and renames it to match); the device line itself is never edited.
+#   Consequences, stated because they are the reason for the choice: the leg
+#   is not stranded on a one-connection node, no extracted resistance is
+#   deleted, and none is re-attributed to a net it was not extracted for --
+#   the leg keeps its own value and its own terminal, it just terminates
+#   elsewhere. The two alternatives both lose information: moving the device
+#   terminal to the new net and dropping the leg silently deletes that
+#   terminal's extracted resistance, and moving it while leaving the leg
+#   behind strands the leg. What the rule does NOT claim is that this is the
+#   resistance the re-routed layout would have had -- it is a
+#   netlist-level counterfactual, exactly as the schematic-level one is.
+#
+#   RULE 3 -- WHICH SIDE OF THE LEG a series source is inserted on. This one
+#   has a determinate answer rather than a preference. A star-leg node has
+#   exactly TWO connections -- its own device terminal and its own leg
+#   resistor -- so the leg resistor and an inserted ideal (zero-impedance)
+#   voltage source are two two-terminal elements in series, and series
+#   elements commute: inserting the source between the device terminal and
+#   its leg gives the electrically IDENTICAL network to inserting it between
+#   the leg's far end and the hub. `_star_leg_resistor()` asserts the
+#   two-connection premise rather than assuming it, so the equivalence is
+#   checked on the fragment actually being simulated. Given the freedom, the
+#   deck inserts on the HUB side (leg re-pointed to the injected node, source
+#   from the injected node to the hub) because that is the same single
+#   mechanism RULE 2 already uses, and it makes the deck's source line
+#   (`Vstp GST_P OUTP1`) textually identical to the schematic deck's.
 
-    `reset` and `noise-tran` build counterfactual/injection decks by
-    re-emitting NAMED DUT device lines onto substituted nodes
-    (`_dut_device_line(name, nodes=...)`). On the extracted fragment a
-    schematic instance can correspond to more than one drawn device (each
-    W=13 input-pair device is two W=6.5 fingers) and every terminal sits on a
-    per-terminal parasitic star leg rather than on the node itself, so
-    "re-emit this device somewhere else" is not a well-defined operation
-    without also re-partitioning its parasitics. Refusing loudly is the point:
-    silently falling back to the schematic DUT would produce a post-layout
-    record that is not a post-layout measurement. Tracked as follow-on work,
-    not smuggled in here.
+
+def _parse_devices(text: str) -> dict[str, list[str]]:
+    """{instance name: [token, ...]} for one flat SPICE fragment.
+
+    Continuation lines ('+ ...') are folded into the instance they continue,
+    and comment/blank lines are dropped -- so the result is one flat token
+    list per device instance, in file order.
     """
-    raise SystemExit(
-        f"`{mode}` has no post-layout deck form yet and this run would "
-        "otherwise silently measure the schematic DUT -- see "
-        "`_require_schematic_dut` in this file for why, and run it with "
-        "`--dut schematic`"
-    )
+    devices: dict[str, list[str]] = {}
+    current: str | None = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("*"):
+            continue
+        if line.startswith("+"):
+            if current is not None:
+                devices[current].extend(line[1:].split())
+            continue
+        tokens = line.split()
+        current = tokens[0]
+        devices[current] = tokens[1:]
+    return devices
+
+
+def _instance_names(devices: dict[str, list[str]], base: str) -> list[str]:
+    """RULE 1: every drawn instance of the schematic device `base`."""
+    if base in devices:
+        return [base]
+    fingers = sorted(n for n in devices if n.startswith(f"{base}__"))
+    if not fingers:
+        raise KeyError(
+            f"no instance named {base!r} in this DUT fragment, and no "
+            f"{base}__<finger> split of it either"
+        )
+    return fingers
+
+
+def _star_leg_hub(token: str) -> str | None:
+    """The hub net of an extractor star-leg node, or None for a bare net."""
+    base, sep, leg = token.partition("__t")
+    return base if sep and leg.isdigit() else None
+
+
+def _star_leg_resistor(devices: dict[str, list[str]], leg_node: str) -> tuple[str, str]:
+    """(resistor name, value) of the star leg tying `leg_node` to its hub.
+
+    Asserts RULE 3's premise: the leg node is PRIVATE to exactly one device
+    terminal and exactly one star resistor. If a future extraction ever
+    attached something else there, series-commutation would stop holding and
+    "which side of the leg" would become a real choice again -- so this
+    fails loudly instead of quietly changing what the deck measures.
+    """
+    hub = _star_leg_hub(leg_node)
+    users = [
+        name for name, tokens in devices.items()
+        if leg_node in [t for t in tokens if "=" not in t]
+    ]
+    resistors = [
+        n for n in users
+        if n.startswith("R_") and devices[n][:2] == [leg_node, hub]
+    ]
+    if len(users) != 2 or len(resistors) != 1:
+        raise RuntimeError(
+            f"star-leg node {leg_node!r} is attached to {len(users)} elements "
+            f"({', '.join(sorted(users))}) with {len(resistors)} star "
+            "resistor(s) to its hub; this deck's terminal-move rules assume "
+            "exactly one device terminal plus one star resistor there (see "
+            "the POST-LAYOUT DECK SURGERY note in this file)"
+        )
+    return resistors[0], devices[resistors[0]][2]
+
+
+def _retie_star_legs(text: str, moves: list[tuple[str, int, str]]) -> str:
+    """RULE 2 applied to an extracted fragment.
+
+    `moves` is a list of (schematic device name, terminal index, new net).
+    Returns the fragment text with each named terminal's star-leg resistor
+    re-pointed from its own hub to `new net`, every other line byte-identical
+    to the input. Terminal indices are the SPICE order d/g/s/b.
+    """
+    devices = _parse_devices(text)
+    plan: dict[str, str] = {}
+    for base, terminal, new_net in moves:
+        for inst in _instance_names(devices, base):
+            leg_node = devices[inst][terminal]
+            if _star_leg_hub(leg_node) is None:
+                raise RuntimeError(
+                    f"{inst} terminal {terminal} is on bare net "
+                    f"{leg_node!r}, not on a parasitic star leg -- this "
+                    "fragment is not an extracted one"
+                )
+            name, _value = _star_leg_resistor(devices, leg_node)
+            plan[name] = new_net
+    out: list[str] = []
+    retied: set[str] = set()
+    for raw in text.splitlines():
+        tokens = raw.split()
+        if len(tokens) == 4 and tokens[0] in plan:
+            leg_node, new_net, value = tokens[1], plan[tokens[0]], tokens[3]
+            out.append(f"R_{leg_node}_{new_net} {leg_node} {new_net} {value}")
+            retied.add(tokens[0])
+        else:
+            out.append(raw)
+    if retied != set(plan):
+        raise RuntimeError(
+            "failed to re-point star legs "
+            + ", ".join(sorted(set(plan) - retied))
+        )
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
+# The two terminal moves this driver makes, as (schematic device, terminal
+# index, replacement). Named once so the reset counterfactual, the noise-tran
+# injection and their tests all refer to the same definition.
+TERMINAL_GATE, TERMINAL_SOURCE = 1, 2
+RESET_GND_TIE_MOVES = [
+    ("XM_STN_P", TERMINAL_SOURCE, "GND"),
+    ("XM_STN_N", TERMINAL_SOURCE, "GND"),
+]
+STEERING_GATE_INJECTION = (
+    # (schematic device, injected node, its drain node, its gate net)
+    ("XM_STN_P", "GST_P", "OUTP", "OUTP1"),
+    ("XM_STN_N", "GST_N", "OUTN", "OUTN1"),
+)
 
 # --- Fixed testbench constants. This repo's target-spec table (top-level
 # README) is DRAFT (spec/README.md), so nothing here is graded against a
@@ -382,7 +548,21 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         0.5704, "mV rms", "loop-broken AC sub-model of the DR-004 preamp, "
         "1 kHz-1 GHz",
     ),
+    ("noise-tran", "tt", 27.0): Baseline(
+        "20260922-192722-e23c509",
+        "decision-referred input-referred noise sigma (pick-off MC)",
+        0.1362, "mV", "N=128 pick-off seeds, 95% CI [0.1216, 0.1493] mV, "
+        "gain 64.4571 V/V, decision-transition cross-check 0.1342 mV "
+        "(64 seeds/sign/point)",
+    ),
 }
+
+# `reset` has no scalar to difference -- it is a four-criterion pass/fail
+# screen with a paired positive control -- so its post-layout record names
+# its schematic-level counterpart here and compares VERDICTS plus the two
+# supply-current columns, rather than going through
+# `post_layout_delta_lines()` (issue #65).
+RESET_SCHEMATIC_COUNTERPART = "20260922-070024-e084b55"
 
 
 def baseline_for(mode: str, corner: str, temp_c: float) -> Baseline | None:
@@ -468,11 +648,7 @@ def _dut_lines() -> str:
 
 
 def _dut_devices() -> dict[str, list[str]]:
-    """Parse the DUT fragment into {instance name: [token, ...]}.
-
-    Continuation lines ('+ ...') are folded into the instance they continue,
-    and comment/blank lines are dropped -- so the result is one flat token
-    list per device instance, in file order.
+    """Parse the selected DUT fragment into {instance name: [token, ...]}.
 
     This exists so derived sub-model decks (the `noise` sub-command's
     loop-broken model) are built from the SAME device lines the schematic
@@ -481,20 +657,7 @@ def _dut_devices() -> dict[str, list[str]]:
     copy of the placeholder DUT's W/L values, which silently would not have
     tracked design/comparator.sch's real sizing.
     """
-    devices: dict[str, list[str]] = {}
-    current: str | None = None
-    for raw in _dut_lines().splitlines():
-        line = raw.strip()
-        if not line or line.startswith("*"):
-            continue
-        if line.startswith("+"):
-            if current is not None:
-                devices[current].extend(line[1:].split())
-            continue
-        tokens = line.split()
-        current = tokens[0]
-        devices[current] = tokens[1:]
-    return devices
+    return _parse_devices(_dut_lines())
 
 
 def _dut_device_line(name: str, *, nodes: list[str] | None = None) -> str:
@@ -1372,7 +1535,12 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 # `_dut_device_line(name, nodes=...)`, the same node-replacement helper the
 # reset counterfactual uses), so the committed sizing still tracks the
 # schematic verbatim; the trnoise sources sit in series between OUTP1/OUTN1
-# and GST_P/GST_N with DC=0 (no bias disturbance).
+# and GST_P/GST_N with DC=0 (no bias disturbance). On the post-layout DUT
+# (issue #65) the break is made one element further out -- the gate's own
+# parasitic star leg is re-pointed onto GST_P/GST_N and the device line is
+# not touched at all -- which is the SAME network by series commutation and
+# leaves these two source lines textually identical in both provenances; see
+# the POST-LAYOUT DECK SURGERY note near the top of this file, RULE 3.
 
 NOISE_TRAN_TS = 0.37e-9         # trnoise update/correlation interval (s).
 # NOT 0.5ns (the 1GHz band's Nyquist interval): a 0.5ns update grid puts a
@@ -1470,6 +1638,71 @@ def run_trnoise_calibration(quiet: bool = False) -> float:
     return factor
 
 
+def _latch_front_end_block() -> tuple[str, tuple[str, str]]:
+    """The three-device steering+tail sub-model, plus the pair of nodes its
+    gate drives attach to.
+
+    Schematic: the three named device lines, re-emitted verbatim from the
+    committed fragment with their gates on GST_P/GST_N -- byte-identical to
+    what this deck has always inlined, driven at GST_P/GST_N.
+
+    Post-layout (issue #65): the committed LATCH FRONT-END PARTITION
+    (`layout/comparator.pex-latch.spice`, emitted by `layout/extract_pex.py`
+    alongside the preamp partition it already emitted, and selected there by
+    the same kind of connectivity rule -- "every device on the latch tail
+    node TAIL2" -- rather than by a name list), verbatim, driven at OUTP1 /
+    OUTN1.
+
+    NOTE this deck needs no terminal move at all, and deliberately makes
+    none. GST_P/GST_N exist on the schematic side only because the three
+    device lines are lifted out of a fragment where their gates name the
+    preamp outputs; in this sub-model there IS no preamp, so "the gate net"
+    is the drive point. On the extracted side that net is already present as
+    a hub (`OUTP1`/`OUTN1`) with nothing but the gate's own star leg on it,
+    so the ideal drive attaches there directly -- which also keeps the
+    gates' extracted leg resistance between the drive and the gate, where
+    the layout puts it. (Re-pointing the gate legs onto fresh GST_* nodes
+    here would strand `OUTP1`/`OUTN1` as a capacitor-only island with no DC
+    path, which is the tell that the terminal-move rules are for the FULL
+    fragment's decks, not for a partition that already ends at that net.)
+    """
+    if _DUT_PROVENANCE == "extracted":
+        return PEX_LATCH_FRAGMENT.read_text(), ("OUTP1", "OUTN1")
+    return "\n".join([
+        _dut_device_line("XM_STN_P", nodes=["OUTP", "GST_P", "TAIL2", "GND"]),
+        _dut_device_line("XM_STN_N", nodes=["OUTN", "GST_N", "TAIL2", "GND"]),
+        _dut_device_line("XM_TAIL2"),
+    ]), ("GST_P", "GST_N")
+
+
+def _noise_tran_dut_block() -> list[str]:
+    """The FULL DUT fragment with the steering pair's gates driven from the
+    injected nodes GST_P/GST_N, as deck lines.
+
+    The series TRNOISE sources the callers place are always
+    `V<x> GST_<s> <gate net> dc 0 TRNOISE(...)` -- the same two lines in both
+    provenances -- because RULE 3 above inserts on the hub side of the star
+    leg, where the gate NET (not a leg node) is what the source's far side
+    attaches to.
+    """
+    if _DUT_PROVENANCE == "extracted":
+        return _retie_star_legs(
+            _dut_lines(),
+            [(base, TERMINAL_GATE, node) for base, node, _d, _g in STEERING_GATE_INJECTION],
+        ).splitlines()
+    injected = {base: (node, drain) for base, node, drain, _g in STEERING_GATE_INJECTION}
+    out: list[str] = []
+    for raw in _dut_lines().splitlines():
+        stripped = raw.strip()
+        name = stripped.split()[0] if stripped else ""
+        if name in injected:
+            gate_node, out_node = injected[name]
+            out.append(_dut_device_line(name, nodes=[out_node, gate_node, "TAIL2", "GND"]))
+        else:
+            out.append(raw)
+    return out
+
+
 def _latch_noise_deck(
     info: pdk.PdkInfo, corner: str, temp_c: float, gate_cm_v: float, cl_ff: float,
 ) -> str:
@@ -1477,6 +1710,7 @@ def _latch_noise_deck(
     2 above): steering pair + strong tail re-emitted verbatim from the
     committed fragment (gates moved to driven nodes), linearized at the
     preamp's own static output common mode with CLKT at VDD."""
+    block, (gate_p, gate_n) = _latch_front_end_block()
     return "\n".join([
         f"* comparator-decision latch front-end gate-referred noise -- "
         f"corner={corner} temp={temp_c}C gate_cm={gate_cm_v:.4f}V (issue #41)",
@@ -1486,15 +1720,20 @@ def _latch_noise_deck(
         "",
         "Vdd VDD 0 dc {vdd_val}",
         "Vclkfix CLKT 0 dc {vdd_val}",
-        "Vstp GST_P 0 dc {vcmo} AC 1",
-        "Vstn GST_N 0 dc {vcmo}",
+        f"Vstp {gate_p} 0 dc {{vcmo}} AC 1",
+        f"Vstn {gate_n} 0 dc {{vcmo}}",
         "",
         "* steering pair + strong tail, verbatim device lines (gates on the",
         "* driven GST_* nodes -- the same node-replacement helper the reset",
-        "* counterfactual uses)",
-        _dut_device_line("XM_STN_P", nodes=["OUTP", "GST_P", "TAIL2", "GND"]),
-        _dut_device_line("XM_STN_N", nodes=["OUTN", "GST_N", "TAIL2", "GND"]),
-        _dut_device_line("XM_TAIL2"),
+        "* counterfactual uses)"
+        + (
+            ""
+            if _DUT_PROVENANCE != "extracted" else
+            f"\n* POST-LAYOUT: the committed latch front-end partition, and the\n"
+            f"* gate drive attaches at {gate_p}/{gate_n} -- see "
+            "`_latch_front_end_block`"
+        ),
+        block,
         "",
         "* noiseless loads: ideal inductors DC-bias the drains at VDD while",
         f"* presenting their band as open; shunt caps ({cl_ff:g}fF) shape only",
@@ -1583,17 +1822,7 @@ def _noise_tran_pickoff_deck(
         "* the injected nodes GST_P/GST_N (sizing verbatim; the series",
         "* trnoise sources carry the latch front-end's gate-referred rms):",
     ]
-    for raw in _dut_lines().splitlines():
-        stripped = raw.strip()
-        if stripped.startswith(("XM_STN_P", "XM_STN_N")):
-            gate_node = "GST_P" if stripped.split()[0] == "XM_STN_P" else "GST_N"
-            out_node = "OUTP" if stripped.split()[0] == "XM_STN_P" else "OUTN"
-            lines.append(_dut_device_line(
-                "XM_STN_P" if gate_node == "GST_P" else "XM_STN_N",
-                nodes=[out_node, gate_node, "TAIL2", "GND"],
-            ))
-        else:
-            lines.append(raw)
+    lines += _noise_tran_dut_block()
     lines += [
         "",
         f"Vstp GST_P OUTP1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
@@ -1634,15 +1863,7 @@ def _noise_tran_decision_deck(
         "* full committed fragment, steering gates on injected nodes (see",
         "* the pick-off deck above for the topology note):",
     ]
-    for raw in _dut_lines().splitlines():
-        stripped = raw.strip()
-        if stripped.startswith(("XM_STN_P", "XM_STN_N")):
-            name = stripped.split()[0]
-            gate_node = "GST_P" if name == "XM_STN_P" else "GST_N"
-            out_node = "OUTP" if name == "XM_STN_P" else "OUTN"
-            lines.append(_dut_device_line(name, nodes=[out_node, gate_node, "TAIL2", "GND"]))
-        else:
-            lines.append(raw)
+    lines += _noise_tran_dut_block()
     lines += [
         "",
         f"Vstp GST_P OUTP1 dc 0 TRNOISE({na_gate:g} {ts:g} 0 0)",
@@ -1988,6 +2209,45 @@ def write_noise_tran_evidence(
             f"off figure stands alone, with the cross-check deferred to the "
             f"corners where it is measurable."
         )
+    if _DUT_PROVENANCE == "extracted":
+        a(
+            "- **How the injection is made post-layout** (issue #65): on the "
+            "extracted netlist each steering device's gate sits on its own "
+            "parasitic star leg (`OUTP1__t4`, `OUTN1__t4`) tied to the "
+            "preamp-output hub through that terminal's share of the net's "
+            "series resistance (75.87 / 97.49 ohm), so there is no node "
+            "on which to insert a series source by naming the gate net. The "
+            "deck therefore RE-POINTS those two star-leg resistors from "
+            "`OUTP1`/`OUTN1` onto the injected nodes `GST_P`/`GST_N` (values "
+            "unchanged) and places the sources `Vstp GST_P OUTP1` / "
+            "`Vstn GST_N OUTN1` exactly as the schematic-level deck does; "
+            "the device lines and every other extracted element are "
+            "byte-identical to the committed fragment, so the whole "
+            "injection is two changed tokens. Inserting on this side of the "
+            "leg rather than between the gate terminal and its leg is not a "
+            "judgement call: a star-leg node carries exactly one device "
+            "terminal and exactly one star resistor (asserted by the deck "
+            "builder, not assumed), so the leg resistor and an ideal source "
+            "are two-terminal elements in series and the two placements are "
+            "the same network. Convention for split devices (a schematic "
+            "device the layout draws as several parallel fingers): all "
+            "fingers are driven from the one injected node, each keeping its "
+            "own re-pointed leg. It is not exercised here -- the steering "
+            "pair is drawn as ONE W=8 device each, and the split devices on "
+            "this layout are the W=13 input pair, whose injection is at the "
+            "comparator PINS and needs no surgery at all."
+        )
+        a(
+            "- **Where the stage-2 AC anchor comes from post-layout**: the "
+            "latch front-end gate-referred rms is measured on the committed "
+            "LATCH FRONT-END PARTITION of the extracted netlist "
+            "(`layout/comparator.pex-latch.spice` -- steering pair + latch "
+            "tail with their extracted parasitics, selected by connectivity "
+            "as `every device on the TAIL2 node`), the exact counterpart of "
+            "the schematic side's three named device lines, and the "
+            "counterpart of the preamp partition the AC `noise` sub-command "
+            "already used post-layout."
+        )
     if note:
         a(f"- **Note**: {note}")
     overall = "MEASURED" if result.sigma_pickoff_mv == result.sigma_pickoff_mv else "FAIL"
@@ -2063,11 +2323,18 @@ def write_noise_tran_evidence(
             "silently superseding DR-002's disposition."
         )
     )
+    lines.extend(post_layout_delta_lines(
+        "noise-tran", result.corner, result.temp_c, result.sigma_pickoff_mv,
+    ))
     a("")
+    seeds = result.decision_points[0]["m"] if result.decision_points else 0
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "noise-tran",
-        extra={"noise-tran N pickoff": str(len(result.pickoff_diffs))},
+        extra={
+            "noise-tran N pickoff": str(len(result.pickoff_diffs)),
+            "noise-tran seeds/sign/decision point": str(seeds),
+        },
         supersedes=supersedes,
     )
 
@@ -2176,11 +2443,21 @@ def _reset_device_block(variant: str) -> str:
     latch's source precharge: pin the cross-coupled pair's current-source
     node where the reset scheme floats it away from, and the loop must
     conduct).
+
+    On the POST-LAYOUT fragment (issue #65) the same counterfactual is made
+    by RULE 2 of the POST-LAYOUT DECK SURGERY note above: each steering
+    device's source star leg is re-pointed from the TAIL2 hub to GND, the
+    device lines and every parasitic value left exactly as extracted. The
+    schematic branch below is untouched, so the schematic-level deck text
+    stays byte-identical to the one that produced the committed
+    schematic-level reset records.
     """
     if variant == "as-drawn":
         return _dut_lines()
     if variant != "gnd-tied":
         raise ValueError(f"unknown reset variant {variant!r}")
+    if _DUT_PROVENANCE == "extracted":
+        return _retie_star_legs(_dut_lines(), RESET_GND_TIE_MOVES)
     rewired = {
         "XM_STN_P": ["OUTP", "OUTP1", "GND", "GND"],
         "XM_STN_N": ["OUTN", "OUTN1", "GND", "GND"],
@@ -2389,6 +2666,29 @@ def write_reset_evidence(
         "on the defect it screens for is not evidence that the defect is "
         "absent."
     )
+    if _DUT_PROVENANCE == "extracted":
+        a(
+            "- **How the counterfactual is made post-layout** (issue #65): on "
+            "the extracted netlist no terminal sits on the logical node -- "
+            "each steering device's source sits on its own parasitic star leg "
+            "(`TAIL2__t1`, `TAIL2__t2`) tied to the `TAIL2` hub through that "
+            "terminal's share of the net's series resistance. The "
+            "counterfactual therefore RE-POINTS each of those two star-leg "
+            "resistors from `TAIL2` to `GND` (310.07 ohm each, value "
+            "unchanged) and edits nothing else: the device lines, every other "
+            "parasitic R and C, and every extracted parameter are byte-"
+            "identical to the `as-drawn` fragment, so the two decks differ by "
+            "exactly two tokens. The leg travels WITH the terminal, which is "
+            "what keeps the moved terminal's own extracted resistance in the "
+            "circuit instead of deleting it and leaves no star leg stranded "
+            "on a one-connection node. Convention for split devices (a "
+            "schematic device the layout draws as several parallel fingers): "
+            "all of its fingers are moved together. It is not exercised here "
+            "-- the steering pair is drawn as ONE W=8 device each "
+            "(`XM_STN_P`/`XM_STN_N`, no `__a`/`__b` split); the split devices "
+            "on this layout are the W=13 input pair, which this "
+            "counterfactual does not touch."
+        )
     a(
         f"- **Reset-held criteria** (all asserted over the final "
         f"{int(RESET_SETTLE_FRACTION * 100)}% of the window): "
@@ -2472,6 +2772,64 @@ def write_reset_evidence(
         "which is precisely why criteria (3) and (4) exist alongside it."
     )
     a("")
+    if _DUT_PROVENANCE == "extracted":
+        a("## Post-layout delta vs. the schematic-level record")
+        a("")
+        a(
+            f"- **Schematic-level counterpart record**: "
+            f"`sim/comparator-decision/records/{RESET_SCHEMATIC_COUNTERPART}.md` "
+            "(same five corners, same two variants, same four criteria)."
+        )
+        a(
+            "- **What differs between the two runs**: the DUT fragment, and "
+            "nothing else. Same sub-command, same corner matrix, same "
+            "stimulus and initial conditions, same tolerances, same deck "
+            "template -- the schematic-side deck text is byte-identical to "
+            "the one that produced the counterpart record."
+        )
+        a(
+            "- **Why this record has no numeric delta table**: `reset` is a "
+            "four-criterion pass/fail screen with a paired positive control, "
+            "not a scalar measurement. The delta that matters is whether the "
+            "VERDICTS survive the parasitics, so it is stated as verdicts "
+            "below, with the one genuinely continuous column (supply "
+            "current) quoted alongside its schematic-level range."
+        )
+        a("")
+        a("| Variant | Post-layout verdict | Schematic-level verdict |")
+        a("|---|---|---|")
+        a(
+            f"| `as-drawn` (negative control) | "
+            f"{sum(1 for p in as_drawn if p.holds_reset)}/{len(as_drawn)} "
+            f"corners hold reset | 5/5 corners hold reset |"
+        )
+        a(
+            f"| `gnd-tied` (positive control) | "
+            f"{sum(1 for p in control if not p.holds_reset)}/{len(control)} "
+            f"corners break reset | 5/5 corners break reset |"
+        )
+        a("")
+        if as_drawn and control:
+            a(
+                f"- **Supply current**: worst |I(VDD)| over the settle window "
+                f"is {min(p.max_abs_idd_a for p in as_drawn):.4g}-"
+                f"{max(p.max_abs_idd_a for p in as_drawn):.4g} A as-drawn "
+                f"(schematic-level 4.228e-05-6.756e-05 A) against "
+                f"{min(p.max_abs_idd_a for p in control):.4g}-"
+                f"{max(p.max_abs_idd_a for p in control):.4g} A for the "
+                f"positive control (schematic-level 8.376e-04-1.056e-03 A). "
+                f"The separation between the two variants, not the absolute "
+                f"level, is what criterion (4) rests on."
+            )
+        a(
+            "- **The point of running this post-layout at all**: `reset` is "
+            "the screen for a latch whose reset state is not a stable, "
+            "non-conducting equilibrium, and layout parasitics are exactly "
+            "the class of asymmetry such a screen exists to catch. Until "
+            "this record it had only ever been run against a netlist that is "
+            "symmetric by construction."
+        )
+        a("")
     return _finalize_record(
         lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
         netlist_sha, "reset", supersedes=supersedes,
@@ -2826,6 +3184,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--temp", type=float, default=27.0)
     ap.add_argument("--seed", type=int, default=1, help="offset: MC base seed")
     ap.add_argument("--n", type=int, default=16, help="offset / noise-tran: MC sample count")
+    ap.add_argument(
+        "--seeds-per-point", type=int, default=NOISE_TRAN_SEEDS_PER_POINT,
+        help="noise-tran: seeds per sign per decision-transition point "
+        "(statistic (b)). The record states the value used, so a run that "
+        "trades cross-check precision for wall clock says so on its face.",
+    )
     ap.add_argument("--record", action="store_true", help="write an evidence record under records/")
     ap.add_argument("--note", default="")
     ap.add_argument(
@@ -2844,17 +3208,14 @@ def main(argv: list[str] | None = None) -> int:
         "design/comparator.sch via testbench/comparator_core.spice) or "
         "`extracted` (post-layout, parasitics-included -- "
         "layout/comparator.pex.spice, generated by layout/extract_pex.py "
-        "from layout/comparator.gds). Issue #57 / T1 item 7. `regen`, "
-        "`offset`, `noise` and `kickback` support both; `reset` and "
-        "`noise-tran` are schematic-only and say so rather than silently "
-        "falling back.",
+        "from layout/comparator.gds). Issue #57 / T1 item 7; `reset` and "
+        "`noise-tran` gained their post-layout deck form in issue #65, so "
+        "all six sub-commands now support both provenances.",
     )
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
     set_dut_provenance(args.dut)
-    if args.dut == "extracted" and args.mode in ("reset", "noise-tran"):
-        _require_schematic_dut(args.mode)
 
     if args.check_env:
         result = toolchain.check_env()
@@ -2899,6 +3260,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode == "noise-tran":
         result = run_noise_tran(
             corner=args.corner, temp_c=args.temp, n_pickoff=args.n,
+            seeds_per_point=args.seeds_per_point,
             quiet=args.quiet, jobs=args.jobs,
         )
         if args.record:
