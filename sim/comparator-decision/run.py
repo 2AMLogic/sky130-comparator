@@ -283,6 +283,22 @@ class Baseline:
     conditions: str
 
 
+# The seven PVT points DR-005 grades the ratified rows across, in one place so
+# a coverage claim can be checked against a list rather than against prose.
+# `offset` grades the `_mm` mismatch variant of each process corner (and the
+# committed schematic-level `_mm` campaign ran them all at 27 C), so this
+# tuple is the temperature axis for the non-Monte-Carlo sub-commands.
+GRADED_CORNERS: tuple[tuple[str, float], ...] = (
+    ("tt", 27.0),
+    ("ss", -40.0),
+    ("ff", 125.0),
+    ("sf", -40.0),
+    ("sf", 125.0),
+    ("fs", -40.0),
+    ("fs", 125.0),
+)
+
+
 SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     ("regen", "tt", 27.0): Baseline(
         "20260922-070800-e084b55", "regeneration time at 50 mV overdrive",
@@ -292,9 +308,68 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "20260922-071313-e084b55", "regeneration time at 50 mV overdrive",
         0.3575, "ns", "7/8 sweep points resolved (0.5 mV does not resolve)",
     ),
+    # The remaining five graded `regen` corners (DR-005's full-corner campaign,
+    # issue #41). Added by issue #64, which extends the post-layout campaign off
+    # the two anchors #57 measured; every value is transcribed from the named
+    # committed record's own 50 mV sweep row.
+    ("regen", "ff", 125.0): Baseline(
+        "20260922-175252-e23c509", "regeneration time at 50 mV overdrive",
+        0.4975, "ns", "8/8 sweep points resolved",
+    ),
+    ("regen", "sf", -40.0): Baseline(
+        "20260922-175425-e23c509", "regeneration time at 50 mV overdrive",
+        0.3475, "ns", "8/8 sweep points resolved",
+    ),
+    ("regen", "sf", 125.0): Baseline(
+        "20260922-175554-e23c509", "regeneration time at 50 mV overdrive",
+        0.4725, "ns", "8/8 sweep points resolved",
+    ),
+    ("regen", "fs", -40.0): Baseline(
+        "20260922-175734-e23c509", "regeneration time at 50 mV overdrive",
+        0.3725, "ns", "8/8 sweep points resolved",
+    ),
+    ("regen", "fs", 125.0): Baseline(
+        "20260922-175918-e23c509", "regeneration time at 50 mV overdrive",
+        0.5375, "ns", "8/8 sweep points resolved",
+    ),
     ("kickback", "tt", 27.0): Baseline(
         "20260922-070119-e084b55", "peak `loaded` input-node disturbance",
         1.8902, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    # The remaining six graded `kickback` corners: `ss`/-40C and `ff`/125C from
+    # DR-004 (issue #34), the four `sf`/`fs` skews from DR-005 (issue #41).
+    # Added by issue #64. `sf`/-40C is the schematic-level worst case and the
+    # only pre-layout stretch-figure breach, which is why #64 runs it first.
+    ("kickback", "ss", -40.0): Baseline(
+        "20260922-070212-e084b55", "peak `loaded` input-node disturbance",
+        1.8605, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    ("kickback", "ff", 125.0): Baseline(
+        "20260922-070307-e084b55", "peak `loaded` input-node disturbance",
+        1.7677, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    ("kickback", "sf", -40.0): Baseline(
+        "20260922-180026-e23c509", "peak `loaded` input-node disturbance",
+        2.0208, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV; the only schematic-level corner over the "
+        "<= 2 mV stretch figure (by 1%)",
+    ),
+    ("kickback", "sf", 125.0): Baseline(
+        "20260922-180157-e23c509", "peak `loaded` input-node disturbance",
+        1.7837, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    ("kickback", "fs", -40.0): Baseline(
+        "20260922-180319-e23c509", "peak `loaded` input-node disturbance",
+        1.8408, "mV", "1 kohm source impedance, 50 mV overdrive, "
+        "`ideal` control 0.0000 mV",
+    ),
+    ("kickback", "fs", 125.0): Baseline(
+        "20260922-180425-e23c509", "peak `loaded` input-node disturbance",
+        1.6091, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("offset", "tt", 27.0): Baseline(
@@ -312,6 +387,39 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
 
 def baseline_for(mode: str, corner: str, temp_c: float) -> Baseline | None:
     return SCHEMATIC_BASELINES.get((mode, corner, float(temp_c)))
+
+
+def kickback_subset_justification(corner: str, temp_c: float) -> str:
+    """Why a `kickback` record is allowed to run one PVT point.
+
+    Issue #30 minted this justification when tt/27C was the ONLY corner the
+    Kickback row had been measured at, and hardcoded its tt/27C wording. Issue
+    #41 (schematic-level) and #64 (post-layout) then ran the other six graded
+    corners, at which point that fixed text became a false statement printed
+    into a record whose own `Corner matrix run` line said `sf`/-40C. Derive it
+    from the corner actually run instead, so a record can never claim to have
+    measured a point it did not.
+    """
+    if (corner, float(temp_c)) == ("tt", 27.0):
+        return (
+            "this record re-measures the SAME single nominal corner "
+            "(tt/27C, 1 kOhm, 50 mV overdrive) issue #26's kickback record "
+            "(20260916-060139-f1eb978, the pre-mitigation measurement "
+            "DR-002's Kickback disposition cites) used, so the before/after "
+            "comparison DR-002 asked for is direct and like-for-like per "
+            "issue #30's acceptance criteria"
+        )
+    return (
+        f"one corner per record, by design -- this record measures "
+        f"{corner}/{temp_c:g}C, one of the seven PVT points DR-005 grades the "
+        "ratified rows across. The Kickback row's full graded corner set is "
+        "assembled from one such record per corner rather than from a single "
+        "multi-corner record, so each corner keeps its own independently "
+        "citable evidence and its own delta against the schematic-level "
+        "counterpart at the SAME corner. See the corner-coverage table in "
+        "`sim/comparator-decision/README.md` for which corners are measured "
+        "at which DUT provenance"
+    )
 
 
 def post_layout_delta_lines(
@@ -2594,14 +2702,9 @@ def write_kickback_evidence(
     a(
         f"- **Corner matrix run**: process=['{loaded.corner}'], "
         f"temperature_c=[{loaded.temp_c}], supply_v=[{VDD}] (1 PVT point, "
-        "both variants -- **subset-corner justification**: this record "
-        "re-measures the SAME single nominal corner (tt/27C, 1 kOhm, "
-        "50 mV overdrive) issue #26's kickback record "
-        "(20260916-060139-f1eb978, the pre-mitigation measurement DR-002's "
-        "Kickback disposition cites) used, so the before/after comparison "
-        "DR-002 asked for is direct and like-for-like per issue #30's "
-        "acceptance criteria -- a full-corner kickback sweep remains open "
-        "work exactly as DR-002 already flags it)"
+        "both variants -- **subset-corner justification**: "
+        + kickback_subset_justification(loaded.corner, loaded.temp_c)
+        + ")"
     )
     a(
         f"- **Stimulus**: VINP/VINN biased at VCM={VCM}V +/- "
@@ -2689,9 +2792,12 @@ def write_kickback_evidence(
             "records to weigh, never silently superseding DR-002's "
             "disposition."
         )
-        + " The comparison holds for the single tt/27C PVT point this "
-        "record runs (see Corner matrix run above); kickback PVT coverage "
-        "remains open work per DR-002."
+        + f" The comparison holds for the single "
+        f"{loaded.corner}/{loaded.temp_c:g}C PVT point this record runs (see "
+        "Corner matrix run above) and for this record's DUT provenance alone "
+        "-- see the corner-coverage table in "
+        "`sim/comparator-decision/README.md` for which of the seven graded "
+        "corners are measured at which provenance."
     )
     a("")
     lines.extend(post_layout_delta_lines(

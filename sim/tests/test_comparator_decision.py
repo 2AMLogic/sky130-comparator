@@ -486,11 +486,53 @@ class TestPostLayoutDelta(unittest.TestCase):
         self.assertIn("1.099x", text)
 
     def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
+        # `noise` (the AC loop-broken sub-model) has a committed
+        # schematic-level record at tt/27C only -- DR-005's corner campaign
+        # ran `noise-tran`, not `noise`, off that anchor. So a post-layout
+        # AC-noise figure at ff/125C genuinely has nothing to difference
+        # against, and must say so rather than invent a ratio.
         cd_run.set_dut_provenance("extracted")
         text = "\n".join(
-            cd_run.post_layout_delta_lines("regen", "ff", 125.0, 0.5))
+            cd_run.post_layout_delta_lines("noise", "ff", 125.0, 0.5))
         self.assertIn("No committed schematic-level", text)
         self.assertNotIn("Ratio", text)
+
+    def test_every_graded_corner_has_a_kickback_and_regen_baseline(self):
+        """Issue #64: the post-layout campaign differences `kickback` and
+        `regen` at every one of DR-005's seven graded PVT corners, so an
+        anchor must exist for each -- otherwise a corner run would silently
+        emit a bare number instead of a delta."""
+        for corner, temp_c in cd_run.GRADED_CORNERS:
+            for mode in ("kickback", "regen"):
+                with self.subTest(mode=mode, corner=corner, temp_c=temp_c):
+                    self.assertIsNotNone(
+                        cd_run.baseline_for(mode, corner, temp_c),
+                        f"no schematic-level {mode} anchor at "
+                        f"{corner}/{temp_c}C",
+                    )
+
+
+class TestKickbackSubsetJustification(unittest.TestCase):
+    """Issue #64: the `kickback` record's subset-corner justification used to
+    be a fixed string asserting the record measured tt/27C. Running the other
+    six graded corners made that a false claim printed into records whose own
+    `Corner matrix run` line named a different corner."""
+
+    def test_tt_27c_keeps_the_issue_30_like_for_like_wording(self):
+        text = cd_run.kickback_subset_justification("tt", 27.0)
+        self.assertIn("20260916-060139-f1eb978", text)
+        self.assertIn("like-for-like", text)
+
+    def test_other_corners_do_not_claim_to_have_measured_tt_27c(self):
+        for corner, temp_c in cd_run.GRADED_CORNERS:
+            if (corner, temp_c) == ("tt", 27.0):
+                continue
+            with self.subTest(corner=corner, temp_c=temp_c):
+                text = cd_run.kickback_subset_justification(corner, temp_c)
+                self.assertNotIn("tt/27C", text)
+                self.assertNotIn("20260916-060139-f1eb978", text)
+                # ...and names the corner it actually ran.
+                self.assertIn(f"{corner}/{temp_c:g}C", text)
 
 
 if __name__ == "__main__":
