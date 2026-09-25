@@ -32,8 +32,9 @@ monitor that cannot fail grades nothing).
 
 Stdlib only, no virtualenv required. The two-path (gate / selftest) shape
 mirrors scripts/check-t1-signoff.py (issue #31), and the two share one copy
-of the gate-output convention (`fail`/`ok`/`load_json`) by importing it from
-scripts/_gate_common.py, so they cannot drift (issue #56).
+of the gate-output convention (`fail`/`ok`/`load_json`, issue #56) plus the
+selftest tally and argv dispatch tails (`report_cases`/`dispatch`, issue
+#69) by importing them from scripts/_gate_common.py, so they cannot drift.
 
 Exit codes: 0 gate pass, 1 gate failure, 2 usage error.
 """
@@ -45,7 +46,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _gate_common import FAILURES, fail, load_json, ok, reset  # noqa: E402
+from _gate_common import (FAILURES, dispatch, fail, load_json,  # noqa: E402
+                          ok, report_cases, reset)
 
 REPO_DEFAULTS = {
     "view": "manifests/integrator-view.json",
@@ -565,14 +567,7 @@ def run_selftest(_args: argparse.Namespace) -> int:
     except ValueError:
         case_results.append(("expected_rung rejects unknown tier", True))
 
-    failed = [name for name, passed in case_results if not passed]
-    for name, passed in case_results:
-        print(f"selftest: {'ok' if passed else 'FAIL'}: {name}")
-    if failed:
-        print(f"selftest: {len(failed)} case(s) failed")
-        return 1
-    print(f"selftest: all {len(case_results)} cases passed")
-    return 0
+    return report_cases(case_results)
 
 
 def main(argv=None) -> int:
@@ -589,16 +584,7 @@ def main(argv=None) -> int:
     p_gate.add_argument("--view", default=REPO_DEFAULTS["view"])
     p_gate.add_argument("--signoff-report", default=REPO_DEFAULTS["signoff_report"])
 
-    sub.add_parser("selftest", help="hermetic fixture test of the gate logic")
-
-    args = parser.parse_args(argv)
-    try:
-        if args.mode == "gate":
-            return run_gate(args)
-        return run_selftest(args)
-    except ValueError as exc:
-        print(f"gate: FAIL: {exc}")
-        return 1
+    return dispatch(parser, sub, argv, run_gate, run_selftest)
 
 
 if __name__ == "__main__":

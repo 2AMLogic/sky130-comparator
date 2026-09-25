@@ -19,9 +19,10 @@ monitor that cannot fail grades nothing).
 
 Stdlib only, no virtualenv required. Provenance: the two-path (gate /
 selftest) shape mirrors sim/selftest.sh's "acceptance stages" convention.
-The gate-output convention (`fail`/`warn`/`ok`/`load_json`) is imported from
-scripts/_gate_common.py, shared with scripts/check-integrator-view.py so the
-two gates cannot drift (issue #56).
+The gate-output convention (`fail`/`warn`/`ok`/`load_json`, issue #56) and
+the selftest tally and argv dispatch tails (`report_cases`/`dispatch`, issue
+#69) are imported from scripts/_gate_common.py, shared with
+scripts/check-integrator-view.py so the two gates cannot drift.
 The report fields compared here are the documented `klt signoff --manifest
 --format json` contract (klayout-tools docs/cli/signoff.md, "Tier-report
 JSON schema"). Field access tolerates absent newer fields (`input_verified`,
@@ -43,9 +44,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _gate_common import (  # noqa: E402
     FAILURES,
     WARNINGS,
+    dispatch,
     fail,
     load_json,
     ok,
+    report_cases,
     reset,
     warn,
 )
@@ -451,14 +454,7 @@ def run_selftest(_args: argparse.Namespace) -> int:
     except ValueError:
         case_results.append(("validate_report catches reasonless unmet", True))
 
-    failed = [name for name, passed in case_results if not passed]
-    for name, passed in case_results:
-        print(f"selftest: {'ok' if passed else 'FAIL'}: {name}")
-    if failed:
-        print(f"selftest: {len(failed)} case(s) failed")
-        return 1
-    print(f"selftest: all {len(case_results)} cases passed")
-    return 0
+    return report_cases(case_results)
 
 
 def main(argv=None) -> int:
@@ -481,16 +477,7 @@ def main(argv=None) -> int:
         help="use a pre-generated fresh report JSON instead of running klt",
     )
 
-    sub.add_parser("selftest", help="hermetic fixture test of the gate logic")
-
-    args = parser.parse_args(argv)
-    try:
-        if args.mode == "gate":
-            return run_gate(args)
-        return run_selftest(args)
-    except ValueError as exc:
-        print(f"gate: FAIL: {exc}")
-        return 1
+    return dispatch(parser, sub, argv, run_gate, run_selftest)
 
 
 if __name__ == "__main__":
