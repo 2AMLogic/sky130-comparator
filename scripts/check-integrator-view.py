@@ -31,15 +31,21 @@ the rot detector actually bites (sim/selftest.sh's stage-4 discipline: a
 monitor that cannot fail grades nothing).
 
 Stdlib only, no virtualenv required. The two-path (gate / selftest) shape
-mirrors scripts/check-t1-signoff.py (issue #31).
+mirrors scripts/check-t1-signoff.py (issue #31), and the two share one copy
+of the gate-output convention (`fail`/`ok`/`load_json`) by importing it from
+scripts/_gate_common.py, so they cannot drift (issue #56).
 
 Exit codes: 0 gate pass, 1 gate failure, 2 usage error.
 """
 
 import argparse
-import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _gate_common import FAILURES, fail, load_json, ok, reset  # noqa: E402
 
 REPO_DEFAULTS = {
     "view": "manifests/integrator-view.json",
@@ -62,30 +68,6 @@ REQUIRED_KEYS = (
 PORT_DIRECTIONS = ("input", "output", "inout", "power")
 
 TIER_LADDER = ("T1", "T2", "T3", "T4")
-
-FAILURES = []
-
-
-def fail(msg: str) -> None:
-    FAILURES.append(msg)
-    print(f"gate: FAIL: {msg}")
-
-
-def ok(msg: str) -> None:
-    print(f"gate: ok: {msg}")
-
-
-def load_json(path, what: str) -> dict:
-    try:
-        with Path(path).open(encoding="utf-8") as fh:
-            doc = json.load(fh)
-    except FileNotFoundError:
-        raise ValueError(f"{what} file not found: {path}") from None
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{what} file is not valid JSON: {path}: {exc}") from None
-    if not isinstance(doc, dict):
-        raise ValueError(f"{what} file is not a JSON object: {path}")
-    return doc
 
 
 def expected_rung(signoff_report: dict) -> str:
@@ -379,12 +361,12 @@ def _tree_with(*existing):
 
 
 def run_selftest(_args: argparse.Namespace) -> int:
-    global FAILURES
     case_results = []
 
     def check(name, expect_fail, expect_substr, view, report, tree):
-        global FAILURES
-        FAILURES = []
+        # reset() clears the shared tally in place -- rebinding FAILURES here
+        # would detach it from the list fail() appends to (_gate_common).
+        reset()
         validate_view(view, report, tree, "fx-view")
         blob = "\n".join(FAILURES)
         passed = (len(FAILURES) > 0) == expect_fail

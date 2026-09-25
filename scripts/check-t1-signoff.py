@@ -19,6 +19,9 @@ monitor that cannot fail grades nothing).
 
 Stdlib only, no virtualenv required. Provenance: the two-path (gate /
 selftest) shape mirrors sim/selftest.sh's "acceptance stages" convention.
+The gate-output convention (`fail`/`warn`/`ok`/`load_json`) is imported from
+scripts/_gate_common.py, shared with scripts/check-integrator-view.py so the
+two gates cannot drift (issue #56).
 The report fields compared here are the documented `klt signoff --manifest
 --format json` contract (klayout-tools docs/cli/signoff.md, "Tier-report
 JSON schema"). Field access tolerates absent newer fields (`input_verified`,
@@ -35,6 +38,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _gate_common import (  # noqa: E402
+    FAILURES,
+    WARNINGS,
+    fail,
+    load_json,
+    ok,
+    reset,
+    warn,
+)
+
 REPO_DEFAULTS = {
     "manifest": "manifests/sky130-comparator.json",
     "tiers_doc": "manifests/design-evidence-tiers.md",
@@ -42,36 +57,6 @@ REPO_DEFAULTS = {
 }
 
 KLT_BIN = "klt"
-
-FAILURES = []
-WARNINGS = []
-
-
-def fail(msg: str) -> None:
-    FAILURES.append(msg)
-    print(f"gate: FAIL: {msg}")
-
-
-def warn(msg: str) -> None:
-    WARNINGS.append(msg)
-    print(f"gate: WARN: {msg}")
-
-
-def ok(msg: str) -> None:
-    print(f"gate: ok: {msg}")
-
-
-def load_json(path, what: str) -> dict:
-    try:
-        with Path(path).open(encoding="utf-8") as fh:
-            doc = json.load(fh)
-    except FileNotFoundError:
-        raise ValueError(f"{what} file not found: {path}") from None
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{what} file is not valid JSON: {path}: {exc}") from None
-    if not isinstance(doc, dict):
-        raise ValueError(f"{what} file is not a JSON object: {path}")
-    return doc
 
 
 def item_key(item: dict) -> tuple:
@@ -355,13 +340,14 @@ def _fixture_report(block="fx-block", kind="analog", statuses=None,
 
 
 def run_selftest(_args: argparse.Namespace) -> int:
-    global FAILURES, WARNINGS
     case_results = []
 
     def check(name, expect_fail, expect_substr, manifest, committed, fresh,
               expect_warn=None):
-        global FAILURES, WARNINGS
-        FAILURES, WARNINGS = [], []
+        # reset() clears the shared tallies in place -- rebinding them here
+        # would detach them from the lists fail()/warn() append to
+        # (_gate_common).
+        reset()
         compare(manifest, committed, fresh)
         blob = "\n".join(FAILURES)
         warn_blob = "\n".join(WARNINGS)
