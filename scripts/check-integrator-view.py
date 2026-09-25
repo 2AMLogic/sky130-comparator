@@ -10,7 +10,11 @@ non-null cited path must exist in-tree (a stale GDS/netlist/schematic path
 FAILS here rather than pointing an integrator at a vanished file), and the
 maturity rung must agree with the graded verdict of record
 (manifests/t1-signoff-report.json) -- a view claiming "T1" while the
-signoff report grades tier null, or vice versa, FAILS.
+signoff report grades tier null, or vice versa, FAILS. The prose in
+`maturity_rung_basis` is held to the same report: it must name the report's
+path (so it can never cite a vanished record), and if it states an
+`N/M T1 items met` figure, that figure FAILS unless it agrees with the
+report's `t1_met_count`/`t1_item_count` (issue #50).
 
 Honest nulls are first-class: `gds.path` and `measured_area.value_um2` are
 `null` today (no layout exists), and that is accepted -- but ONLY with the
@@ -34,6 +38,7 @@ Exit codes: 0 gate pass, 1 gate failure, 2 usage error.
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 REPO_DEFAULTS = {
@@ -50,6 +55,7 @@ REQUIRED_KEYS = (
     "gds",
     "measured_area",
     "maturity_rung",
+    "maturity_rung_basis",
     "provenance",
 )
 
@@ -226,6 +232,36 @@ def validate_view(view: dict, signoff_report: dict, repo: Path, what: str) -> No
             "view must agree with the graded verdict of record"
         )
 
+    # Rule 8: the basis prose cannot contradict the report it names (#50).
+    basis = view.get("maturity_rung_basis")
+    if not isinstance(basis, str) or not basis:
+        fail(f"{what} maturity_rung_basis must be a non-empty string")
+    else:
+        report_rel = REPO_DEFAULTS["signoff_report"]
+        if report_rel not in basis:
+            fail(
+                f"{what} maturity_rung_basis must name '{report_rel}' -- "
+                "the basis can never cite a report other than the one it "
+                "is graded against"
+            )
+        else:
+            check_path_in_tree(
+                repo, report_rel, f"{what} maturity_rung_basis cited report"
+            )
+        m = re.search(r"(\d+)\s*/\s*(\d+)\s+T1 items met", basis)
+        if m:
+            got_met, got_count = int(m.group(1)), int(m.group(2))
+            want_met = signoff_report.get("t1_met_count")
+            want_count = signoff_report.get("t1_item_count")
+            if (got_met, got_count) != (want_met, want_count):
+                fail(
+                    f"{what} maturity_rung_basis states "
+                    f"{got_met}/{got_count} T1 items met but the signoff "
+                    f"report ({report_rel}) carries "
+                    f"t1_met_count={want_met!r}, t1_item_count={want_count!r} "
+                    "-- the basis must not disagree with the record"
+                )
+
     # Rule 7: provenance names its generated-from sources, in-tree.
     prov = view.get("provenance")
     if isinstance(prov, dict):
@@ -277,6 +313,7 @@ def _fixture_view(
     area_value=None,
     area_note="not yet produced: fixture",
     rung="pre-T1",
+    basis="manifests/t1-signoff-report.json: tier null, 0/11 T1 items met -- fixture",
     drop_key=None,
     provenance=None,
 ):
@@ -299,6 +336,7 @@ def _fixture_view(
         "gds": {"path": gds_path, "note": gds_note},
         "measured_area": {"value_um2": area_value, "note": area_note},
         "maturity_rung": rung,
+        "maturity_rung_basis": basis,
         "provenance": provenance
         if provenance is not None
         else {
@@ -354,7 +392,9 @@ def run_selftest(_args: argparse.Namespace) -> int:
             passed = passed and expect_substr in blob
         case_results.append((name, passed))
 
-    tree_ok = _tree_with("fx.sch", "fx.spice", "fx.gds")
+    tree_ok = _tree_with(
+        "fx.sch", "fx.spice", "fx.gds", "manifests/t1-signoff-report.json"
+    )
 
     # Positive: the honest pre-T1 shape -- nulls WITH notes, all paths real.
     check(
@@ -376,12 +416,17 @@ def run_selftest(_args: argparse.Namespace) -> int:
         tree=tree_ok,
     )
 
-    # Positive: rung tracks a graded T1 report.
+    # Positive: rung tracks a graded T1 report. Needs its own basis (trap 3,
+    # issue #50): _fixture_report(tier="T1") carries t1_met_count=11, so the
+    # default "0/11" basis text would now disagree with the report.
     check(
         "rung agrees when report grades T1",
         expect_fail=False,
         expect_substr=None,
-        view=_fixture_view(rung="T1"),
+        view=_fixture_view(
+            rung="T1",
+            basis="manifests/t1-signoff-report.json: tier T1, 11/11 T1 items met -- fixture",
+        ),
         report=_fixture_report(tier="T1"),
         tree=tree_ok,
     )
@@ -422,6 +467,48 @@ def run_selftest(_args: argparse.Namespace) -> int:
         expect_fail=True,
         expect_substr="maturity_rung is 'T1' but the signoff report",
         view=_fixture_view(rung="T1"),
+        report=_fixture_report(tier=None),
+        tree=tree_ok,
+    )
+
+    # Negative control 4 (issue #50): a basis whose stated count disagrees
+    # with the report's t1_met_count/t1_item_count fails.
+    check(
+        "maturity_rung_basis count disagrees with report",
+        expect_fail=True,
+        expect_substr=(
+            "maturity_rung_basis states 5/11 T1 items met but the signoff "
+            "report"
+        ),
+        view=_fixture_view(
+            basis="manifests/t1-signoff-report.json: 5/11 T1 items met -- fixture"
+        ),
+        report=_fixture_report(tier=None),
+        tree=tree_ok,
+    )
+
+    # Negative control 5 (issue #50): an absent maturity_rung_basis fails on
+    # the missing required key -- a check that no-ops when the field is
+    # deleted is not a check.
+    check(
+        "missing maturity_rung_basis fails",
+        expect_fail=True,
+        expect_substr="missing required key 'maturity_rung_basis'",
+        view=_fixture_view(drop_key="maturity_rung_basis"),
+        report=_fixture_report(tier=None),
+        tree=tree_ok,
+    )
+
+    # Positive (issue #50): a count-free basis naming the report path
+    # passes -- no duplicated fact, so nothing left to drift.
+    check(
+        "count-free maturity_rung_basis naming the report passes",
+        expect_fail=False,
+        expect_substr=None,
+        view=_fixture_view(
+            basis="manifests/t1-signoff-report.json: see the report for "
+            "per-item T1 status -- fixture"
+        ),
         report=_fixture_report(tier=None),
         tree=tree_ok,
     )
