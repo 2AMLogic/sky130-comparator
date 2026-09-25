@@ -1,0 +1,57 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision kickback disturbance -- variant=loaded rs=1000ohm vindiff=50.0mv corner=fs temp=125.0c (issue #26)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 125.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  9.01400e-10
+ Reference value :  3.94140e-09
+ Reference value :  6.95250e-09
+ Reference value :  8.24250e-09
+ Reference value :  1.05775e-08
+ Reference value :  1.05975e-08
+ Reference value :  1.06125e-08
+ Reference value :  1.06325e-08
+ Reference value :  1.06525e-08
+ Reference value :  1.06725e-08
+ Reference value :  1.06925e-08
+ Reference value :  1.07125e-08
+ Reference value :  1.07325e-08
+ Reference value :  1.07775e-08
+ Reference value :  1.13975e-08
+ Reference value :  1.21175e-08
+ Reference value :  1.54175e-08
+ Reference value :  1.60525e-08
+ Reference value :  1.66175e-08
+ Reference value :  1.78425e-08
+ Reference value :  1.80675e-08
+ Reference value :  1.80875e-08
+ Reference value :  1.81075e-08
+ Reference value :  1.81275e-08
+ Reference value :  1.81475e-08
+ Reference value :  1.81675e-08
+ Reference value :  1.81875e-08
+ Reference value :  1.82075e-08
+ Reference value :  1.82275e-08
+ Reference value :  1.83225e-08
+ Reference value :  1.91125e-08
+ Reference value :  2.18925e-08
+ Reference value :  2.49225e-08
+ Reference value :  2.56875e-08
+ Reference value :  2.89825e-08
+ Reference value :  3.16075e-08
+ Reference value :  3.38425e-08
+ Reference value :  3.45525e-08
+ Reference value :  3.68225e-08
+ Reference value :  3.97025e-08
+ Reference value :  4.24525e-08
+No. of Data Rows : 9034
+Note: Simulation executed from .control section 
