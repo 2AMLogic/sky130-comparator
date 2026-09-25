@@ -43,19 +43,7 @@ requirement), in addition to this table.
 
 Divergences from `sky130-sar-adc`'s harness, each deliberate:
 
-1. **This repo's target-spec table is DRAFT, not ratified** (see the
-   top-level README and `spec/README.md`). Nothing under `sim/harness/`
-   hardcodes a numeric spec value either way — `corners.py` supplies only
-   PDK-derived axis lists (which `.lib` process-corner sections exist, the
-   canary-standard −40/27/125 °C sweep); every testbench manifest states
-   its own `nominal_supply_v` and checks, unchanged from the port source.
-2. **No comparator schematic exists yet.** Every experiment directory
-   under `sim/` at this pass (`harness-corner-smoke/`, `mc-smoke/`) is a
-   harness self-test, not a DUT — see "Harness self-test experiments"
-   below. `sim/comparator-decision/`-style experiments (regen/offset/
-   noise, per `spec/porting-plan.md`) are tracked separately (issue #9)
-   and explicitly out of scope for this harness-bootstrap pass.
-3. **`run_klt_yield()` (in `sim/harness/evidence.py`) has no caller yet.**
+1. **`run_klt_yield()` (in `sim/harness/evidence.py`) has no caller yet.**
    It ported ahead of a caller existing so a future statistical-row
    experiment driver here does not need a second port pass; it is inert
    until one exists.
@@ -211,9 +199,8 @@ fields.
   `corners/` / `mc-draws/` subdirectory names.
 - **Claim** — which spec parameter/line this record substantiates (a row in
   the top-level README's target-spec table), or an explicit "None — harness
-  self-test". This repo's target-spec table is currently **DRAFT** (see
-  `spec/README.md`) — a claim naming a draft row must say so; a DRAFT value
-  is never quoted as if settled.
+  self-test". A claim naming a row that is still DRAFT/OPEN (see
+  `spec/README.md`) must say so; a DRAFT value is never quoted as if settled.
 - **Netlist provenance** — `schematic` (`design/...`) or `extracted`
   (post-layout, `layout/...`).
 - **Corner matrix run** — the explicit (process, temperature, supply) points
@@ -249,9 +236,7 @@ when the two are closely related.
   seed+N−1`, so the exact draw set is reconstructible), and the fixed PVT
   point the draws were taken at.
 - **Distributions** — per measurement: N, mean, stdev, min, max. A
-  distribution, not a corner point; this repo's offset-sigma row (top-level
-  README, DRAFT) will be a statistical row once a comparator schematic
-  exists, per `spec/porting-plan.md`.
+  distribution, not a corner point.
 - **Negative control** — N draws at the *plain* (non-`_mm`) corner with the
   same seed sequence, which must reproduce every measurement **exactly**
   (stdev == 0).
