@@ -58,7 +58,7 @@ class TestMeasureParse(unittest.TestCase):
     def test_anchored_default_rejects_trailing_trig_targ_context(self):
         # ngspice's TRIG/TARG crossing `.meas` prints extra " targ=...
         # trig=..." context on the same line -- the default anchored match
-        # must reject it (issue #229).
+        # must reject it (sky130-sar-adc issue #229).
         log = "t_settle_50 = 1.234500e-09 targ= 1.2345e-09 trig=0"
         parsed = measure.parse(log, ["t_settle_50"])
         self.assertNotIn("t_settle_50", parsed)
@@ -92,7 +92,7 @@ class TestCorners(unittest.TestCase):
 
     def test_corner_matrix_summary_line_format(self):
         # Exact string shared by every experiment driver's "Corner matrix
-        # run" evidence-record bullet (issue #127) -- must stay
+        # run" evidence-record bullet (sky130-sar-adc issue #127) -- must stay
         # byte-identical to the inline format it replaced.
         line = corners.corner_matrix_summary_line(
             ["ff", "ss", "tt"], [-40.0, 27.0, 125.0], [1.62, 1.8, 1.98], 9
@@ -355,14 +355,14 @@ class TestRunnerHelpers(unittest.TestCase):
 
     def test_toolchain_timeout_s_defaults_when_unset(self):
         """No SIM_NGSPICE_TIMEOUT_S override -> the historical 120s default
-        (issue #133)."""
+        (sky130-sar-adc issue #133)."""
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop(toolchain.TIMEOUT_ENV_VAR, None)
             self.assertEqual(toolchain.toolchain_timeout_s(), toolchain.DEFAULT_TOOLCHAIN_TIMEOUT_S)
 
     def test_toolchain_timeout_s_honors_env_override(self):
         """SIM_NGSPICE_TIMEOUT_S raises (or lowers) the budget without
-        touching source (issue #133)."""
+        touching source (sky130-sar-adc issue #133)."""
         with mock.patch.dict(os.environ, {toolchain.TIMEOUT_ENV_VAR: "300"}):
             self.assertEqual(toolchain.toolchain_timeout_s(), 300.0)
 
@@ -379,8 +379,9 @@ class TestRunnerHelpers(unittest.TestCase):
 
     def test_run_ngspice_uses_env_override_and_reports_it_in_the_timeout(self):
         """The timeout diagnostic message reports the ACTUAL (overridden)
-        budget used, and tells the user how to raise it further (issue
-        #133) -- not the old hardcoded '120s' literal."""
+        budget used, and tells the user how to raise it further
+        (sky130-sar-adc issue #133) -- not the old hardcoded '120s'
+        literal."""
         with tempfile.TemporaryDirectory() as tmp:
             scratch = Path(tmp)
             with mock.patch.dict(os.environ, {toolchain.TIMEOUT_ENV_VAR: "7"}):
@@ -688,8 +689,9 @@ class TestPdkResolve(unittest.TestCase):
 
 class TestPdkResolveOrRaise(unittest.TestCase):
     """resolve_or_raise() -- the resolve()-or-RuntimeError helper shared by
-    sim/comparator-decision/run.py and layout/comparator/pex/regen_probe.py
-    (issue #195), previously defined identically in both."""
+    the seven PDK-resolving call sites in sim/comparator-decision/run.py
+    (extracted in sky130-sar-adc issue #195, where it was deduped across
+    that repo's own callers)."""
 
     def _resolve_with_root(self, root: Path) -> pdk.PdkInfo:
         with mock.patch.dict(os.environ, {"PDK_ROOT": str(root), "PDK": "sky130A"}):
@@ -716,9 +718,9 @@ class TestPdkResolveOrRaise(unittest.TestCase):
 
 class TestReadWrdataCsv(unittest.TestCase):
     """toolchain.read_wrdata_csv() -- the ngspice `wrdata` CSV parser
-    shared by sim/comparator-decision/run.py and
-    layout/comparator/pex/regen_probe.py (issue #195), previously defined
-    identically in both."""
+    shared by the five call sites in sim/comparator-decision/run.py
+    (extracted in sky130-sar-adc issue #195, where it was deduped across
+    that repo's own callers)."""
 
     def test_parses_repeated_time_column_per_vector(self):
         with tempfile.TemporaryDirectory() as tmp:

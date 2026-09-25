@@ -15,8 +15,9 @@ which is correct for the plain `.meas tran X find ...` / `print`-style lines
 above but rejects ngspice's TRIG/TARG crossing-based `.meas` lines outright
 (silently yielding no match, not an exception): those print extra
 " targ=... trig=..." context on the SAME line as `name = value`. Pass
-`anchored=False` for that shape (issue #229 -- previously duplicated as a
-private `_parse_trig_targ()` across three sim/ run scripts).
+`anchored=False` for that shape (sky130-sar-adc issue #229 -- previously
+duplicated there as a private `_parse_trig_targ()` across three of that
+repo's sim/ run scripts).
 """
 
 from __future__ import annotations

@@ -37,12 +37,10 @@ SIM_DIR = Path(__file__).resolve().parent.parent
 
 # Wall-clock budget for a single toolchain subprocess invocation (ngspice
 # transient/op run, or an experiment's own xschem netlisting step -- see
-# TIMEOUT_ENV_VAR below). A single knob rather than one literal per call
-# site (issue #133): a genuinely hung run must still fail fast, but the
-# fixed 120s default previously hardcoded here (and duplicated at
-# sim/sar-sequencer-behavioral/run_testbench.py's own xschem subprocess.run
-# call) made the documented cold-start invocation fail on a slower-but-
-# still-progressing host.
+# TIMEOUT_ENV_VAR below). A single knob rather than a hardcoded literal
+# (sky130-sar-adc issue #133): a genuinely hung run must still fail fast,
+# but the fixed 120s default previously hardcoded here made the documented
+# cold-start invocation fail on a slower-but-still-progressing host.
 DEFAULT_TOOLCHAIN_TIMEOUT_S = 120
 TIMEOUT_ENV_VAR = "SIM_NGSPICE_TIMEOUT_S"
 
@@ -53,9 +51,9 @@ def toolchain_timeout_s() -> float:
 
     Defaults to DEFAULT_TOOLCHAIN_TIMEOUT_S. Overridable via the
     SIM_NGSPICE_TIMEOUT_S environment variable so a slow-but-progressing
-    host (see issue #133) does not require editing this file -- a
-    genuinely hung run still fails, just against whatever budget is set
-    here rather than a hardcoded literal.
+    host (see sky130-sar-adc issue #133) does not require editing this
+    file -- a genuinely hung run still fails, just against whatever budget
+    is set here rather than a hardcoded literal.
     """
     raw = os.environ.get(TIMEOUT_ENV_VAR, "").strip()
     if not raw:
