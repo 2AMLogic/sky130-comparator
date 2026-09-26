@@ -368,8 +368,35 @@ It fires when `starved{state="ready"}` stays above 0 on a host for 15 min.
 Import it with `POST /api/v1/rules` or paste its query into a new ClickHouse
 alert. The rule's shape has not yet been tested against a live SigNoz. Standing queries are in
 `defaults/observability/signoz/queue-dwell.sql`.
-Completed-sweep phase durations are covered by the cycle-time rollup. Worker
-idle gap and forge label-transition dwell are tracked in #8929.
+Completed-sweep phase durations are covered by the cycle-time rollup.
+
+**Dispatch refusals, turnaround and stage dwell (#8907, #8929).** Typed
+dispatch refusals have their own `loom.dispatch.decisions` reasons
+(`lease_order_lost`, `token_selection_failed`, `claim_collision`,
+`claim_lock_held`), and every `dispatch()` attempt is a
+`loom.dispatch.admission` child span of the tick span. Worker turnaround
+comes from bus events the daemon already publishes: seconds from an issue
+sweep finishing to the next issue-sweep dispatch
+(`loom.dispatch.slot_turnaround` / `.samples`). The tick adds idle slots
+(`loom.dispatch.idle_slots`) and the slot-seconds left idle while ready work
+waited (`loom.dispatch.idle_slot_seconds`). Forge label-stage dwell
+(`loom.forge.stage_dwell{state}` / `.samples`, `loom.forge.stage_items{state}`)
+covers created → curated, curated → `loom:issue`, building → review requested
+and review requested → merged. It reads ETag-cached stage listings every 5
+minutes plus at most 8 per-item reads per sample, never per tick. Details are
+in [`telemetry-schema.md`](telemetry-schema.md#metricpoints).
+
+**Tokens, providers and pools (#8908, #8931).** Each account mark the daemon
+writes (Codex terminal feedback, API-key pool bad marks, the Claude
+insta-crash exhaustion mark) emits one `loom.pool.account_marks{provider,reason}`
+point, so exhaustion can be split by cause (a 429 versus plan exhaustion
+versus a session limit), which the snapshot-derived `loom.pool.exhaustions`
+cannot do. Each work-finder pool hold emits a `loom.pool.hold` span when it
+clears. At a sweep's terminal transition, the execution's exact token
+breakdown is journalled as a `loom.runtime.usage` span in the sweep's trace,
+and the transcript-ingest pass stamps the sweep's `session.summary` log with
+the same trace when the match is unambiguous. Details are in
+[`telemetry-schema.md`](telemetry-schema.md#metricpoints).
 
 To add a signal, add a `MetricName` or `SpanName` variant. If it needs a new
 label or attribute key, extend `OPS_METRIC_LABEL_KEYS` or
