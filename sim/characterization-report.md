@@ -1,0 +1,555 @@
+# Characterization report — sky130-comparator
+
+The one aggregated, current artifact T1 item 8 names: every target-spec row,
+its ratification status, its bounds, the measured figure at every condition
+that has one, and the committed evidence record each figure rests on.
+
+This document is the evidence cited for **T1 item 8** in
+[`manifests/sky130-comparator.json`](../manifests/sky130-comparator.json). See
+[`manifests/README.md`](../manifests/README.md) → "Item 8 — the characterization
+report, and what its `met` row does not establish" for what that citation does
+and does not prove.
+
+## How to read this report
+
+- **It aggregates; it does not measure.** Every number below is copied from a
+  committed, append-only record under
+  [`sim/comparator-decision/records/`](comparator-decision/records/) (or, for
+  the one row with no record, from the support deck named in the row). No
+  simulation was run to produce this document, and none of its figures is new.
+- **It does not set or interpret bounds.** Ratification status and bounds come
+  from the [top-level `README.md`](../README.md) target-spec table and the
+  decision records that dispose it (DR-002, DR-004, DR-005, DR-006). Per
+  `CLAUDE.md`, nothing here relaxes a ratified bound, and no row is rendered
+  compliant that the specs do not support.
+- **Two rows are not compliant as read, and this report says so on their
+  face.** The **Input-referred noise** row's bound is ratified but its
+  *compliance basis* is **RE-OPENED** by
+  [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)
+  (closure condition still open —
+  [#83](https://github.com/2AMLogic/sky130-comparator/issues/83)). The
+  **Supply / power** row is still **DRAFT / OPEN**: it has no ratified bound at
+  all, and the measurements it does have already exceed its DRAFT figure.
+- **Freshness is enforced, not asserted.** See
+  [Freshness enforcement](#freshness-enforcement) at the end: a drifted report
+  or a drifted evidence record makes T1 item 8 grade non-`met`.
+
+## Provenance and pinning
+
+Every figure below was produced by
+[`sim/comparator-decision/run.py`](comparator-decision/run.py) on the pins the
+records themselves record:
+
+| Axis | Pin |
+|---|---|
+| PDK | sky130A @ open_pdks `c6d73a35f524070e85faff4a6a9eef49553ebc2b` ([`sim/pdk.json`](pdk.json)) |
+| Simulator | ngspice-46 ([`sim/toolchain.json`](toolchain.json)) |
+| Harness | `sim/harness` 0.1.0 |
+| Schematic DUT | `design/comparator.sch` → `./design/netlist.sh` → `sim/comparator-decision/testbench/comparator_core.spice` |
+| Post-layout DUT | `layout/comparator.gds` → `klt extract --parasitics` → `layout/comparator.pex.spice`, extracted under **`klayout-tools==0.6.0` on `klayout==0.30.10`** (asserted by `layout/extract_pex.py`; extracted per-net series R is **not** stable across klt/klayout builds — up to 2.30× apart on this block) |
+| Topology | DR-004 static preamplifier + StrongARM latch, with DR-003's soft-clock shaper on the clock port |
+
+**Graded PVT corner set** (the seven `--dut extracted` rows below use it):
+`tt`/27 °C, `ss`/−40 °C, `ff`/125 °C, `sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C,
+`fs`/125 °C. The Offset sigma row runs on the five `_mm` local-mismatch corners
+at 27 °C instead (`tt_mm`, `ss_mm`, `ff_mm`, `sf_mm`, `fs_mm`) because mismatch
+sampling is not a PVT axis; the reset-integrity screen behind the Supply/power
+row's current column uses its own five-point set (`tt`/27 °C, `ss`/−40 °C,
+`ss`/125 °C, `ff`/−40 °C, `ff`/125 °C). Each row states which set it used.
+
+**Post-layout parasitic model, where it is coarse.** The extraction is a single
+lumped star R per net. `GND` (6.76 kΩ) and `VDD` (2.36 kΩ) together carry 52.0 %
+of the block's 17.52 kΩ total series R, where the real drawn supply is a wide
+low-impedance shape. Every post-layout degradation below is therefore an **upper
+bound on the supply-network contribution**, not a best estimate of it. See
+[`sim/comparator-decision/README.md`](comparator-decision/README.md) →
+"Parasitic model, and where it is coarse".
+
+## Summary — the five target-spec rows
+
+| # | Row | Status | Target | Stretch | Worst measured (post-layout unless noted) | Target met? | Stretch met? |
+|---|---|---|---|---|---|---|---|
+| 1 | Offset sigma | RATIFIED (DR-002; coverage by DR-005) | ≤ 15 mV, 3σ | ≤ 8 mV, 3σ | 7.3338 mV 3σ (`tt_mm`/27 °C, N=16) | **yes** (2.05×) | yes (1.09×) |
+| 2 | Input-referred noise | RATIFIED (DR-002); compliance basis **RE-OPENED** (DR-006) | ≤ 1.0 mV rms diff | ≤ 0.6 mV rms diff | 0.9423 mV rms (`fs`/125 °C, AC **lower bound**) | **basis re-opened — see row 2** | no (breached at 4 of 7) |
+| 3 | Decision time vs. overdrive | RATIFIED (DR-005) | ≤ 1.5 ns @ 50 mV | ≤ 0.8 ns @ 50 mV | 0.7725 ns (`fs`/125 °C) | **yes** (1.94×) | yes, but 1.04× |
+| 4 | Kickback | RATIFIED (DR-002 bound; DR-004 first compliant design) | ≤ 5 mV into 1 kΩ | ≤ 2 mV | 3.1989 mV (`sf`/−40 °C) | **yes** (1.56×) | no (breached at 6 of 7) |
+| 5 | Supply / power | **DRAFT / OPEN** (DR-002) | *(draft)* ≤ 50 µW avg at a TBD clock rate | *(draft)* ≤ 20 µW | ~95 µW static at 1.8 V | **no ratified bound exists** | — |
+
+Row 2's "target met?" cell deliberately does not say "yes". Every measured
+figure clears the ratified target bound, but DR-006 retired the argument the
+ratification rested on; the row's full disposition is in
+[row 2](#2-input-referred-noise) and must be read before the row is cited.
+
+---
+
+## 1. Offset sigma
+
+- **Status**: RATIFIED by [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) §1; the four remaining `_mm` corners and the large-N campaigns DR-002 left open were closed by [DR-005](../spec/decision-records/DR-005-full-corner-campaign.md).
+- **Bounds**: target ≤ 15 mV 3σ, stretch ≤ 8 mV 3σ, input-referred, post-calibration-free.
+- **Method**: `run.py offset` — a linearized pick-off statistic at a fixed early time after the evaluate edge, calibrated to an input-referred gain by an ideal-device Vindiff sweep, applied to N Monte Carlo draws at an `_mm` local-mismatch corner. Every run carries a same-seed, mismatch-disabled negative control at the plain corner, which must reproduce **stdev exactly 0**.
+
+### Schematic-level, N=16, seed 1, 27 °C
+
+| Corner | σ (mV) | 3σ (mV) | Negative control stdev | Record |
+|---|---|---|---|---|
+| `tt_mm` | 1.7857 | 5.3571 | 0 exactly | `sim/comparator-decision/records/20260922-065300-e084b55.md` |
+| `ss_mm` | 1.8244 | 5.4732 | 0 exactly | `sim/comparator-decision/records/20260922-173622-e23c509.md` |
+| `ff_mm` | 1.5954 | 4.7862 | 0 exactly | `sim/comparator-decision/records/20260922-174326-e23c509.md` |
+| `sf_mm` | 1.6706 | 5.0118 | 0 exactly | `sim/comparator-decision/records/20260922-174831-e23c509.md` |
+| `fs_mm` | 1.8218 | 5.4654 | 0 exactly | `sim/comparator-decision/records/20260922-175152-e23c509.md` |
+
+The corner ranking sits inside the N=16 relative standard error (≈ 18 % on a
+stdev); `ss_mm` is nominally binding.
+
+### Schematic-level, N=200 (the yield-fraction campaigns)
+
+| Corner | σ (mV) | 95 % CI on σ | 3σ (mV) | Record |
+|---|---|---|---|---|
+| `tt_mm` | 2.1854 | [1.9707, 2.4001] | 6.5562 | `sim/comparator-decision/records/20260922-191034-e23c509.md` |
+| `ss_mm` | 2.2353 | [2.0157, 2.4549] | 6.7059 | `sim/comparator-decision/records/20260922-202434-e026012.md` |
+
+The N=200 estimates sit ≈ 22 % above the N=16 figures — the small-sample
+estimate happened to land low, which is the tightness gap DR-002's Open items
+flagged.
+
+### Post-layout (`--dut extracted`)
+
+| Corner | Schematic σ | Post-layout σ | Ratio | 3σ post-layout | Record |
+|---|---|---|---|---|---|
+| `tt_mm`/27 °C, N=16 | 1.7857 mV | **2.4446 mV** | **1.369×** | 7.3338 mV | `sim/comparator-decision/records/20260925-112809-4694692.md` |
+
+The mismatch-disabled negative control's stdev is still exactly 0 post-layout,
+but its **mean** is not: 0.0000 mV on the symmetric schematic fragment,
+**0.6547 mV** post-layout. That is the first measurement of a **systematic,
+layout-induced** offset term on this block — a quantity this row's σ-only
+bounds do not cover at all.
+
+### Verdict and caveats
+
+- **Target bound: met** at every measured corner and provenance — worst case
+  7.3338 mV 3σ against ≤ 15 mV (2.05×).
+- **Stretch bound: met**, with 1.09× margin post-layout (down from 1.49×
+  schematic-level).
+- **Post-layout coverage is 1 of 5 `_mm` corners.** The other four were
+  deliberately skipped for cost (`offset` is ~37 decks / ~25 min per corner
+  serially on a shared dispatch host) and the reason is recorded, not silent.
+  No post-layout large-N campaign exists.
+- **The systematic term is not bounded by this row.** Quantifying it is
+  [#66](https://github.com/2AMLogic/sky130-comparator/issues/66).
+- The pick-off gain falls 64.4571 → 30.4600 V/V (2.12×) post-layout — the
+  common cause this row shares with rows 2 and 3.
+
+---
+
+## 2. Input-referred noise
+
+- **Status**: bounds RATIFIED by [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) §2. **Compliance basis RE-OPENED** by [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md) (2026-09-25).
+- **Bounds**: target ≤ 1.0 mV rms differential, stretch ≤ 0.6 mV rms differential. **Unchanged** — DR-006 changed the disposition of the *claim*, not the numbers.
+- **Two methods, deliberately**: `run.py noise` is an AC `.noise` analysis on a loop-broken sub-model and is a **lower bound by construction** (it excludes the regeneration phase's own noise). `run.py noise-tran` is the regeneration-inclusive transient-noise Monte Carlo (ngspice-46 has no device-noise transient, so noise is injected as equivalent sources and propagated through the real clocked evaluate trajectory).
+
+### AC loop-broken lower bound — all seven graded corners post-layout
+
+| Corner | Schematic (AC) | Post-layout (AC) | Ratio | vs. ≤ 1.0 mV target | vs. ≤ 0.6 mV stretch | Post-layout record |
+|---|---|---|---|---|---|---|
+| `sf`/−40 °C | *(no AC counterpart)* | 0.4886 mV rms | — | 2.05× | clears | `sim/comparator-decision/records/20260925-192745-bec714a.md` |
+| `ss`/−40 °C | *(no AC counterpart)* | 0.5429 mV rms | — | 1.84× | clears | `sim/comparator-decision/records/20260925-192710-bec714a.md` |
+| `fs`/−40 °C | *(no AC counterpart)* | 0.5447 mV rms | — | 1.84× | clears | `sim/comparator-decision/records/20260925-192818-bec714a.md` |
+| `tt`/27 °C | 0.5704 mV rms | 0.6576 mV rms | **1.153×** | 1.52× | **breached** | `sim/comparator-decision/records/20260925-112827-4694692.md` |
+| `ff`/125 °C | *(no AC counterpart)* | 0.8521 mV rms | — | 1.17× | **breached** | `sim/comparator-decision/records/20260925-192728-bec714a.md` |
+| `sf`/125 °C | *(no AC counterpart)* | 0.8590 mV rms | — | 1.16× | **breached** | `sim/comparator-decision/records/20260925-192801-bec714a.md` |
+| `fs`/125 °C | *(no AC counterpart)* | **0.9423 mV rms** | — | **1.06×** | **breached** | `sim/comparator-decision/records/20260925-192836-bec714a.md` |
+
+The single schematic-level AC figure is `tt`/27 °C, 0.5704 mV rms
+(`sim/comparator-decision/records/20260922-065534-e084b55.md`). **Six of the
+seven post-layout corners carry no ratio, by construction**: DR-005's corner
+campaign measured `noise-tran` at the non-`tt` corners, not this AC sub-model,
+so there is no committed schematic-level AC counterpart to difference against.
+Each record states that rather than inventing a ratio.
+
+The hot corners bind this row — the post-layout AC figure is ≈ 1.9× worse at
+125 °C than at −40 °C, which a `tt`/27 °C-only basis could not have revealed.
+
+### Regeneration-inclusive (`noise-tran`), decision-referred
+
+| Corner | Provenance | σ (mV) | 95 % CI | N (pick-off) | Decision-transition cross-check | Record |
+|---|---|---|---|---|---|---|
+| `tt`/27 °C | schematic | 0.1362 | [0.1216, 0.1493] | 128 | 0.1342 mV — agrees | `sim/comparator-decision/records/20260922-192722-e23c509.md` |
+| `ss`/−40 °C | schematic | 0.1213 | [0.1084, 0.1335] | 128 | not measurable (overdrives below the corner's resolvable floor) | `sim/comparator-decision/records/20260922-205857-ebea4e2.md` |
+| `ff`/125 °C | schematic | 0.1754 | [0.1594, 0.1905] | 128 | 0.1515 mV — agrees | `sim/comparator-decision/records/20260923-010427-ebea4e2.md` |
+| `tt`/27 °C | **post-layout** | **0.1448** | [0.1224, 0.1641] | 64 | degenerate — a *deterministic* term sets the outcome | `sim/comparator-decision/records/20260925-214740-81f594b.md` |
+
+The schematic→post-layout ratio at `tt`/27 °C is **1.063×**, and it sits
+**inside** the post-layout 95 % CI. So that record establishes the post-layout
+figure *and its uncertainty*; it does **not** establish that this quantity moved
+with the layout. The post-layout sample size is deliberately smaller (N=64 vs.
+128) for wall-clock reasons stated on the record's own face.
+
+The post-layout cross-check's degeneracy is independent evidence for the
+sub-20 mV polarity asymmetry
+([#66](https://github.com/2AMLogic/sky130-comparator/issues/66)): all 64 runs
+resolved and all decided the same way at both signs of a ±0.109 / ±0.217 mV
+overdrive, consistent with the 0.6547 mV systematic offset measured on row 1.
+
+### Verdict — read this before citing the row
+
+**Every measured figure clears the ratified ≤ 1.0 mV target bound. The row is
+nevertheless NOT to be reported as compliant.** DR-006's disposition, reproduced
+in substance:
+
+1. The **bounds are unchanged** — target ≤ 1.0 mV rms differential, stretch
+   ≤ 0.6 mV rms differential, exactly as DR-002 ratified them. Nothing here is
+   relaxed, and nothing failed.
+2. The row's **compliance basis moves RATIFIED-and-clear → RATIFIED, basis
+   OPEN**. The bound stays ratified; what is re-opened is the claim that the
+   measured evidence establishes compliance with it. DR-002 §2's headroom
+   argument is **superseded by measurement** and must not be cited as current
+   justification: it reasoned that the excluded regeneration-phase term would
+   have to reach ~0.90 mV rms to threaten the target, and from the post-layout
+   worst corner's 0.9423 mV rms it now needs only
+   `sqrt(1.0² − 0.9423²)` = **0.335 mV rms** in quadrature — 2.7× less headroom
+   than the ratification reasoned from, on a figure the methodology states is a
+   **lower** bound.
+3. **The evidence that would close it again** is a regeneration-inclusive
+   input-referred noise measurement against the extracted netlist at
+   **`fs`/125 °C** — post-layout `noise-tran` at the corner that binds the row.
+   Issue [#65](https://github.com/2AMLogic/sky130-comparator/issues/65) built
+   the post-layout deck form and ran it at `tt`/27 °C, so the closing run is now
+   a scheduling question rather than a missing capability, but **it has not been
+   run**. DR-006's closure condition is open and tracked as
+   [#83](https://github.com/2AMLogic/sky130-comparator/issues/83).
+4. **The stretch figure is breached at four of seven corners** post-layout
+   (`tt`/27 °C, `ff`/125 °C, `sf`/125 °C, `fs`/125 °C) and cleared at the three
+   cold ones. Unchanged in value; not a compliance requirement.
+
+Until the `fs`/125 °C post-layout `noise-tran` exists, **every statement of this
+row must carry the 1.06× worst-corner qualifier**. A bare "clears the noise
+target" is not supportable.
+
+---
+
+## 3. Decision time vs. overdrive
+
+- **Status**: RATIFIED by [DR-005](../spec/decision-records/DR-005-full-corner-campaign.md) (open since DR-002, anchored by DR-004).
+- **Bounds**: target ≤ 1.5 ns at 50 mV overdrive, 1.8 V; stretch ≤ 0.8 ns at 50 mV.
+- **Method**: `run.py regen` — a transient regeneration-time sweep vs. differential input, read off a `|v(outp)−v(outn)| > 0.5·VDD` threshold crossing. Both bounds are stated at the 50 mV point.
+
+### All seven graded corners, both provenances
+
+| Corner | Schematic @ 50 mV | Post-layout @ 50 mV | Ratio | Sweep points resolved (sch → PL) | Post-layout record |
+|---|---|---|---|---|---|
+| `tt`/27 °C | 0.4025 ns | 0.5325 ns | 1.323× | 8/8 → 6/8 | `sim/comparator-decision/records/20260925-085247-4694692.md` |
+| `ss`/−40 °C | 0.3575 ns | 0.4725 ns | 1.322× | 7/8 → 3/8 | `sim/comparator-decision/records/20260925-093624-4694692.md` |
+| `ff`/125 °C | 0.4975 ns | 0.6475 ns | 1.302× | 8/8 → 8/8 | `sim/comparator-decision/records/20260925-175622-bec714a.md` |
+| `sf`/−40 °C | 0.3475 ns | 0.4425 ns | 1.273× | 8/8 → 5/8 | `sim/comparator-decision/records/20260925-192610-bec714a.md` |
+| `sf`/125 °C | 0.4725 ns | 0.6375 ns | 1.349× | 8/8 → 7/8 | `sim/comparator-decision/records/20260925-182949-bec714a.md` |
+| `fs`/−40 °C | 0.3725 ns | 0.4875 ns | 1.309× | 8/8 → 5/8 | `sim/comparator-decision/records/20260925-185950-bec714a.md` |
+| `fs`/125 °C | 0.5375 ns | **0.7725 ns** | **1.437×** | 8/8 → 7/8 | `sim/comparator-decision/records/20260925-173228-bec714a.md` |
+
+Schematic-level records, in the same corner order:
+`sim/comparator-decision/records/20260922-070800-e084b55.md`,
+`sim/comparator-decision/records/20260922-071313-e084b55.md`,
+`sim/comparator-decision/records/20260922-175252-e23c509.md`,
+`sim/comparator-decision/records/20260922-175425-e23c509.md`,
+`sim/comparator-decision/records/20260922-175554-e23c509.md`,
+`sim/comparator-decision/records/20260922-175734-e23c509.md`,
+`sim/comparator-decision/records/20260922-175918-e23c509.md`.
+
+### Verdict and caveats
+
+- **Target bound: met at all seven corners.** Worst case `fs`/125 °C,
+  0.7725 ns against ≤ 1.5 ns — 1.94×.
+- **Stretch bound: also met at all seven corners — but at `fs`/125 °C with only
+  1.04× margin (3.4 %).** Flagged, not smoothed over. It is the figure that
+  would move first if the supply-net parasitic model were refined; the lumped
+  star R on `GND`/`VDD` is expected to be *pessimistic*, so the true margin is
+  plausibly better than 1.04× — an argument for re-measuring with
+  `--distributed-rc`, not for assuming it.
+- **The post-layout penalty is corner-dependent** (1.273×–1.437×) and largest at
+  the **hot** corner, the opposite of row 4. Neither row's PVT shape can be
+  inferred from the other's.
+- **Sub-20 mV resolution degrades post-layout, asymmetrically in polarity.**
+  8/8 resolve at `ff`/125 °C, 7/8 at the 125 °C skews, 5/8 at both −40 °C skews,
+  3/8 at `ss`/−40 °C. `regen`'s criterion is sign-corrected, so a
+  wrong-polarity decision and a genuine non-decision both read `UNRESOLVED` —
+  the sweeps *bracket* the asymmetry (between 2 and 5 mV at the cold skews)
+  rather than measuring it. Neither bound is touched: both are stated at 50 mV
+  overdrive, which resolves at every corner. Tracked as
+  [#66](https://github.com/2AMLogic/sky130-comparator/issues/66).
+
+---
+
+## 4. Kickback
+
+- **Status**: bound RATIFIED by [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) (as a bound the then-current design did **not** meet); design first measured compliant by [DR-004](../spec/decision-records/DR-004-comparator-preamp-supersession.md); PVT set completed by DR-005 and post-layout by the extracted-netlist campaign.
+- **Bounds**: target ≤ 5 mV disturbance into a 1 kΩ source impedance at the input nodes on a single decision edge; stretch ≤ 2 mV.
+- **Method**: `run.py kickback` — `VINP`/`VINN` biased at `VCM` through an explicit 1 kΩ series resistor each (`loaded`), 50 mV differential step, one reset→evaluate edge; peak absolute deviation from each node's own settled pre-edge value. A zero-impedance `ideal` control must collapse to (numerically) zero, or the measurement is not isolating a source-impedance-dependent effect at all.
+
+### All seven graded corners, both provenances
+
+| Corner | Schematic | Post-layout | Ratio | `ideal` control (PL) | Post-layout record |
+|---|---|---|---|---|---|
+| `tt`/27 °C | 1.8902 mV | 2.6767 mV | 1.416× | 0.0000 mV | `sim/comparator-decision/records/20260925-094700-4694692.md` |
+| `ss`/−40 °C | 1.8605 mV | 2.7564 mV | 1.482× | 0.0000 mV | `sim/comparator-decision/records/20260925-165936-45f0767.md` |
+| `ff`/125 °C | 1.7677 mV | 2.2985 mV | 1.300× | 0.0000 mV | `sim/comparator-decision/records/20260925-170317-45f0767.md` |
+| `sf`/−40 °C | 2.0208 mV | **3.1989 mV** | **1.583×** | 0.0000 mV | `sim/comparator-decision/records/20260925-165719-45f0767.md` |
+| `sf`/125 °C | 1.7837 mV | 2.3443 mV | 1.314× | 0.0000 mV | `sim/comparator-decision/records/20260925-165748-45f0767.md` |
+| `fs`/−40 °C | 1.8408 mV | 2.6795 mV | 1.456× | 0.0000 mV | `sim/comparator-decision/records/20260925-165825-45f0767.md` |
+| `fs`/125 °C | 1.6091 mV | 1.9558 mV | 1.215× | 0.0000 mV | `sim/comparator-decision/records/20260925-165858-45f0767.md` |
+
+Schematic-level records, in the same corner order:
+`sim/comparator-decision/records/20260922-070119-e084b55.md`,
+`sim/comparator-decision/records/20260922-070212-e084b55.md`,
+`sim/comparator-decision/records/20260922-070307-e084b55.md`,
+`sim/comparator-decision/records/20260922-180026-e23c509.md`,
+`sim/comparator-decision/records/20260922-180157-e23c509.md`,
+`sim/comparator-decision/records/20260922-180319-e23c509.md`,
+`sim/comparator-decision/records/20260922-180425-e23c509.md`.
+
+### Verdict and caveats
+
+- **Target bound: met at all seven corners.** Worst case `sf`/−40 °C,
+  3.1989 mV against ≤ 5 mV — 1.56×. The row is **not** re-opened.
+- **Stretch figure: breached at six of seven corners** (by 60 % at `sf`/−40 °C);
+  `fs`/125 °C at 1.9558 mV is the only corner that still meets it. Recorded, not
+  legislated away — the stretch figure is unchanged and is not a compliance
+  requirement.
+- **The post-layout penalty is not a corner-independent constant.** It ranges
+  1.215×–1.583× and is systematically larger at the **cold** corners
+  (`sf`/−40 °C 1.583×, `ss`/−40 °C 1.482×, `fs`/−40 °C 1.456×) than the hot ones
+  (`fs`/125 °C 1.215×, `ff`/125 °C 1.300×, `sf`/125 °C 1.314×). Layout penalty
+  and schematic worst case therefore **reinforce rather than cancel**. Scaling
+  the `tt`/27 °C ratio onto `sf`/−40 °C would have predicted ≈ 2.7 mV against
+  the 3.1989 mV measured (18 % low) — which is why this row needed measuring at
+  every corner rather than extrapolating from one.
+- Historical note, for anyone reading an older claim: this row measured
+  144.60 mV at `tt`/27 °C on the DR-001 single-tail design
+  (`sim/comparator-decision/records/20260916-060139-f1eb978.md`) and 85.71 mV
+  after [DR-003](../spec/decision-records/DR-003-kickback-slew-limited-clock.md)'s
+  soft-clock shaper
+  (`sim/comparator-decision/records/20260921-185208-bb32850.md`). DR-004's
+  topology change is what made the row compliant; those two figures
+  characterize superseded designs and are context, not evidence for any row
+  above.
+
+---
+
+## 5. Supply / power
+
+- **Status**: **DRAFT / OPEN** — [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) declined to ratify it because no measurement existed and the clock rate the bound assumes is TBD. It is the one row of the five that is still unratified.
+- **DRAFT figures** (*not* bounds — nothing here is ratified, so nothing here can be met or breached): 1.8 V ±10 % core supply (`nfet_01v8`/`pfet_01v8`); ≤ 50 µW average at one decision per clock edge at a **TBD** clock rate; stretch ≤ 20 µW.
+- **The supply-flavor half is settled**: sky130 ships no complementary 3.3 V enhancement device pair, so the 1.8 V core flavor is the only complementary-CMOS option at this node. That half of the row is not in question.
+
+### What has actually been measured
+
+| Quantity | Condition | Figure | Source |
+|---|---|---|---|
+| Static (reset-phase) supply current | `tt`/27 °C, `ss`/−40 °C, `ff`/125 °C | ~51–55 µA | `spec/dr-004-support/evaluate_idd_probe.spice` (DR-004 §Consequences) |
+| Evaluate-phase supply current | same three corners | ~344–564 µA | `spec/dr-004-support/evaluate_idd_probe.spice` (DR-004 §Consequences) |
+| Implied static power at 1.8 V | — | **~95 µW** | derived from the row above |
+| Worst \|I(VDD)\| over the reset settle window, **schematic** | 5-corner reset set | 4.228e−05 … 6.756e−05 A | `sim/comparator-decision/records/20260922-070024-e084b55.md` |
+| Worst \|I(VDD)\| over the reset settle window, **post-layout** | same 5-corner set | 4.789e−05 … 6.642e−05 A | `sim/comparator-decision/records/20260925-165718-8ea399d.md` |
+
+The two `reset` records are the only committed evidence records that carry a
+supply-current column at all, and they carry it as criterion (4) of a
+**pass/fail reset-integrity screen**, not as a power measurement: what that
+criterion rests on is the separation between the as-drawn figure and the
+GND-tied positive control (8.376e−04 … 1.056e−03 A schematic,
+7.856e−04 … 8.306e−04 A post-layout — corner by corner, 12–24× the as-drawn
+figure schematically and 12–17× post-layout), not the absolute level. The schematic→post-layout comparison on the as-drawn column
+is therefore reported here as an overlap of ranges, not a ratio: the layout does
+not move it materially.
+
+### Verdict
+
+- **There is no ratified bound on this row, so there is nothing for the design
+  to meet.** This report does not grade it, and no other artifact in this repo
+  should either.
+- **The DRAFT 50 µW figure is already exceeded by the static term alone**
+  (~95 µW at 1.8 V), before any duty-cycle-dependent evaluate term. The DR-004
+  preamplifier class costs static current by construction.
+- **No average-power figure exists at all**, because the row's "one decision per
+  clock edge at a stated clock rate" framing has no ratified clock rate behind
+  it — and that framing itself predates the preamplifier and is superseded in
+  substance. Re-anchoring the row is an open ratification decision (DR-004 Open
+  items); per `CLAUDE.md` the DRAFT figures are **not** changed to accommodate
+  the measurement.
+- Post-layout coverage of this row is limited to the reset-phase current column
+  above. No post-layout evaluate-phase or average-power measurement exists.
+
+---
+
+## Coverage — what is and is not measured post-layout
+
+| Sub-command | Row(s) it feeds | Post-layout corner coverage | Gap |
+|---|---|---|---|
+| `kickback` | 4 | **7 of 7** graded corners | none |
+| `regen` | 3 | **7 of 7** graded corners | none |
+| `noise` (AC) | 2 | **7 of 7** graded corners | schematic→post-layout ratio available only at `tt`/27 °C (no AC counterpart elsewhere) |
+| `offset` | 1 | **1 of 5** `_mm` corners (`tt_mm`/27 °C) | 4 corners, deliberately skipped for cost; no post-layout large-N |
+| `noise-tran` | 2 | **1 of 7** graded corners (`tt`/27 °C) | 6 corners, **including `fs`/125 °C — the corner DR-006 would close on** ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) |
+| `reset` | 5 (current column) | **5 of 5** of its own corner set | none |
+
+Two coverage facts that apply to every row above:
+
+- **The supply nets have not been re-extracted with `klt extract
+  --distributed-rc`.** The single lumped star R on `GND`/`VDD` is 52.0 % of the
+  block's total series R and is expected to be pessimistic, so every post-layout
+  degradation in this report is an upper bound on the supply-network
+  contribution.
+- **Superseded post-layout set.** An earlier post-layout set
+  (`20260925-065137-87f0013` … `20260925-072817-2e2ef84`) was extracted on an
+  **off-pin** klt/klayout build whose per-net series resistances differ from the
+  pinned build's by up to 2.30×. Those records remain in place unedited per the
+  append-only rule and are **not** the figures any row above cites; each
+  superseding record names them in its `Supersedes` field.
+
+## Open items this report carries
+
+These are stated so a reader does not mistake an aggregated report for a closed
+one:
+
+- [#83](https://github.com/2AMLogic/sky130-comparator/issues/83) — post-layout
+  `noise-tran` at `fs`/125 °C. **DR-006's closure condition.** Until it lands,
+  row 2's compliance basis is open.
+- [#66](https://github.com/2AMLogic/sky130-comparator/issues/66) — the
+  layout-induced systematic offset (0.6547 mV) and the sub-20 mV
+  decision-polarity asymmetry. Affects rows 1, 2 and 3 as a caveat; touches no
+  bound, all of which are stated at 50 mV overdrive or on σ alone.
+- The Supply / power row's ratification decision (DR-004 Open items) — row 5 has
+  no ratified bound and cannot acquire one without a clock-rate framing
+  decision.
+- Four `_mm` corners and any large-N campaign for row 1, post-layout.
+- `klt extract --distributed-rc` on the supply nets, for every row's
+  post-layout figure.
+
+## What T1 item 8 `met` establishes — and what it does not
+
+A `"kind": "generic"` evidence envelope's `status: "pass"` is a **claimant
+assertion**, not a tool verdict. Nothing in `klt` reads this document. A `met`
+item 8 therefore asserts exactly two things:
+
+1. **Aggregation** — one artifact exists that covers all five target-spec rows
+   with the evidence record behind each figure named.
+2. **Currency** — this document and every record it cites are byte-for-byte the
+   ones the envelope was generated against (see below).
+
+It asserts **nothing** about whether any bound is met. Two rows above are live
+counter-examples: row 2's compliance basis is re-opened and row 5 has no
+ratified bound at all. The full statement of what the citation does and does not
+establish is in [`manifests/README.md`](../manifests/README.md).
+
+## Freshness enforcement
+
+T1 item 8's manifest entry is **command-backed**, not file-backed:
+
+```json
+"8": { "command": ["python3", "scripts/characterization-envelope.py"] }
+```
+
+`klt signoff` runs that script and grades item 8 against *that run's own*
+stdout. The script
+([`scripts/characterization-envelope.py`](../scripts/characterization-envelope.py)):
+
+1. re-hashes this report and every artifact listed in the
+   [Evidence index](#evidence-index) below,
+2. compares each against the hash pinned in
+   [`sim/characterization-envelope.json`](characterization-envelope.json),
+3. checks that the pinned set and the indexed set agree, and that every
+   `sim/comparator-decision/records/*.md` path mentioned anywhere in this report
+   appears in the index, and
+4. emits the generic envelope with `status: "pass"` only when all of that holds,
+   and `status: "fail"` otherwise.
+
+The drift signal is carried by the envelope's **`status` field**, not by the
+exit code: `klt signoff` parses a command-backed entry's stdout *before* it
+inspects `exit_status`, so a guard that exited nonzero while still printing
+`status: "pass"` would grade `met` anyway. Editing this report without running
+`python3 scripts/characterization-envelope.py --update` makes item 8 grade
+`unmet`/`check_failed`.
+
+This is the reason the entry is command-backed rather than file-backed: `klt`
+0.6.0 lists no input-artifact field for the `generic` kind, so a generic
+citation always reports `input_verified: null` and its freshness cannot be
+anchored by the grader itself (filed upstream as
+[2AMLogic/klayout-tools#2403](https://github.com/2AMLogic/klayout-tools/issues/2403)).
+Running the hash comparison live, in-repo, closes that gap here without pinning
+a `content_hash` the grader would never re-hash.
+
+### Regenerating
+
+```sh
+python3 scripts/characterization-envelope.py --update    # re-pin after editing this report
+python3 scripts/characterization-envelope.py             # emit the envelope (what klt runs)
+python3 scripts/characterization-envelope.py --selftest  # hermetic negative controls
+```
+
+Then regenerate the committed signoff record per
+[`manifests/README.md`](../manifests/README.md) → "Regenerating the evidence
+record".
+
+## Evidence index
+
+Every artifact this report draws a figure from. The script above pins each one
+by SHA-256; adding a citation to a row table without adding it here (or vice
+versa) is a `status: "fail"`.
+
+| Artifact | Row(s) | What it carries |
+|---|---|---|
+| `sim/comparator-decision/records/20260922-065300-e084b55.md` | 1 | `offset` N=16 `tt_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-173622-e23c509.md` | 1 | `offset` N=16 `ss_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-174326-e23c509.md` | 1 | `offset` N=16 `ff_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-174831-e23c509.md` | 1 | `offset` N=16 `sf_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-175152-e23c509.md` | 1 | `offset` N=16 `fs_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-191034-e23c509.md` | 1 | `offset` N=200 `tt_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-202434-e026012.md` | 1 | `offset` N=200 `ss_mm`/27 °C, schematic |
+| `sim/comparator-decision/records/20260925-112809-4694692.md` | 1 | `offset` N=16 `tt_mm`/27 °C, post-layout (+ 0.6547 mV systematic term) |
+| `sim/comparator-decision/records/20260922-065534-e084b55.md` | 2 | `noise` AC `tt`/27 °C, schematic |
+| `sim/comparator-decision/records/20260925-112827-4694692.md` | 2 | `noise` AC `tt`/27 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192710-bec714a.md` | 2 | `noise` AC `ss`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192728-bec714a.md` | 2 | `noise` AC `ff`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192745-bec714a.md` | 2 | `noise` AC `sf`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192801-bec714a.md` | 2 | `noise` AC `sf`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192818-bec714a.md` | 2 | `noise` AC `fs`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192836-bec714a.md` | 2 | `noise` AC `fs`/125 °C, post-layout — the corner that binds the row |
+| `sim/comparator-decision/records/20260922-192722-e23c509.md` | 2 | `noise-tran` `tt`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-205857-ebea4e2.md` | 2 | `noise-tran` `ss`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260923-010427-ebea4e2.md` | 2 | `noise-tran` `ff`/125 °C, schematic |
+| `sim/comparator-decision/records/20260925-214740-81f594b.md` | 2 | `noise-tran` `tt`/27 °C, post-layout |
+| `sim/comparator-decision/records/20260922-070800-e084b55.md` | 3 | `regen` `tt`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-071313-e084b55.md` | 3 | `regen` `ss`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-175252-e23c509.md` | 3 | `regen` `ff`/125 °C, schematic |
+| `sim/comparator-decision/records/20260922-175425-e23c509.md` | 3 | `regen` `sf`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-175554-e23c509.md` | 3 | `regen` `sf`/125 °C, schematic |
+| `sim/comparator-decision/records/20260922-175734-e23c509.md` | 3 | `regen` `fs`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-175918-e23c509.md` | 3 | `regen` `fs`/125 °C, schematic |
+| `sim/comparator-decision/records/20260925-085247-4694692.md` | 3 | `regen` `tt`/27 °C, post-layout |
+| `sim/comparator-decision/records/20260925-093624-4694692.md` | 3 | `regen` `ss`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-173228-bec714a.md` | 3 | `regen` `fs`/125 °C, post-layout — the slowest corner |
+| `sim/comparator-decision/records/20260925-175622-bec714a.md` | 3 | `regen` `ff`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-182949-bec714a.md` | 3 | `regen` `sf`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-185950-bec714a.md` | 3 | `regen` `fs`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-192610-bec714a.md` | 3 | `regen` `sf`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260922-070119-e084b55.md` | 4 | `kickback` `tt`/27 °C, schematic |
+| `sim/comparator-decision/records/20260922-070212-e084b55.md` | 4 | `kickback` `ss`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-070307-e084b55.md` | 4 | `kickback` `ff`/125 °C, schematic |
+| `sim/comparator-decision/records/20260922-180026-e23c509.md` | 4 | `kickback` `sf`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-180157-e23c509.md` | 4 | `kickback` `sf`/125 °C, schematic |
+| `sim/comparator-decision/records/20260922-180319-e23c509.md` | 4 | `kickback` `fs`/−40 °C, schematic |
+| `sim/comparator-decision/records/20260922-180425-e23c509.md` | 4 | `kickback` `fs`/125 °C, schematic |
+| `sim/comparator-decision/records/20260925-094700-4694692.md` | 4 | `kickback` `tt`/27 °C, post-layout |
+| `sim/comparator-decision/records/20260925-165719-45f0767.md` | 4 | `kickback` `sf`/−40 °C, post-layout — the worst corner |
+| `sim/comparator-decision/records/20260925-165748-45f0767.md` | 4 | `kickback` `sf`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-165825-45f0767.md` | 4 | `kickback` `fs`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-165858-45f0767.md` | 4 | `kickback` `fs`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260925-165936-45f0767.md` | 4 | `kickback` `ss`/−40 °C, post-layout |
+| `sim/comparator-decision/records/20260925-170317-45f0767.md` | 4 | `kickback` `ff`/125 °C, post-layout |
+| `sim/comparator-decision/records/20260916-060139-f1eb978.md` | 4 | `kickback` `tt`/27 °C on the **superseded** DR-001 single-tail design (144.60 mV) — historical context only |
+| `sim/comparator-decision/records/20260921-185208-bb32850.md` | 4 | `kickback` `tt`/27 °C after DR-003's soft-clock shaper (85.71 mV) — historical context only |
+| `sim/comparator-decision/records/20260922-070024-e084b55.md` | 5 | `reset` 5-corner screen, schematic — the \|I(VDD)\| column |
+| `sim/comparator-decision/records/20260925-165718-8ea399d.md` | 5 | `reset` 5-corner screen, post-layout — the \|I(VDD)\| column |
+| `spec/dr-004-support/evaluate_idd_probe.spice` | 5 | the reset/evaluate supply-current probe deck behind DR-004's ~95 µW static figure |
+| `spec/decision-records/DR-002-target-spec-ratification.md` | 1–5 | the ratification disposition every row's Status cell reports |
+| `spec/decision-records/DR-004-comparator-preamp-supersession.md` | 1–5 | the topology supersession every figure above is measured at |
+| `spec/decision-records/DR-003-kickback-slew-limited-clock.md` | 4 | the mitigation pass between the two superseded kickback figures above |
+| `spec/decision-records/DR-005-full-corner-campaign.md` | 1–4 | the full-corner campaign; ratifies row 3 |
+| `spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md` | 2 | re-opens row 2's compliance basis |

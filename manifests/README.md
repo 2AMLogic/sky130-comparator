@@ -17,7 +17,10 @@ move.
 
 ## The current verdict, honestly
 
-**1 of 11 T1 items is `met`: item 3, "DRC clean"** (issue #46), cited from
+**2 of 11 T1 items are `met`: item 3, "DRC clean" and item 8,
+"Characterization report."**
+
+**Item 3, "DRC clean"** (issue #46), cited from
 `layout/drc-report.json` — a committed `klt drc` envelope over
 `layout/comparator.gds`, `status: "clean"`, 0 violations, deck identified by
 content hash, with the cited input hash pinned in the manifest so a
@@ -29,6 +32,12 @@ qualify that "clean" are quoted in full in
 [`layout/README.md`](../layout/README.md) → "DRC signoff, and the coverage
 gaps behind 'clean'". A `met` row here is **not** evidence that they were
 disclosed — read them against the claim.
+
+**Item 8, "Characterization report"** (issue #86), is cited from
+[`sim/characterization-report.md`](../sim/characterization-report.md) through a
+`"kind": "generic"` evidence envelope. **What that `met` row does and does not
+establish has its own section below** — read it before citing the row; this is
+the one T1 item whose verdict is a claimant assertion rather than a tool's.
 
 **Item 4 ("LVS clean") is the one `unmet` row that has a passing envelope
 behind it, deliberately uncited** (issue #49). `klt lvs` is run over
@@ -125,12 +134,15 @@ the row itself becomes a one-line manifest change the moment item 4 is honestly
 citable, which is the same klayout-tools#2436 + re-draw step item 4 is waiting
 on.
 
-The other ten items render `unmet` with `reason: no_evidence`: apart from
+The other nine items render `unmet` with `reason: no_evidence`: apart from
 item 4's uncited envelope, item 7's ungradeable one and item 11's uncited
 ERC evidence above, no LVS/PEX citation exists, and this repo's
 `sim/` harness records evidence as append-only Markdown records, not
 `klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
-honestly for them yet. Those `unmet` rows are the correct result per issue
+honestly for them yet. Item 8 is the one exception to that last clause, and
+only because the checklist makes it one: it is the sole T1 item whose grading
+table accepts a hand-assembled record through the opt-in `generic` envelope
+(see its section below). Those `unmet` rows are the correct result per issue
 #31's own "An all-`unmet` manifest is a correct result" section: they are the
 machine-readable statement of the gap, and they must not be decorated with
 citations that do not actually support them (items 1, 2, 9 and 10 in
@@ -161,6 +173,113 @@ fires.) The report also records the grading build itself — `build.version`,
 `git_commit`, `git_tag`, `is_release`, and a `grading_ruleset_id` hash —
 so "which grader produced this verdict" is in the record, not inferred
 from the CI pin.
+
+## Item 8 — the characterization report, and what its `met` row does not establish
+
+Item 8 is the second `met` row (issue #86), and it is unlike item 3 in a way
+that matters more than the verdict: **`klt` does not check it.** The other ten
+T1 items are graded on a `klt` verb's own output — a run the tool performed and
+whose result it classified. Item 8 names no verb (`design-evidence-tiers.md`
+says so explicitly: "there is no dedicated aggregation command, and its
+evidence may be a hand-assembled record"), and the only kind it accepts is the
+opt-in `"kind": "generic"` envelope, whose pass predicate is literally
+`status == "pass"`. Nothing in `klt` reads
+[`sim/characterization-report.md`](../sim/characterization-report.md), checks
+that it covers five rows, or checks that anything in it is true.
+
+So the `met` row is a **claimant assertion**, and this file states its exact
+scope. It asserts two things:
+
+1. **Aggregation** — one artifact exists that covers all five target-spec rows
+   (Offset sigma, Input-referred noise, Decision time vs. overdrive, Kickback,
+   Supply/power), each with its ratification status, its bounds, the measured
+   figure at every condition that has one — schematic and post-layout, across
+   the seven graded PVT corners with the schematic→post-layout ratio per row —
+   and the `sim/comparator-decision/records/*.md` record each figure rests on.
+2. **Currency** — that report and every artifact its "Evidence index" names are
+   byte-for-byte the ones the citation was generated against. This half is
+   mechanically enforced; see "How freshness is enforced" below.
+
+It asserts **nothing whatsoever about whether any bound is met**, and two rows
+of the report are live counter-examples that a reader must not smooth over:
+
+- **Input-referred noise.** The bound is RATIFIED and every measured figure
+  clears it — and the row is still **not** compliant-as-read.
+  [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)
+  moved its *compliance basis* from RATIFIED-and-clear to **RATIFIED, basis
+  OPEN**: the post-layout worst corner (`fs`/125 °C, 0.9423 mV rms against a
+  ≤ 1.0 mV target, on a figure the methodology states is a **lower** bound)
+  leaves only 0.335 mV rms of quadrature headroom for the excluded
+  regeneration-phase term, where DR-002 ratified the row on an argument that
+  ~0.90 mV would be needed. DR-006's closure condition — a post-layout
+  `noise-tran` at `fs`/125 °C — is **still open**
+  ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)). A `met`
+  item 8 does not close it, weaken it, or imply it away.
+- **Supply / power.** Still **DRAFT / OPEN**: no ratified bound exists at all,
+  no average-power figure exists at all (the clock rate the DRAFT figure
+  assumes is TBD), and the measurement that does exist — ~95 µW static at
+  1.8 V, from DR-004's preamplifier bias — is already above the DRAFT 50 µW
+  figure. A `met` item 8 says a report covers this row honestly, not that the
+  row passes anything.
+
+This is the same register as the item-4, item-7 and item-11 paragraphs above,
+reached from the other direction. There, real passing evidence is **not** cited
+because citing it would tell a fleet integrator something untrue. Here the
+citation *is* made, because the thing it asserts — "an aggregated, current
+characterization artifact exists" — is exactly what item 8 asks for and is
+exactly true. What must not happen is the two being conflated: a `met` item 8
+next to an `unmet` item 7 does not mean the characterization is signed off, it
+means the aggregation exists.
+
+### How freshness is enforced
+
+Item 8's manifest entry is **command-backed**, not file-backed:
+
+```json
+"8": { "command": ["python3", "scripts/characterization-envelope.py"] }
+```
+
+`klt signoff` runs that script and grades the item against *that run's own*
+stdout. The script re-hashes the report and every artifact its Evidence index
+names against the pins committed in
+[`sim/characterization-envelope.json`](../sim/characterization-envelope.json),
+and emits `status: "pass"` only when everything matches — so an edited report,
+a regenerated evidence record, a vanished record, or an index that has drifted
+out of step with the pins each render item 8 `unmet`/`check_failed` rather than
+grading a stale document. Regenerate with
+`python3 scripts/characterization-envelope.py --update`, then regenerate the
+signoff record below. `python3 scripts/characterization-envelope.py --selftest`
+is the hermetic negative-control suite proving each of those cases bites, and
+runs in CI alongside the other gates' selftests.
+
+Two properties of that design are load-bearing and easy to get wrong:
+
+- **The drift signal is the envelope's `status`, not the exit code.**
+  `_grade_evidence` parses a command-backed entry's stdout *before* it inspects
+  `exit_status`, and grades whatever parses regardless of it. A guard that
+  exited 1 while still printing `status: "pass"` would grade `met` anyway. The
+  script derives its exit code *from* the status, and the selftest asserts that
+  no failing path ever prints `status: "pass"`.
+- **The emitted envelope deliberately carries no `provenance` block.** `klt`
+  0.6.0 lists no input-artifact field for the `generic` kind
+  (`_INPUT_ARTIFACT_FIELDS`), so a generic citation's `input_verified` is
+  always `null` and the grader never re-hashes anything. Had the envelope
+  carried a `provenance.input.content_hash`, the citation would pair a non-null
+  `content_hash` with `input_verified: null` — the exact shape rule 3 of the
+  gate below warns on, permanently. With no provenance block the citation's
+  `content_hash` is `null`, rule 3 stays silent, and the freshness claim is
+  anchored by the live re-hash instead of by a pin nothing checks. That gap is
+  filed generically, per `CLAUDE.md`'s friction protocol, as
+  [2AMLogic/klayout-tools#2403](https://github.com/2AMLogic/klayout-tools/issues/2403)
+  — closed upstream against an unreleased build, so the pinned 0.6.0 still has
+  it; when a release carrying the fix is pinned here, this entry could become
+  file-backed with a provenance-anchored hash and the live re-hash could
+  retire.
+
+The report is cross-linked from
+[`sim/comparator-decision/README.md`](../sim/comparator-decision/README.md),
+whose per-record prose it aggregates. It adds no measurement: every figure in
+it is copied from a committed record, and the report says so on its face.
 
 ## Regenerating the evidence record
 
@@ -208,6 +327,15 @@ rule 3 now gets an affirmative verification instead of a standing warning.
 The `input_verified: null` branch stays in the gate and stays covered by
 the selftest — it is the correct behavior for any future citation graded by
 a build that cannot re-hash.
+
+**Item 8's citation keeps it warning-free by construction, not by luck.** Its
+`input_verified` *is* `null` (no `klt` build can re-hash a `generic`
+envelope), but rule 3 warns only on a null `input_verified` paired with a
+**non-empty** `content_hash` — and item 8's envelope carries no `provenance`
+block, so its `content_hash` is `null` too and the rule does not fire. That is
+a deliberate choice, not an omission: the freshness the pin would have claimed
+is instead re-checked live by the command the entry runs. See "Item 8 — the
+characterization report" above.
 
 Item 3's citation also now carries a `coverage` block (klayout-tools
 #2002) echoing the cited envelope's `layers_in_stream_without_rules` /
