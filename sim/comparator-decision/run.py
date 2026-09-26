@@ -596,6 +596,33 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "gain 64.4571 V/V, decision-transition cross-check 0.1342 mV "
         "(64 seeds/sign/point)",
     ),
+    # The two graded `noise-tran` corners beyond tt/27C that the issue #41
+    # schematic-level campaign measured: `ss`/-40C and `ff`/125C, the
+    # slow/cold and fast/hot anchors. Added by issue #89. Without these
+    # entries a post-layout run at either corner printed
+    # `post_layout_delta_lines()`'s "no committed schematic-level record
+    # exists" note -- honest in form but FALSE in fact, since a committed
+    # counterpart sat in `records/` the whole time. The four remaining graded
+    # points (`sf`/-40C, `sf`/125C, `fs`/-40C, `fs`/125C) genuinely have no
+    # schematic-level `noise-tran` counterpart, so they correctly keep
+    # falling through to that note.
+    ("noise-tran", "ss", -40.0): Baseline(
+        "20260922-205857-ebea4e2",
+        "decision-referred input-referred noise sigma (pick-off MC)",
+        0.1213, "mV", "N=128 pick-off seeds, 95% CI [0.1084, 0.1335] mV, "
+        "gain 77.6506 V/V; the decision-transition cross-check is NOT "
+        "MEASURABLE at this corner (every pair degenerate -- the "
+        "sigma-scaled overdrives sit below this corner's "
+        "resolvable-overdrive floor), so the pick-off statistic stands "
+        "alone",
+    ),
+    ("noise-tran", "ff", 125.0): Baseline(
+        "20260923-010427-ebea4e2",
+        "decision-referred input-referred noise sigma (pick-off MC)",
+        0.1754, "mV", "N=128 pick-off seeds, 95% CI [0.1594, 0.1905] mV, "
+        "gain 38.1254 V/V, decision-transition cross-check 0.1515 mV "
+        "(64 seeds/sign/point)",
+    ),
 }
 
 # `reset` has no scalar to difference -- it is a four-criterion pass/fail
