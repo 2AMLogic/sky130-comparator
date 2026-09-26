@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "kind": "generic",
+  "status": "pass",
+  "summary": "Reference shape for T1 item 8's generic evidence envelope, and the freshness pins scripts/characterization-envelope.py checks against. NOT cited directly by manifests/sky130-comparator.json -- the manifest cites the command, so the hash comparison happens live.",
+  "source": "sim/characterization-report.md",
+  "freshness": {
+    "generator": [
+      "python3",
+      "scripts/characterization-envelope.py"
+    ],
+    "report": {
+      "path": "sim/characterization-report.md",
+      "content_hash": "sha256:ab8f2b272e0a705f5683abaa1e4f71057c2237649c46a3e1809870a43369f10d"
+    },
+    "artifacts": [
+      {
+        "path": "sim/comparator-decision/records/20260922-065300-e084b55.md",
+        "content_hash": "sha256:28a71d2cf11b983e2383c71b9840b6918945c4ddc63eacf1f184b64c6542f086"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-173622-e23c509.md",
+        "content_hash": "sha256:df438dafcae15dc634246b95f6ec17ee3b5be5d19f38ed909ba6499250d86629"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-174326-e23c509.md",
+        "content_hash": "sha256:1060868f6e89d371c86f442d4d85f579f2ccfa1502ebc7a4ce6da8014955fbad"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-174831-e23c509.md",
+        "content_hash": "sha256:aea687c00f22b4135c96bc218caf137c908cef9806fe141917953ee463444e45"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175152-e23c509.md",
+        "content_hash": "sha256:a7dc12a88ae018584c9ddb99e23712b8dad5e06b1f9e0b18b810fe06065758c7"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-191034-e23c509.md",
+        "content_hash": "sha256:f376f058dc530f30ca019135e8d33b2a1dd26ef368a0b508f58dd1896c8d5723"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-202434-e026012.md",
+        "content_hash": "sha256:c641488557228096faa8c4b94a31a13e38916d5df0f5d547f85be6e46549a754"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-112809-4694692.md",
+        "content_hash": "sha256:476944d81cc6f2616bfede2cddb1389448f4e825e27ccd1c1f897c4b590dc710"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-065534-e084b55.md",
+        "content_hash": "sha256:41720900c31c49447366222d63b9d5500b71f5c29c348d4369e8ffb6f3f36983"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-112827-4694692.md",
+        "content_hash": "sha256:f5669f81253526e97dce4ddf8ff584b5ea9a998ff3e68669e4c57ab2bb9e39b1"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192710-bec714a.md",
+        "content_hash": "sha256:c1bfe832f9f874034b5b6140d83e630a013406ff0df93c20fd780977971aba8d"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192728-bec714a.md",
+        "content_hash": "sha256:a96cd6a8437fd10bf9c1ba51357c657a614302d0111035b8d02f58e431a6c6dc"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192745-bec714a.md",
+        "content_hash": "sha256:f2864298201ca5d80698c125698a7b81d61cafb390cee038660a24eeff6807de"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192801-bec714a.md",
+        "content_hash": "sha256:efc3475131475d40a59f92599e21c46febc47eb23e4eee427fb59aa77a4f57a1"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192818-bec714a.md",
+        "content_hash": "sha256:6aaff07b281a002d1910caf049900d763c8a721786d20d108ad35f3d94cf1b69"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192836-bec714a.md",
+        "content_hash": "sha256:f8f7603f8c99378c63b784f91989975fac4688b519453009e03d08e024541469"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-192722-e23c509.md",
+        "content_hash": "sha256:24486bb8a73242a542404d064f4ed8697bce2854bbcaff51008c29601e16e211"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-205857-ebea4e2.md",
+        "content_hash": "sha256:e6a3b19abecc7700468f6c2b6f0c4097be35a40fd5ac678ccb419c9aac07881f"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260923-010427-ebea4e2.md",
+        "content_hash": "sha256:25b4d5f2e9adb1501b76fd58f11865bb52087b451e0cf8728395109ad4fd3372"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-214740-81f594b.md",
+        "content_hash": "sha256:79fdb29dabc886e03912ee9bbefcfb7e18e2e034856c7346d4377fe5f7a42ee1"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-070800-e084b55.md",
+        "content_hash": "sha256:8f9996c3e4764ab50f8968191edc579c8234f6090d304c745cd5062a40579de6"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-071313-e084b55.md",
+        "content_hash": "sha256:f35914880cfb5b6d768fffa2e93d8e6d49d2263e304ea8e4be4500a5fee2623e"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175252-e23c509.md",
+        "content_hash": "sha256:b6af4827f61c09d0e6f4ce8aee003519da6788cbfcb1edcbdb506617075f1166"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175425-e23c509.md",
+        "content_hash": "sha256:237f89af7202be2bbc688fce555250f5df7a2483942cbf030159e5ba01b3e629"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175554-e23c509.md",
+        "content_hash": "sha256:df60ed7a8e7a4cde668e5d56d39c3e338dc064df630d9956b03b2bed2b7dc4ab"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175734-e23c509.md",
+        "content_hash": "sha256:9fb5f62316adff04c2cfb12a56827576f48d22ae6c82a8e9b25c26832b5c85da"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-175918-e23c509.md",
+        "content_hash": "sha256:4fdd75087e4590605464f4a7dbd286aa9307a4bcb37df45f0cb4e769ea0913b4"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-085247-4694692.md",
+        "content_hash": "sha256:19e97b11f6d6684eefb51a07ca7f2ef4d1e6b444b9213076bd2110515fdcdeba"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-093624-4694692.md",
+        "content_hash": "sha256:774c641faf2e08ddddf81e13dc9471349e563a7e38343b04d87e482c9edec56f"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-173228-bec714a.md",
+        "content_hash": "sha256:299d6529a5f6357d557663c32ce29f6119f9e4a1dd03e5213895bcb3f1aacea0"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-175622-bec714a.md",
+        "content_hash": "sha256:9ea1846e3c333d8f56208fa09c39792f4349027233bc35dfce62413a07c2d9dd"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-182949-bec714a.md",
+        "content_hash": "sha256:f5a77130c1683962575e3ddada4315e989323c08f9e516ecb011c51f4cb0c425"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-185950-bec714a.md",
+        "content_hash": "sha256:1612d57f19e815615300ecfb62df1c7418488991ae78e4c49af72a6691902a1f"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-192610-bec714a.md",
+        "content_hash": "sha256:7ae88eca7ce2fe3fbe9c739b3409df20009fa9624e0441183fe1de8aaf429a1b"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-070119-e084b55.md",
+        "content_hash": "sha256:39ba01b78b8f9061974cc34e1576b9b5338e0f80a2d38bb18da12682c919f32f"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-070212-e084b55.md",
+        "content_hash": "sha256:8ba95ec77d88e78b8a48de55bd62ee8701d006a12020cedd8cc5e2725249d5b6"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-070307-e084b55.md",
+        "content_hash": "sha256:954b7f530dccaa82a0e3efeab91e47d21738d1daa2a669489c9a666a2345f150"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-180026-e23c509.md",
+        "content_hash": "sha256:b361296f86b2c131ca88ec90d7d8c7058a8e14c9ef298647d34339d243d1087c"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-180157-e23c509.md",
+        "content_hash": "sha256:15c51e7bce1b4bf408ea273ce9f5b497e17cd3c35749a93b2efc37e6a8fe0734"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-180319-e23c509.md",
+        "content_hash": "sha256:b8dcf23090e7ad3fb4d903ca130b7cb4b1f1a475e1dc5f66a93098e891b77bb5"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-180425-e23c509.md",
+        "content_hash": "sha256:a03fb647e806bcd5ab759d307a532632d18a964ff53a8cf8832c4d5403afc33d"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-094700-4694692.md",
+        "content_hash": "sha256:bb7c647dd6b13b4aa4f67438e9d3c0e6e3e14da6e1f1a44160929a41d4b20312"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165719-45f0767.md",
+        "content_hash": "sha256:1ccc7d5fb1435429a5860a1fa44f6a9b2c55604f2fa6f39746c0c076db51f86c"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165748-45f0767.md",
+        "content_hash": "sha256:2891f9d411890501b1a04e4777f49ac0f3666a4820c1a56c31e5055affc352b6"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165825-45f0767.md",
+        "content_hash": "sha256:5309f19f459a4f3920fc75232683888901b116c881582cf188b8fd6eb9c89e99"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165858-45f0767.md",
+        "content_hash": "sha256:524b7bd1ac5132c51c1d361b327cf026fcb3dc9c0791630b4f0c6d4333938336"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165936-45f0767.md",
+        "content_hash": "sha256:cd3361622969c8df91fc4f50851a589381e0953091c752607d95b2b177c989d5"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-170317-45f0767.md",
+        "content_hash": "sha256:7ea120704c09214c47dbe4f9c1cccdde0731dfa4830b6f4f18e20cb7ca269ff1"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260916-060139-f1eb978.md",
+        "content_hash": "sha256:4718e15e5143d7fbd00cb2455c95ba66a2895b792ea6b03084617bb98b0b656e"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260921-185208-bb32850.md",
+        "content_hash": "sha256:abb45207ba88fa0b545a3f58439f1d2c2d3b459cf93ca497e4b0ee8d4bb7fa55"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260922-070024-e084b55.md",
+        "content_hash": "sha256:b6bec2d61929f57d11b6880c383c510cd790c5548b6f8bf3d620b9f3fd684a2e"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260925-165718-8ea399d.md",
+        "content_hash": "sha256:6a711cc5428acf1359b5cbbeee076706ea12690d0fbde6edb2b72c8619fbad10"
+      },
+      {
+        "path": "spec/dr-004-support/evaluate_idd_probe.spice",
+        "content_hash": "sha256:9601972aea9bd8932b395f317fb64fce44f55fe7139d5b5540e9f4dfea27d37d"
+      },
+      {
+        "path": "spec/decision-records/DR-002-target-spec-ratification.md",
+        "content_hash": "sha256:2c6a5f7197ea0be9d47a06062c5c8152aa6038a13759fffcef58aa163d7b28a4"
+      },
+      {
+        "path": "spec/decision-records/DR-004-comparator-preamp-supersession.md",
+        "content_hash": "sha256:3b2d00fae883fd060d6940030b14085d6b615cf384105db5d767ca5350be5b49"
+      },
+      {
+        "path": "spec/decision-records/DR-003-kickback-slew-limited-clock.md",
+        "content_hash": "sha256:49884667bae78d539896604e4e483aa30319c38aa65f1a472f5c73086290e7bf"
+      },
+      {
+        "path": "spec/decision-records/DR-005-full-corner-campaign.md",
+        "content_hash": "sha256:436156d08359561a404b4d20f50de54d992c88808291e6a615c411d2cf814290"
+      },
+      {
+        "path": "spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md",
+        "content_hash": "sha256:9c4b692ee5b7d3069a3e5dedb478c99aa4efa79e4b090d903675328728f2fb74"
+      }
+    ]
+  }
+}

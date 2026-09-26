@@ -5,6 +5,9 @@
     "3": {
       "file": "layout/drc-report.json",
       "content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4"
+    },
+    "8": {
+      "command": ["python3", "scripts/characterization-envelope.py"]
     }
   }
 }

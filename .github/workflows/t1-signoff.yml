@@ -43,6 +43,19 @@ jobs:
       - name: Gate selftest (hermetic; proves the rot detector bites)
         run: python3 scripts/check-t1-signoff.py selftest
 
+      # T1 item 8's evidence envelope (issue #86). The manifest's item-8 entry
+      # is command-backed, so `klt signoff` below runs this same script and
+      # grades the item on its stdout -- but a bare `unmet`/`check_failed` row
+      # says nothing about WHICH artifact drifted. Running it here first makes
+      # the failure legible (the script names the drifted path on stderr) and
+      # runs its hermetic negative controls, which prove the drift guard bites
+      # at all. Stdlib-only; no klt, no PDK.
+      - name: Characterization-envelope selftest (hermetic)
+        run: python3 scripts/characterization-envelope.py --selftest
+
+      - name: Re-hash the characterization report and its cited records
+        run: python3 scripts/characterization-envelope.py > /dev/null
+
       - name: Re-run T1 signoff against the committed manifest
         run: python3 scripts/check-t1-signoff.py gate
 

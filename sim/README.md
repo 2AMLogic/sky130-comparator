@@ -280,6 +280,21 @@ a record in place defeats it. Note that `.gitignore` carves `*.log` exceptions
 for `sim/*/corners/**` and `sim/*/mc-draws/**` precisely so this raw evidence
 is committed rather than swept up by the generic log-ignore rule.
 
+### The one derived artifact, and why the rule does not apply to it
+
+`sim/characterization-report.md` (issue #86) is the aggregated,
+per-target-spec-row view of the records above -- the artifact T1 item 8 names,
+cited through `manifests/sky130-comparator.json`. It is **not** a record and
+the append-only rule does not apply to it: it is *derived*, it holds no
+measurement of its own, and it is expected to be rewritten every time a record
+it draws on is added or superseded. Its companion
+`sim/characterization-envelope.json` holds the SHA-256 pins for the report and
+for every artifact its "Evidence index" names;
+`scripts/characterization-envelope.py` re-checks them live on every `klt
+signoff` run, so a record added here without re-pinning renders T1 item 8
+`unmet` rather than leaving a stale summary in place. Regenerate with
+`python3 scripts/characterization-envelope.py --update`.
+
 ## The harness acceptance test (`sim/selftest.sh`)
 
 `sim/selftest.sh` is the harness's own gate — the one-command runner this

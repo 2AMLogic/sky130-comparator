@@ -456,6 +456,22 @@ the reset PMOS (off in evaluate) are the residual omissions.
 
 ## Committed records
 
+**The aggregated view across all five target-spec rows is
+[`sim/characterization-report.md`](../characterization-report.md)** (issue #86,
+T1 item 8): every row's ratification status and bounds, its measured figure at
+every condition that has one -- schematic and post-layout, across the seven
+graded PVT corners with the schematic->post-layout ratio per row -- and the
+record below each figure rests on, in one place. It adds no measurement; every
+number in it is copied from a record in this directory. It is the evidence
+`manifests/sky130-comparator.json` cites for T1 item 8, through a `"kind":
+"generic"` envelope whose freshness is re-checked live by
+`scripts/characterization-envelope.py` -- so editing a record here without
+re-pinning makes that item grade `unmet`. What that `met` row does and does not
+establish (in particular: it asserts aggregation and currency, **not** that any
+bound is met) is stated in
+[`manifests/README.md`](../../manifests/README.md) -> "Item 8 -- the
+characterization report".
+
 Records against **this repo's own design** (`design/comparator.sch`), on the
 pinned toolchain (`sim/toolchain.json`) and PDK (`sim/pdk.json`). DRAFT
 target-spec rows are quoted for orientation only -- the table is unratified,
