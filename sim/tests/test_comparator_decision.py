@@ -750,6 +750,66 @@ class TestPostLayoutDelta(unittest.TestCase):
                         f"{corner}/{temp_c}C",
                     )
 
+    def test_noise_tran_anchors_match_the_committed_schematic_records(self):
+        """Issue #89: `noise-tran` had an anchor at tt/27C only, even though
+        the issue #41 schematic-level campaign also committed records at
+        `ss`/-40C and `ff`/125C. A post-layout run at either corner therefore
+        printed the "no committed schematic-level record exists" note while a
+        counterpart sat in `records/` -- honest in form, false in fact.
+
+        The anchor set must be exactly the set of corners a schematic-level
+        `noise-tran` record was committed at: the three below have one, the
+        other four graded points genuinely do not and must keep falling
+        through to the "no committed counterpart" path rather than inventing
+        a ratio."""
+        measured = {("tt", 27.0), ("ss", -40.0), ("ff", 125.0)}
+        for corner, temp_c in cd_run.GRADED_CORNERS:
+            base = cd_run.baseline_for("noise-tran", corner, temp_c)
+            with self.subTest(corner=corner, temp_c=temp_c):
+                if (corner, temp_c) in measured:
+                    self.assertIsNotNone(
+                        base,
+                        f"no schematic-level noise-tran anchor at "
+                        f"{corner}/{temp_c}C, but a committed record exists",
+                    )
+                else:
+                    self.assertIsNone(
+                        base,
+                        f"noise-tran anchor at {corner}/{temp_c}C claims a "
+                        "schematic-level counterpart that was never run",
+                    )
+
+    def test_noise_tran_skew_corners_say_no_counterpart_exists(self):
+        """The four graded `noise-tran` corners with no schematic-level
+        counterpart must print the note, not a fabricated ratio (issue #89's
+        acceptance criterion for the skew-corner records)."""
+        cd_run.set_dut_provenance("extracted")
+        for corner, temp_c in (
+            ("sf", -40.0), ("sf", 125.0), ("fs", -40.0), ("fs", 125.0),
+        ):
+            with self.subTest(corner=corner, temp_c=temp_c):
+                text = "\n".join(cd_run.post_layout_delta_lines(
+                    "noise-tran", corner, temp_c, 0.2))
+                self.assertIn("No committed schematic-level", text)
+                self.assertNotIn("Ratio", text)
+
+    def test_noise_tran_measured_corners_emit_a_real_ratio(self):
+        """The counterpart of the test above: at the three corners that DO
+        have a schematic-level record, a post-layout figure must difference
+        against it (issue #89 item 1's whole point)."""
+        cd_run.set_dut_provenance("extracted")
+        for corner, temp_c, record_id, sigma in (
+            ("ss", -40.0, "20260922-205857-ebea4e2", 0.1213),
+            ("ff", 125.0, "20260923-010427-ebea4e2", 0.1754),
+        ):
+            with self.subTest(corner=corner, temp_c=temp_c):
+                text = "\n".join(cd_run.post_layout_delta_lines(
+                    "noise-tran", corner, temp_c, sigma * 2.0))
+                self.assertIn(record_id, text)
+                self.assertIn(f"{sigma:.4f} mV", text)
+                self.assertIn("2.000x", text)
+                self.assertNotIn("No committed schematic-level", text)
+
     def test_every_mismatch_corner_has_an_offset_baseline(self):
         """Issue #80: the post-layout `offset` campaign differences all five
         `_mm` mismatch corners at 27 C, so an anchor must exist for each.
