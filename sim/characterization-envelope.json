@@ -11,7 +11,7 @@
     ],
     "report": {
       "path": "sim/characterization-report.md",
-      "content_hash": "sha256:b6e1c8440c131a42f347423006a517888e97f719c2bb12143547aa7b1155bdce"
+      "content_hash": "sha256:19b886f9650d766058d83e459c7954482f035d906c4ca4340bb33676b86e354f"
     },
     "artifacts": [
       {
@@ -45,6 +45,22 @@
       {
         "path": "sim/comparator-decision/records/20260925-112809-4694692.md",
         "content_hash": "sha256:476944d81cc6f2616bfede2cddb1389448f4e825e27ccd1c1f897c4b590dc710"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260926-022304-5b02508.md",
+        "content_hash": "sha256:09950c2814227cdb018c2808088360db0acf8a770cee0d053c32f120cfaec11f"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260926-032735-85c288e.md",
+        "content_hash": "sha256:bf2b9b23dde63d251a1c42f0c77435dabb9d44efca18e7a535d855c501572782"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260926-034704-dfaee77.md",
+        "content_hash": "sha256:6f085049a898e66c4e04cf1f318e76b519933279b277b3e03b966532ddd20906"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260926-041419-38f6227.md",
+        "content_hash": "sha256:a96d27dde7a35373a52f472855cd60e4ec3f10a91aebc82073ef0e1fd0dcd80e"
       },
       {
         "path": "sim/comparator-decision/records/20260922-065534-e084b55.md",

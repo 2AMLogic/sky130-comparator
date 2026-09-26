@@ -73,7 +73,7 @@ bound on the supply-network contribution**, not a best estimate of it. See
 
 | # | Row | Status | Target | Stretch | Worst measured (post-layout unless noted) | Target met? | Stretch met? |
 |---|---|---|---|---|---|---|---|
-| 1 | Offset sigma | RATIFIED (DR-002; coverage by DR-005) | ≤ 15 mV, 3σ | ≤ 8 mV, 3σ | 7.3338 mV 3σ (`tt_mm`/27 °C, N=16) | **yes** (2.05×) | yes (1.09×) |
+| 1 | Offset sigma | RATIFIED (DR-002; coverage by DR-005) | ≤ 15 mV, 3σ | ≤ 8 mV, 3σ | 7.4388 mV 3σ (`ff_mm`/27 °C, N=16) | **yes** (2.02×) | yes (1.08×) |
 | 2 | Input-referred noise | RATIFIED (DR-002); compliance basis re-opened (DR-006), **RE-CLOSED** (DR-006 Amendment 1, #83) | ≤ 1.0 mV rms diff | ≤ 0.6 mV rms diff | 0.2540 mV rms regeneration-inclusive (`fs`/125 °C); 0.9423 mV rms on the AC **lower bound**, same corner | **yes** (3.94×; 3.32× at the CI's upper bound) — on the regeneration-inclusive basis; see row 2 | no (breached at 4 of 7 on the AC basis) |
 | 3 | Decision time vs. overdrive | RATIFIED (DR-005) | ≤ 1.5 ns @ 50 mV | ≤ 0.8 ns @ 50 mV | 0.7725 ns (`fs`/125 °C) | **yes** (1.94×) | yes, but 1.04× |
 | 4 | Kickback | RATIFIED (DR-002 bound; DR-004 first compliant design) | ≤ 5 mV into 1 kΩ | ≤ 2 mV | 3.1989 mV (`sf`/−40 °C) | **yes** (1.56×) | no (breached at 6 of 7) |
@@ -109,7 +109,8 @@ stretch column is still "no". The row's full disposition is in
 | `fs_mm` | 1.8218 | 5.4654 | 0 exactly | `sim/comparator-decision/records/20260922-175152-e23c509.md` |
 
 The corner ranking sits inside the N=16 relative standard error (≈ 18 % on a
-stdev); `ss_mm` is nominally binding.
+stdev); `ss_mm` is nominally binding. That ranking does **not** survive layout —
+see the post-layout table below, where `ss_mm` is second-lowest.
 
 ### Schematic-level, N=200 (the yield-fraction campaigns)
 
@@ -122,32 +123,91 @@ The N=200 estimates sit ≈ 22 % above the N=16 figures — the small-sample
 estimate happened to land low, which is the tightness gap DR-002's Open items
 flagged.
 
-### Post-layout (`--dut extracted`)
+### Post-layout (`--dut extracted`), N=16, seed 1, 27 °C — all five `_mm` corners
 
-| Corner | Schematic σ | Post-layout σ | Ratio | 3σ post-layout | Record |
-|---|---|---|---|---|---|
-| `tt_mm`/27 °C, N=16 | 1.7857 mV | **2.4446 mV** | **1.369×** | 7.3338 mV | `sim/comparator-decision/records/20260925-112809-4694692.md` |
+| Corner | Schematic σ | Post-layout σ | Ratio | 3σ post-layout | Negative-control **mean** | Record |
+|---|---|---|---|---|---|---|
+| `tt_mm`/27 °C | 1.7857 mV | 2.4446 mV | 1.369× | 7.3338 mV | 0.6547 mV | `sim/comparator-decision/records/20260925-112809-4694692.md` |
+| `ss_mm`/27 °C | 1.8244 mV | **2.4133 mV** | 1.323× | 7.2400 mV | **0.6780 mV** | `sim/comparator-decision/records/20260926-022304-5b02508.md` |
+| **`ff_mm`/27 °C** | 1.5954 mV | **2.4796 mV** | **1.554×** | **7.4388 mV** | **0.6355 mV** | `sim/comparator-decision/records/20260926-032735-85c288e.md` |
+| `sf_mm`/27 °C | 1.6706 mV | **2.4794 mV** | 1.484× | 7.4381 mV | **0.6350 mV** | `sim/comparator-decision/records/20260926-034704-dfaee77.md` |
+| `fs_mm`/27 °C | 1.8218 mV | **2.4078 mV** | 1.322× | 7.2235 mV | **0.6874 mV** | `sim/comparator-decision/records/20260926-041419-38f6227.md` |
 
-The mismatch-disabled negative control's stdev is still exactly 0 post-layout,
-but its **mean** is not: 0.0000 mV on the symmetric schematic fragment,
-**0.6547 mV** post-layout. That is the first measurement of a **systematic,
-layout-induced** offset term on this block — a quantity this row's σ-only
-bounds do not cover at all.
+The four non-`tt_mm` rows landed with
+[#80](https://github.com/2AMLogic/sky130-comparator/issues/80) and close the
+coverage gap DR-005 and issue #64 left open. Every 3σ column above is `3 ×` the
+σ each record reports for its own mismatch-enabled positive control
+(`stdev = 2.44462 / 2.41332 / 2.47959 / 2.47938 / 2.40783 mV`), re-derived here
+from the records rather than carried over from any other document. Every corner's
+same-seed, mismatch-disabled negative control reproduced **stdev exactly 0**, so
+all five records are `Overall: PASS` and the deck is still isolating mismatch
+rather than an artifact of the extracted fragment.
+
+**The corner spread collapses post-layout, and nothing in it is resolved at
+N=16.** Schematic-level the five σ figures span 1.5954–1.8244 mV (14.4 %, with
+`ss_mm` nominally binding); post-layout they span 2.4078–2.4796 mV — **3.0 %**,
+far inside this sample size's own ≈ 18.3 % relative standard error on a stdev. So
+the schematic-level ranking does not survive layout (`ff_mm`, the *lowest*
+schematic corner, is the highest post-layout; `ss_mm` is second-lowest), but the
+honest reading is **not** "`ff_mm` binds" — it is that **this row has no
+identifiable worst post-layout corner at N=16**. `ff_mm` is named as the worst
+*measured* cell below because a bound comparison must be made against the largest
+measured figure, not because the corner is distinguished. Separating the corners
+needs the O(100s)-draw post-layout campaign, which does not exist.
+
+**The post-layout penalty is corner-dependent, and largest where the schematic
+figure was smallest**: 1.322×–1.554×, worst at `ff_mm` (schematic 1.5954 mV, the
+lowest) and smallest at `fs_mm`/`ss_mm` (schematic 1.8218/1.8244 mV, the
+highest). Unlike the σ figures themselves these ratios are **paired** — same seed
+sequence, same draws, same deck template, only the DUT fragment differs — so
+their ordering is better determined than an independent-sample reading of the
+18.3 % SE would suggest. Scaling `tt_mm`'s 1.369× anchor onto `ff_mm` would have
+under-predicted it by 12 %, which is why this row needed all five corners rather
+than one.
+
+**The systematic term is essentially process-independent.** The
+mismatch-disabled negative control's stdev is exactly 0 post-layout, but its
+**mean** is not: 0.0000 mV on the symmetric schematic fragment, and
+**0.6350–0.6874 mV** (an 8.3 % span, mean 0.6581 mV) across all five `_mm`
+corners post-layout. That is a **systematic, layout-induced** offset term — first
+measured at `tt_mm` (0.6547 mV) and now shown to barely move with process — and
+it is a quantity this row's σ-only bounds do not cover at any corner. Because it
+is corner-robust it is also the term that makes rows 2 and 3 read the way they
+do: it is the deterministic offset that swamps the sub-mV overdrives in row 2's
+degenerate post-layout `noise-tran` cross-checks and sits behind row 3's
+polarity-asymmetric sub-20 mV resolution loss, and the 0.6547 mV figure those
+rows cite is representative of the whole `_mm` set rather than of `tt_mm` alone.
 
 ### Verdict and caveats
 
-- **Target bound: met** at every measured corner and provenance — worst case
-  7.3338 mV 3σ against ≤ 15 mV (2.05×).
-- **Stretch bound: met**, with 1.09× margin post-layout (down from 1.49×
-  schematic-level).
-- **Post-layout coverage is 1 of 5 `_mm` corners.** The other four were
-  deliberately skipped for cost (`offset` is ~37 decks / ~25 min per corner
-  serially on a shared dispatch host) and the reason is recorded, not silent.
-  No post-layout large-N campaign exists.
-- **The systematic term is not bounded by this row.** Quantifying it is
-  [#66](https://github.com/2AMLogic/sky130-comparator/issues/66).
-- The pick-off gain falls 64.4571 → 30.4600 V/V (2.12×) post-layout — the
-  common cause this row shares with rows 2 and 3.
+- **Target bound: met** at every measured corner and provenance — worst measured
+  cell 7.4388 mV 3σ (`ff_mm`/27 °C, post-layout, N=16 → 3 × 2.47959 mV) against
+  ≤ 15 mV, a **2.02×** margin. No other cell in this row is larger: the other
+  four post-layout corners give 7.2235–7.4381 mV, the post-layout `tt_mm` anchor
+  7.3338 mV, and the largest schematic-level figure of either sample size is the
+  N=200 `ss_mm` 6.7059 mV.
+- **Stretch bound: met** at all five post-layout corners, worst case **1.08×**
+  (8 mV / 7.4388 mV) — down from 1.09× when `tt_mm` was the only post-layout
+  corner, and from 1.49× schematic-level. Recorded, not relaxed: neither bound is
+  breached, so **this row is not re-opened and no decision record is filed**.
+- **Post-layout coverage is now 5 of 5 `_mm` corners** (all at 27 °C, #80),
+  closing the four-corner skip DR-005/#64 recorded as a deliberate cost decision
+  (`offset` is the campaign's most expensive sub-command — ~37 decks and, as #80
+  measured, 19–64 min per corner serially on a contended shared dispatch host).
+  What remains open on this row is **sample size, not corner count**: no
+  post-layout large-N campaign exists, and at N=16 no corner-to-corner difference
+  is resolved.
+- **The systematic term is not bounded by this row.** It is now measured at all
+  five corners (0.6350–0.6874 mV) rather than one; quantifying and dispositioning
+  it is [#66](https://github.com/2AMLogic/sky130-comparator/issues/66).
+- The pick-off gain falls at every corner — 64.4571 → 30.4600 V/V (2.116×) at
+  `tt_mm`, and 1.808×–2.373× across the five (`ff_mm` 64.6023 → 35.7356,
+  `sf_mm` 66.0461 → 35.9542, `ss_mm` 53.9582 → 26.0386, `fs_mm` 61.0786 →
+  25.7414). That is the common cause this row shares with rows 2 and 3, but it
+  does **not** explain the ratio ordering above: the two corners that retain the
+  most gain (`ff_mm`, `sf_mm`) carry the *largest* offset ratios, and layout
+  *widens* the gain spread (1.224× → 1.397×) while *narrowing* the
+  input-referred σ spread.
 
 ---
 
@@ -217,7 +277,11 @@ the same record's 0.1956 mV pick-off figure — two independent statistics on th
 same extracted fragment agreeing to 11 %. The `tt`/27 °C and `fs`/125 °C
 degeneracies are therefore not "the cross-check does not work post-layout"; they
 are the all-one-way branch, with a deterministic term (row 1's 0.6547 mV
-post-layout systematic) swamping the overdrives. `ss`/−40 °C is degenerate for
+post-layout systematic) swamping the overdrives. That explanation is not
+`tt_mm`-specific: since #80 the same term is measured at **0.6350–0.6874 mV
+across all five `_mm` corners**, i.e. essentially process-independent, so it is
+available as the cause at the skewed corners too and not only where it was first
+measured. `ss`/−40 °C is degenerate for
 the third, distinct reason its schematic-level counterpart already recorded — the
 overdrives sit below that corner's resolvable-overdrive floor.
 
@@ -477,7 +541,7 @@ not move it materially.
 | `kickback` | 4 | **7 of 7** graded corners | none |
 | `regen` | 3 | **7 of 7** graded corners | none |
 | `noise` (AC) | 2 | **7 of 7** graded corners | schematic→post-layout ratio available only at `tt`/27 °C (no AC counterpart elsewhere) |
-| `offset` | 1 | **1 of 5** `_mm` corners (`tt_mm`/27 °C) | 4 corners, deliberately skipped for cost; no post-layout large-N |
+| `offset` | 1 | **5 of 5** `_mm` corners (all at 27 °C; the four non-`tt_mm` ones by [#80](https://github.com/2AMLogic/sky130-comparator/issues/80)) | none at N=16; no post-layout large-N campaign, and at N=16 the 3.0 % post-layout corner spread is unresolved inside an 18.3 % relative SE |
 | `noise-tran` | 2 | **4 of 7** graded corners (`tt`/27 °C; `fs`/125 °C, [#83](https://github.com/2AMLogic/sky130-comparator/issues/83); **`ss`/−40 °C and `ff`/125 °C**, [#89](https://github.com/2AMLogic/sky130-comparator/issues/89)) | 3 corners (`sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C) — but **not** `fs`/125 °C, the corner DR-006 closes on: that one is measured, and DR-006 Amendment 1 closes row 2's target-bound basis on it. None of the three remaining corners has a schematic-level counterpart, so none can yield a ratio; the only two that could, #89 ran. Separately open: every post-layout figure is N=32–64 against the schematic side's N=128, so no individual ratio is resolved |
 | `reset` | 5 (current column) | **5 of 5** of its own corner set | none |
 
@@ -527,13 +591,20 @@ one:
   corners on the AC basis. Not a compliance requirement, and deliberately not
   re-closed by #83's transient figure.
 - [#66](https://github.com/2AMLogic/sky130-comparator/issues/66) — the
-  layout-induced systematic offset (0.6547 mV) and the sub-20 mV
-  decision-polarity asymmetry. Affects rows 1, 2 and 3 as a caveat; touches no
-  bound, all of which are stated at 50 mV overdrive or on σ alone.
+  layout-induced systematic offset (0.6547 mV at `tt_mm`, and 0.6350–0.6874 mV
+  across all five `_mm` corners since #80, so essentially process-independent)
+  and the sub-20 mV decision-polarity asymmetry. Affects rows 1, 2 and 3 as a
+  caveat; touches no bound, all of which are stated at 50 mV overdrive or on σ
+  alone.
 - The Supply / power row's ratification decision (DR-004 Open items) — row 5 has
   no ratified bound and cannot acquire one without a clock-rate framing
   decision.
-- Four `_mm` corners and any large-N campaign for row 1, post-layout.
+- **Row 1's post-layout sample size.** Its four missing `_mm` corners **have
+  since been run** ([#80](https://github.com/2AMLogic/sky130-comparator/issues/80)),
+  so coverage is 5 of 5; what is still open is that every post-layout figure is
+  N=16, whose ≈ 18.3 % relative SE on a stdev is six times the 3.0 % spread the
+  five corners actually show. No post-layout large-N (O(100s)-draw) campaign
+  exists, and adding corners cannot substitute for one.
 - `klt extract --distributed-rc` on the supply nets, for every row's
   post-layout figure.
 
@@ -618,6 +689,10 @@ versa) is a `status: "fail"`.
 | `sim/comparator-decision/records/20260922-191034-e23c509.md` | 1 | `offset` N=200 `tt_mm`/27 °C, schematic |
 | `sim/comparator-decision/records/20260922-202434-e026012.md` | 1 | `offset` N=200 `ss_mm`/27 °C, schematic |
 | `sim/comparator-decision/records/20260925-112809-4694692.md` | 1 | `offset` N=16 `tt_mm`/27 °C, post-layout (+ 0.6547 mV systematic term) |
+| `sim/comparator-decision/records/20260926-022304-5b02508.md` | 1 | `offset` N=16 **`ss_mm`/27 °C, post-layout** (#80) — the nominally binding schematic corner, second-lowest post-layout |
+| `sim/comparator-decision/records/20260926-032735-85c288e.md` | 1 | `offset` N=16 **`ff_mm`/27 °C, post-layout** (#80) — the worst measured cell of this row (2.4796 mV σ → 7.4388 mV 3σ) and the largest post-layout ratio (1.554×) |
+| `sim/comparator-decision/records/20260926-034704-dfaee77.md` | 1 | `offset` N=16 **`sf_mm`/27 °C, post-layout** (#80) |
+| `sim/comparator-decision/records/20260926-041419-38f6227.md` | 1 | `offset` N=16 **`fs_mm`/27 °C, post-layout** (#80) — the fifth and last `_mm` corner; carries the largest systematic term (0.6874 mV) |
 | `sim/comparator-decision/records/20260922-065534-e084b55.md` | 2 | `noise` AC `tt`/27 °C, schematic |
 | `sim/comparator-decision/records/20260925-112827-4694692.md` | 2 | `noise` AC `tt`/27 °C, post-layout |
 | `sim/comparator-decision/records/20260925-192710-bec714a.md` | 2 | `noise` AC `ss`/−40 °C, post-layout |
