@@ -200,21 +200,27 @@ scope. It asserts two things:
    byte-for-byte the ones the citation was generated against. This half is
    mechanically enforced; see "How freshness is enforced" below.
 
-It asserts **nothing whatsoever about whether any bound is met**, and two rows
-of the report are live counter-examples that a reader must not smooth over:
+It asserts **nothing whatsoever about whether any bound is met**, and the rows
+below are live counter-examples that a reader must not smooth over:
 
-- **Input-referred noise.** The bound is RATIFIED and every measured figure
-  clears it — and the row is still **not** compliant-as-read.
+- **Input-referred noise.** The bound is RATIFIED, every measured figure clears
+  it, and for a while the row was still **not** compliant-as-read:
   [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)
   moved its *compliance basis* from RATIFIED-and-clear to **RATIFIED, basis
-  OPEN**: the post-layout worst corner (`fs`/125 °C, 0.9423 mV rms against a
-  ≤ 1.0 mV target, on a figure the methodology states is a **lower** bound)
-  leaves only 0.335 mV rms of quadrature headroom for the excluded
+  OPEN**, because the post-layout worst corner (`fs`/125 °C, 0.9423 mV rms
+  against a ≤ 1.0 mV target, on a figure the methodology states is a **lower**
+  bound) leaves only 0.335 mV rms of quadrature headroom for the excluded
   regeneration-phase term, where DR-002 ratified the row on an argument that
-  ~0.90 mV would be needed. DR-006's closure condition — a post-layout
-  `noise-tran` at `fs`/125 °C — is **still open**
-  ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)). A `met`
-  item 8 does not close it, weaken it, or imply it away.
+  ~0.90 mV would be needed. **DR-006's closure condition has since run**
+  ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)): post-layout
+  `noise-tran` at `fs`/125 °C measures 0.2540 mV rms differential
+  regeneration-inclusive (3.94× under the target; 3.32× at its 95% CI's upper
+  bound), and **DR-006 Amendment 1 closes the target-bound basis**. What
+  remains recorded rather than closed: the ≤ 0.6 mV **stretch** figure is still
+  breached at four of seven corners on the AC basis, and five graded corners are
+  still unmeasured post-layout for `noise-tran`. The point for *this* document
+  is unchanged either way — a `met` item 8 never closed that basis, weakened
+  it, or implied it away; the measurement did.
 - **Supply / power.** Still **DRAFT / OPEN**: no ratified bound exists at all,
   no average-power figure exists at all (the clock rate the DRAFT figure
   assumes is TBD), and the measurement that does exist — ~95 µW static at

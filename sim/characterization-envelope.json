@@ -11,7 +11,7 @@
     ],
     "report": {
       "path": "sim/characterization-report.md",
-      "content_hash": "sha256:ab8f2b272e0a705f5683abaa1e4f71057c2237649c46a3e1809870a43369f10d"
+      "content_hash": "sha256:8f137779e2e9393175293c713a98b23c9328e9d631811ce612e306d615623d37"
     },
     "artifacts": [
       {
@@ -93,6 +93,10 @@
       {
         "path": "sim/comparator-decision/records/20260925-214740-81f594b.md",
         "content_hash": "sha256:79fdb29dabc886e03912ee9bbefcfb7e18e2e034856c7346d4377fe5f7a42ee1"
+      },
+      {
+        "path": "sim/comparator-decision/records/20260926-055806-3034c41.md",
+        "content_hash": "sha256:5214b0e28aeb81d10163ad40b8461829a6d1ef54eb11683495c0d7858145b95b"
       },
       {
         "path": "sim/comparator-decision/records/20260922-070800-e084b55.md",
@@ -244,7 +248,7 @@
       },
       {
         "path": "spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md",
-        "content_hash": "sha256:9c4b692ee5b7d3069a3e5dedb478c99aa4efa79e4b090d903675328728f2fb74"
+        "content_hash": "sha256:bd631fe64273510078a9b6dfd0f8527ba060e3ba4e36d0f9a741eaa2d8c5ef89"
       }
     ]
   }

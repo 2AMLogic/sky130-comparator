@@ -3,6 +3,11 @@
 - **Status**: ratified
 - **Date**: 2026-09-25
 - **Decided by**: issue #64 campaign (Builder pass), revising the disposition DR-002 §2 gave the Input-referred noise row
+- **Amended by**: **Amendment 1** (issue #83, 2026-09-26; at the end of this
+  record) — Decision §3's closure condition ran and the
+  ≤ 1.0 mV **target** bound's compliance basis **closes**. Decision §1 (the
+  bounds) and §4 (the stretch figure) are unchanged. **Read the amendment
+  before citing Decision §2 or §3.**
 
 ## Context
 
@@ -140,3 +145,123 @@ point of this record.
   `regen` (worst `fs`/125 °C, 0.7725 ns against ≤ 1.5 ns, 1.94×; the ≤ 0.8 ns
   stretch also still holds everywhere, at 1.04× worst case). Those rows'
   dispositions stand as DR-005 left them.
+
+---
+
+## Amendment 1 (issue #83, 2026-09-26): the closure condition ran, and the target bound's compliance basis CLOSES
+
+This amendment is **append-only**, per this repo's evidence convention: no
+decision, measurement or argument above it is revised, deleted, or softened —
+the only edit above this line is the navigational **Amended by** pointer added
+to the header, so a reader who never scrolls this far is not left citing a
+disposition this section moves. The seven-corner AC table, the 0.335 mV rms
+quadrature arithmetic, and the text of Decision §§1–4 all stand exactly as
+recorded. What this section reports is what happened when the measurement
+Decision §3 named as the closing evidence actually ran.
+
+**Status of this amendment**: same as the record it amends — **ratified**.
+No bound is set, changed, relaxed or re-derived here. What moves is a
+*compliance basis*, in the direction the measurement points.
+
+### What ran
+
+`noise-tran --dut extracted --corner fs --temp 125` — Decision §3's condition
+verbatim: regeneration-inclusive, against the extracted netlist, at
+`fs`/125 °C. Record
+[`sim/comparator-decision/records/20260926-055806-3034c41.md`](../../sim/comparator-decision/records/20260926-055806-3034c41.md),
+**N = 32 pick-off seeds, 4 seeds/sign/decision point** (both stated on that
+record's own face, with the measured host-cost reason: this dispatch host
+budgets each agent a **one-core cgroup CPU quota**, so `--jobs 2` buys no
+parallel throughput, and the extracted decks at this corner cost ~350–500 s of
+CPU each — roughly 3× the `tt`/27 °C cost issue #65's budget was extrapolated
+from). **Because the sample is smaller than the `tt`/27 °C post-layout
+record's, every disposition below is read against the conservative end of the
+95 % CI, not the point estimate.**
+
+| Quantity at `fs`/125 °C, post-layout | Value |
+|---|---|
+| Regeneration-inclusive input-referred σ (pick-off MC, N = 32) | **0.2540 mV rms differential** |
+| 95 % CI | [0.1961, 0.3009] mV |
+| AC loop-broken **lower bound** at the same corner (unchanged, from this record's table) | 0.9423 mV rms |
+| Decision-transition cross-check | degenerate (see below) |
+
+### The reading, both ways
+
+1. **Directly**, which is the correct comparison: 0.2540 mV rms differential
+   against the ratified ≤ 1.0 mV target is **3.94× margin — 3.32× at the CI's
+   upper bound**. This is not a lower bound and carries no
+   excluded-regeneration caveat: it is the regeneration-inclusive figure
+   itself, at the binding corner, against the extracted netlist.
+2. **Under a deliberately indefensible double-count**, stated so the closure
+   does not rest on one arithmetic: treat the *entire* measured
+   regeneration-inclusive figure as an independent term and add it in
+   quadrature on top of the 0.9423 mV AC lower bound — which double-counts,
+   because both figures are dominated by the **same** preamp input-referred
+   source (0.6663 mV rms/side at this corner) and are two estimates of one
+   quantity, not two separable terms. Even then,
+   `sqrt(0.9423² + 0.2540²) = ` **0.9759 mV rms**, still inside the ≤ 1.0 mV
+   target at 1.025× (0.9892 mV / 1.011× using the CI's upper bound).
+
+This record's own 0.335 mV rms allowance is also not exceeded: the measured
+regeneration-inclusive figure is 0.2540 mV, **0.76× of it**.
+
+### Decision (amending Decision §2 and §3, not §1 or §4)
+
+**A. The Input-referred noise row's compliance basis for the ≤ 1.0 mV target
+moves RATIFIED-basis-OPEN → RATIFIED-and-clear.** Decision §2 re-opened the
+claim that the measured evidence establishes compliance with the target bound;
+the evidence Decision §3 named now exists and clears it under both readings
+above. The row's target compliance therefore **no longer rests on a lower
+bound plus a headroom argument** — it rests on a direct, regeneration-inclusive
+post-layout measurement at the corner that binds the row.
+
+**B. Decision §3's closure condition is DISCHARGED.** The measurement it named
+exists. Nothing further is required of this record.
+
+**C. The Consequences bullet requiring the 1.06× qualifier is retired, and
+replaced narrowly.** A bare "clears the noise target" statement *is* now
+supportable, provided it cites the regeneration-inclusive basis. What must
+still carry the 1.06× qualifier is any statement that cites the **AC
+lower-bound figure** as the row's basis — that figure is unchanged at
+0.9423 mV rms with 1.06× target margin, and what this amendment changes is
+that the AC figure is no longer the row's *only* basis at this corner.
+
+**D. Decision §1 (the bounds) and Decision §4 (the stretch figure) are
+UNCHANGED.** Explicitly: the ≤ 0.6 mV stretch figure stays recorded as
+**breached at four of seven corners on the AC basis**. The transient basis
+clears it (2.36×; 1.99× at the CI's upper bound) but has only **2 of 7**
+corners, and the two bases disagree. Per `CLAUDE.md` the breach record stands
+rather than being erased by a different method's number, and the stretch
+figure is not a compliance requirement either way. **No stretch claim is
+changed by this amendment.**
+
+### What this does NOT close
+
+- **Five of seven graded corners remain unmeasured post-layout** for
+  `noise-tran` (`ss`/−40 °C, `ff`/125 °C, `sf`/−40 °C, `sf`/125 °C,
+  `fs`/−40 °C). The basis closes at the **binding** corner, which is what
+  Decision §3 asked for and what this record's own Consequences identified as
+  the one to anchor at — not at all seven.
+- **This corner has no committed schematic-level `noise-tran` counterpart**
+  (only `tt`/27 °C, `ss`/−40 °C and `ff`/125 °C do), so the record reports no
+  schematic-to-layout ratio and says so, rather than inventing one.
+- **The `--distributed-rc` supply-net question is untouched.** This amendment
+  does not pre-discount the AC figure for lumped-star pessimism, exactly as
+  the Consequences above refuse to.
+
+### Two findings worth carrying forward
+
+- **Method consistency, as corroboration.** The AC-to-transient gap at this
+  corner is 3.71× (0.9423 / 0.2540), squarely inside the ~3–4× gap this
+  record's Context already observed at `tt`/27 °C, `ss`/−40 °C and
+  `ff`/125 °C (`tt`/27 °C post-layout is 4.54×). So the closing figure is not
+  an outlier of the method at the corner where it happens to matter most.
+- **"The hot corners bind this row" is now confirmed on the
+  regeneration-inclusive basis, not inferred from the lower bound** — and it
+  is *resolved*, unlike the `tt`/27 °C record's schematic-to-layout ratio.
+  0.2540 mV at `fs`/125 °C against 0.1448 mV at `tt`/27 °C is **1.754×**, and
+  the two 95 % CIs ([0.1961, 0.3009] against [0.1224, 0.1641]) **do not
+  overlap**. The transient figure degrades *faster* with corner than the AC
+  sub-model's own 1.433× (0.9423 / 0.6576), so anchoring future noise work at
+  `fs`/125 °C rather than `tt`/27 °C — this record's standing advice — is
+  reinforced, not weakened, by the closure.
