@@ -465,10 +465,10 @@ record below each figure rests on, in one place. It adds no measurement; every
 number in it is copied from a record in this directory. It is the evidence
 `manifests/sky130-comparator.json` cites for T1 item 8, through a `"kind":
 "generic"` envelope whose freshness is re-checked live by
-`scripts/characterization-envelope.py` -- so editing a record here without
-re-pinning makes that item grade `unmet`. What that `met` row does and does not
-establish (in particular: it asserts aggregation and currency, **not** that any
-bound is met) is stated in
+`scripts/characterization-envelope.py` -- so editing a record the report
+cites, without re-pinning, makes that item grade `unmet`. What that `met` row
+does and does not establish (in particular: it asserts aggregation and
+currency, **not** that any bound is met) is stated in
 [`manifests/README.md`](../../manifests/README.md) -> "Item 8 -- the
 characterization report".
 
