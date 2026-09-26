@@ -1,0 +1,120 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision offset pick-off -- vindiff=0.0mv corner=ff temp=27.0c seed=12 (issue #9)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  1.60000e-13
+ Reference value :  2.56000e-12
+ Reference value :  1.05600e-11
+ Reference value :  1.85600e-11
+ Reference value :  2.45600e-11
+ Reference value :  3.25600e-11
+ Reference value :  4.05600e-11
+ Reference value :  4.85600e-11
+ Reference value :  5.65600e-11
+ Reference value :  6.45600e-11
+ Reference value :  1.74560e-10
+ Reference value :  1.82560e-10
+ Reference value :  1.90560e-10
+ Reference value :  1.98560e-10
+ Reference value :  2.04560e-10
+ Reference value :  2.10560e-10
+ Reference value :  2.18560e-10
+ Reference value :  2.24560e-10
+ Reference value :  2.32560e-10
+ Reference value :  2.40560e-10
+ Reference value :  2.48560e-10
+ Reference value :  2.54560e-10
+ Reference value :  2.62560e-10
+ Reference value :  2.70560e-10
+ Reference value :  2.78560e-10
+ Reference value :  2.86560e-10
+ Reference value :  2.94560e-10
+ Reference value :  3.02560e-10
+ Reference value :  3.10560e-10
+ Reference value :  3.16560e-10
+ Reference value :  3.22560e-10
+ Reference value :  3.30560e-10
+ Reference value :  3.36560e-10
+ Reference value :  3.44560e-10
+ Reference value :  3.52560e-10
+ Reference value :  3.60560e-10
+ Reference value :  3.70560e-10
+ Reference value :  3.78560e-10
+ Reference value :  3.86560e-10
+ Reference value :  4.44560e-10
+ Reference value :  4.52560e-10
+ Reference value :  4.60560e-10
+ Reference value :  4.68560e-10
+ Reference value :  4.76560e-10
+ Reference value :  4.84560e-10
+ Reference value :  4.90560e-10
+ Reference value :  5.20560e-10
+ Reference value :  5.28560e-10
+ Reference value :  5.36560e-10
+ Reference value :  5.42560e-10
+ Reference value :  5.50560e-10
+ Reference value :  5.58560e-10
+ Reference value :  5.66560e-10
+ Reference value :  5.74560e-10
+ Reference value :  5.82560e-10
+ Reference value :  5.90560e-10
+ Reference value :  5.96560e-10
+ Reference value :  6.02560e-10
+ Reference value :  6.10560e-10
+ Reference value :  6.18560e-10
+ Reference value :  6.26560e-10
+ Reference value :  6.34560e-10
+ Reference value :  6.42560e-10
+ Reference value :  6.50560e-10
+ Reference value :  6.58560e-10
+ Reference value :  6.66560e-10
+ Reference value :  6.72560e-10
+ Reference value :  6.78560e-10
+ Reference value :  6.84560e-10
+ Reference value :  6.92560e-10
+ Reference value :  7.00560e-10
+ Reference value :  7.08560e-10
+ Reference value :  7.16560e-10
+ Reference value :  7.24560e-10
+ Reference value :  7.32560e-10
+ Reference value :  7.40560e-10
+ Reference value :  7.48560e-10
+ Reference value :  7.54560e-10
+ Reference value :  7.62560e-10
+ Reference value :  7.70560e-10
+ Reference value :  7.78560e-10
+ Reference value :  7.84560e-10
+ Reference value :  7.92560e-10
+ Reference value :  8.00560e-10
+ Reference value :  8.08560e-10
+ Reference value :  8.16560e-10
+ Reference value :  1.07656e-09
+ Reference value :  1.17456e-09
+ Reference value :  1.18256e-09
+ Reference value :  1.19056e-09
+ Reference value :  1.19856e-09
+ Reference value :  1.20656e-09
+ Reference value :  1.28656e-09
+ Reference value :  1.29256e-09
+ Reference value :  1.29856e-09
+ Reference value :  1.57856e-09
+ Reference value :  1.92056e-09
+ Reference value :  2.34456e-09
+ Reference value :  3.00456e-09
+ Reference value :  3.51456e-09
+ Reference value :  4.53056e-09
+ Reference value :  5.09850e-09
+ Reference value :  5.92500e-09
+ Reference value :  6.79900e-09
+No. of Data Rows : 3814
+Note: Simulation executed from .control section 
