@@ -21,11 +21,16 @@ loaded module's own `sys.path.insert(0, SIM_DIR)` for `from harness import
 from __future__ import annotations
 
 import contextlib
+import dataclasses
+import hashlib
 import importlib.util
 import io
+import json
 import math
 import sys
+import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 SIM_DIR = Path(__file__).resolve().parent.parent
@@ -847,6 +852,254 @@ class TestKickbackSubsetJustification(unittest.TestCase):
                 self.assertNotIn("20260916-060139-f1eb978", text)
                 # ...and names the corner it actually ran.
                 self.assertIn(f"{corner}/{temp_c:g}C", text)
+
+
+class _FakeNgspiceDecks:
+    """Deterministic stand-in for one `ngspice` invocation, wired in by
+    monkeypatching `cd_run._run` (issue #100).
+
+    Every deck's contribution is a pure function of its LOG NAME (and, for
+    the decision decks, of the overdrive sign written into the deck's own
+    header comment). That is exactly the property a resumable runner's
+    equivalence claim rests on: which invocation happened to run a deck must
+    not change what that deck contributes. The real thing has the same
+    property for a different reason -- every Monte Carlo deck pins its own
+    `.option rndseed=<stable seed>` -- so a fake that did NOT have it would
+    be testing something the bench does not do.
+
+    Writes the same two-vector `wrdata` csv shape `_pickoff_value()` and
+    `_decision_from_csv()` read (`time0 v(OUTP) time1 v(OUTN)`), so both
+    extractors run their real code against it.
+    """
+
+    GAIN_V_PER_V = 50.0
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    @staticmethod
+    def _unit(name: str) -> float:
+        """A stable pseudo-random [0, 1) drawn from the deck name."""
+        digest = hashlib.sha256(name.encode()).digest()
+        return int.from_bytes(digest[:8], "big") / 2.0 ** 64
+
+    def __call__(self, deck_text: str, scratch_dir: Path, log_name: str) -> str:
+        self.calls.append(log_name)
+        if log_name.startswith(("injcal", "trncal")):
+            return "cal_std=8.6e-04\n"
+        if log_name.startswith("gaincal_"):
+            vindiff_mv = float(log_name[len("gaincal_"):-len("mV")])
+            diff = self.GAIN_V_PER_V * vindiff_mv / 1000.0
+        elif log_name.startswith("po_"):
+            diff = 1e-3 * (2.0 * self._unit(log_name) - 1.0)
+        elif log_name.startswith("dec_"):
+            # Decide with the deck's own overdrive sign, flipped for one seed
+            # index in two at the NEGATIVE overdrive, which puts p+ = 1 and
+            # p- = 0.5 -- a pair the probit estimator can actually invert, so
+            # these tests exercise the MEASURABLE cross-check branch and not
+            # only the degenerate one every committed corner happens to hit.
+            negative = "vindiff=-" in deck_text
+            sign = -1.0 if negative else 1.0
+            if negative and int(log_name.rsplit("_", 1)[1]) % 2 == 1:
+                sign = -sign
+            diff = 0.5 * sign
+        else:
+            raise AssertionError(f"unexpected deck {log_name!r}")
+        target_s = (cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.PICKOFF_NS) * 1e-9
+        rows = [(0.0, 0.0), (target_s, diff), (10.0 * target_s, diff)]
+        (scratch_dir / f"{log_name}.csv").write_text(
+            "".join(f"{t:.12g} {v:.12g} {t:.12g} 0\n" for t, v in rows)
+        )
+        return f"* fake ngspice log for {log_name}\n"
+
+
+@contextlib.contextmanager
+def _stubbed_noise_tran(fake: _FakeNgspiceDecks):
+    """Run `run_noise_tran()`'s real control flow with no PDK and no ngspice.
+
+    Only the three AC/calibration stages are stubbed wholesale (they have
+    their own deck-shape tests above); every Monte Carlo deck still goes
+    through the real deck builders, the real `_run_many*` batching and the
+    real csv extractors, against `fake`.
+    """
+    preamp = cd_run.NoiseResult(
+        single_ended_rms_v=1.2e-4, differential_rms_v=1.2e-4 * 2 ** 0.5,
+        op_tailp_v=0.9, op_outp1_v=1.18, op_outn1_v=1.18,
+        log_text="fake preamp noise log", corner="tt", temp_c=27.0,
+    )
+    latch = cd_run.LatchNoiseResult(
+        gate_rms_v=3.4e-4, op_tail2_v=0.2, log_text="fake latch noise log",
+        corner="tt", temp_c=27.0, gate_cm_v=1.18, cl_ff=cd_run.LATCH_NOISE_CL_FF,
+    )
+    with contextlib.ExitStack() as stack:
+        patch = stack.enter_context
+        patch(unittest.mock.patch.object(cd_run, "_run", fake))
+        patch(unittest.mock.patch.object(cd_run, "run_noise", lambda **kw: preamp))
+        patch(unittest.mock.patch.object(cd_run, "run_latch_noise", lambda **kw: latch))
+        patch(unittest.mock.patch.object(cd_run, "run_trnoise_calibration", lambda **kw: 0.86))
+        patch(unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise", lambda: FakePdkInfo()))
+        yield
+
+
+class TestNoiseTranResumableCampaign(unittest.TestCase):
+    """`--resume-dir` / `--chunk-decks`: the chunked, resumable `noise-tran`
+    runner (issue #100).
+
+    A full-N (N=128, 4 gaincal + 128 pick-off + 256 decision = 388 decks)
+    post-layout corner cannot run as one command on this host -- the
+    ~60-minute wall-clock ceiling measured by #89 kills it an order of
+    magnitude short, and a killed run produced NOTHING committable. These
+    tests pin the two properties that make a sequence of sub-ceiling commands
+    a valid substitute for the one command that cannot run: a chunk resumes
+    only the decks it has not already done, and the campaign it completes is
+    the same campaign an unchunked run would have produced.
+    """
+
+    N_PICKOFF = 6
+    SEEDS_PER_POINT = 2
+
+    def _campaign(self, **kw):
+        return cd_run.run_noise_tran(
+            corner="tt", temp_c=27.0, n_pickoff=self.N_PICKOFF,
+            seeds_per_point=self.SEEDS_PER_POINT, quiet=True, **kw
+        )
+
+    def _expected_deck_names(self) -> list[str]:
+        names = [f"gaincal_{v}mV" for v in cd_run.VINDIFF_GAIN_CAL_MV]
+        names += [f"po_{i}" for i in range(self.N_PICKOFF)]
+        for k in cd_run.NOISE_TRAN_DECIDE_PAIRS:
+            for sign in ("+", "-"):
+                for i in range(self.SEEDS_PER_POINT):
+                    names.append(f"dec_{k:g}_{sign}_{i}".replace(".", "p"))
+        return sorted(names)
+
+    @staticmethod
+    def _record_inputs(result) -> str:
+        """Everything the committed record is a function of, serialized at
+        full float precision so the comparison is textual (and so NaN
+        compares equal to NaN, which `==` does not).
+
+        Excludes only the raw per-deck ngspice logs -- of which just
+        `latch_noise` / `injcal_*` ever reach a record, and those three are
+        persisted whole with the campaign's AC/calibration preamble rather
+        than re-derived per chunk."""
+        fields = {k: v for k, v in dataclasses.asdict(result).items() if k != "logs"}
+        return json.dumps(fields, sort_keys=True, default=repr)
+
+    def test_resuming_from_a_partial_scratch_dir_runs_only_the_missing_decks(self):
+        with tempfile.TemporaryDirectory(prefix="noise-tran-resume-") as tmp:
+            resume_dir = Path(tmp)
+            first_fake = _FakeNgspiceDecks()
+            with _stubbed_noise_tran(first_fake):
+                with self.assertRaises(cd_run.NoiseTranCampaignIncomplete) as caught:
+                    self._campaign(resume_dir=resume_dir, chunk_decks=5)
+            first = [c for c in first_fake.calls if not c.startswith("injcal")]
+            self.assertEqual(len(first), 5, "the chunk budget was not honoured")
+            self.assertEqual(caught.exception.completed, 5)
+            self.assertEqual(caught.exception.total, len(self._expected_deck_names()))
+
+            second_fake = _FakeNgspiceDecks()
+            with _stubbed_noise_tran(second_fake):
+                result = self._campaign(resume_dir=resume_dir)
+            second = second_fake.calls
+
+            # No deck ran twice, the union is the whole campaign, and the
+            # AC/calibration preamble (the `injcal_*` decks) was resumed too.
+            self.assertEqual(sorted(set(first) & set(second)), [])
+            self.assertEqual(sorted(set(first) | set(second)), self._expected_deck_names())
+            self.assertEqual([c for c in second if c.startswith("injcal")], [])
+            self.assertEqual(len(result.pickoff_diffs), self.N_PICKOFF)
+
+    def test_a_resumed_campaign_matches_an_unchunked_run_at_the_same_n(self):
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            unchunked = self._campaign()
+
+        invocations = 0
+        chunked = None
+        with tempfile.TemporaryDirectory(prefix="noise-tran-equiv-") as tmp:
+            for _ in range(40):
+                invocations += 1
+                with _stubbed_noise_tran(_FakeNgspiceDecks()):
+                    try:
+                        chunked = self._campaign(resume_dir=Path(tmp), chunk_decks=3)
+                    except cd_run.NoiseTranCampaignIncomplete:
+                        continue
+                break
+        self.assertIsNotNone(chunked, "chunked campaign never completed")
+        self.assertGreater(invocations, 1, "the campaign was not actually chunked")
+        self.assertEqual(self._record_inputs(unchunked), self._record_inputs(chunked))
+        self.assertEqual(
+            cd_run.two_statistics_line(unchunked), cd_run.two_statistics_line(chunked),
+        )
+        # The cross-check really was measurable, so this compared the full
+        # record shape and not just its degenerate branch.
+        self.assertEqual(chunked.sigma_decision_mv, chunked.sigma_decision_mv)
+
+    def test_an_interrupted_chunk_writes_no_record_and_leaves_a_resumable_dir(self):
+        argv = [
+            "noise-tran", "--n", str(self.N_PICKOFF),
+            "--seeds-per-point", str(self.SEEDS_PER_POINT), "--quiet", "--record",
+        ]
+        written: list[tuple] = []
+
+        def _fake_writer(*args, **kwargs):
+            written.append(args)
+            return Path("records/fake.md")
+
+        with tempfile.TemporaryDirectory(prefix="noise-tran-nokill-") as tmp:
+            with _stubbed_noise_tran(_FakeNgspiceDecks()), unittest.mock.patch.object(
+                cd_run, "write_noise_tran_evidence", _fake_writer,
+            ):
+                rc = cd_run.main(argv + ["--resume-dir", tmp, "--chunk-decks", "5"])
+            self.assertEqual(rc, cd_run.NOISE_TRAN_INCOMPLETE_EXIT)
+            self.assertEqual(written, [], "an incomplete campaign wrote a record")
+            self.assertTrue((Path(tmp) / "campaign.json").is_file())
+            self.assertEqual(len(list((Path(tmp) / "decks").glob("*.json"))), 5)
+
+            with _stubbed_noise_tran(_FakeNgspiceDecks()), unittest.mock.patch.object(
+                cd_run, "write_noise_tran_evidence", _fake_writer,
+            ):
+                rc = cd_run.main(argv + ["--resume-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(len(written), 1, "the completed campaign wrote no record")
+
+    def test_re_invoking_a_complete_campaign_re_runs_nothing(self):
+        with tempfile.TemporaryDirectory(prefix="noise-tran-complete-") as tmp:
+            with _stubbed_noise_tran(_FakeNgspiceDecks()):
+                first = self._campaign(resume_dir=Path(tmp))
+            again = _FakeNgspiceDecks()
+            with _stubbed_noise_tran(again):
+                second = self._campaign(resume_dir=Path(tmp))
+            self.assertEqual(again.calls, [])
+            self.assertEqual(self._record_inputs(first), self._record_inputs(second))
+
+    def test_a_scratch_dir_from_a_different_campaign_is_refused(self):
+        with tempfile.TemporaryDirectory(prefix="noise-tran-mismatch-") as tmp:
+            with _stubbed_noise_tran(_FakeNgspiceDecks()):
+                with self.assertRaises(cd_run.NoiseTranCampaignIncomplete):
+                    self._campaign(resume_dir=Path(tmp), chunk_decks=2)
+            for changed in (
+                {"n_pickoff": self.N_PICKOFF + 2},
+                {"seeds_per_point": self.SEEDS_PER_POINT + 1},
+                {"corner": "ss"},
+                {"temp_c": -40.0},
+            ):
+                with self.subTest(**changed):
+                    kw = dict(
+                        corner="tt", temp_c=27.0, n_pickoff=self.N_PICKOFF,
+                        seeds_per_point=self.SEEDS_PER_POINT, quiet=True,
+                        resume_dir=Path(tmp),
+                    )
+                    kw.update(changed)
+                    with _stubbed_noise_tran(_FakeNgspiceDecks()):
+                        with self.assertRaises(RuntimeError) as caught:
+                            cd_run.run_noise_tran(**kw)
+                    self.assertIn("DIFFERENT campaign", str(caught.exception))
+
+    def test_chunking_without_a_resume_dir_is_refused(self):
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            with self.assertRaises(ValueError):
+                self._campaign(chunk_decks=4)
 
 
 if __name__ == "__main__":

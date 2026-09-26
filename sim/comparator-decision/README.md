@@ -460,6 +460,13 @@ are stated in each record: the cross-coupled PMOS pair's noise during
 exponential separation (divided by the growing regenerative gain) and
 the reset PMOS (off in evaluate) are the residual omissions.
 
+A corner at full N (`--n 128 --seeds-per-point 64`) is 388 decks and does not
+fit this host's ~60-minute per-command ceiling. Run it as a sequence of
+identical chunked commands against one scratch directory — `--resume-dir`,
+`--chunk-seconds` / `--chunk-decks`, exit status `3` meaning "incomplete,
+resumable, no record written". See "Chunked, resumable `noise-tran`
+campaigns (issue #100)" below.
+
 ## Committed records
 
 **The aggregated view across all five target-spec rows is
@@ -957,6 +964,9 @@ Two consequences for anyone scoping the remaining corners:
   all.** It is not a budgeting question; it exceeds the ceiling by an order of
   magnitude. Closing item 3 of #89 needs either a resumable/chunked runner or a
   different execution host, and that is a scoping fact, not a preference.
+  (Issue #95 chose the runner; issue #100 built it — see "Chunked, resumable
+  `noise-tran` campaigns" below for the invocation pattern that replaces the
+  one command this bullet says cannot run.)
 
 The `ss`/-40C corner carries **two** records for this reason, and both are
 committed. `20260926-100015-b64004b` is an N=16/2 run made while the host was
@@ -1028,6 +1038,108 @@ other row's schematic-level basis already uses. No sim time was spent on
 item 2 itself -- issue #100 is the runner, not the re-run campaign, and a
 follow-up after it lands is what actually spends the N=128 sim time at the
 corners that have (or would gain) a schematic counterpart.
+
+### Chunked, resumable `noise-tran` campaigns (issue #100)
+
+The subsection above states the blocker: a full-N `noise-tran` corner is
+`4 gaincal + N + 4 x seeds-per-point` decks — **388** at N=128/64 — and this
+host kills any single agent command at ~60 minutes, so that corner cannot run
+as one command here. Issue #95 chose a resumable/chunked runner over changing
+execution host or redefining "full N" below 128; issue #100 is that runner.
+**A full-N corner is now a documented SEQUENCE of identical sub-ceiling
+commands**, not one command that cannot finish.
+
+Three flags, `noise-tran` only:
+
+| Flag | What it does |
+|---|---|
+| `--resume-dir DIR` | Persist each deck's derived value under `DIR` as that deck completes; on re-invocation, run only the decks still missing. |
+| `--chunk-decks N` | Stop this invocation cleanly after `N` Monte Carlo decks. Needs `--resume-dir`. |
+| `--chunk-seconds S` | Stop this invocation cleanly once it has been running `S` seconds, checked between decks. Needs `--resume-dir`. The clock starts at campaign setup, so it covers the AC/calibration preamble too. |
+
+**The invocation pattern.** Run the *identical* command repeatedly until it
+exits 0. Nothing about the command changes between chunks — the scratch
+directory is what carries the progress:
+
+```sh
+# One chunk. Re-run this EXACT line until it exits 0; each invocation
+# self-terminates at 45 min, comfortably inside the ~60-minute ceiling.
+# Still --jobs 1 and still one corner at a time: the one-core cgroup quota
+# (#83) means chunking buys resumability, never throughput.
+SIM_NGSPICE_TIMEOUT_S=900 python3 sim/comparator-decision/run.py noise-tran \
+    --dut extracted --corner ss --temp -40 --n 128 --seeds-per-point 64 \
+    --jobs 1 --resume-dir /tmp/nt-ss-m40 --chunk-seconds 2700 \
+    --record --supersedes <prior-record-id>
+```
+
+| Exit status | Meaning |
+|---|---|
+| `3` | **Incomplete and resumable.** The chunk stopped on its own budget (or would have; a ceiling kill lands here too, minus the message). No record was written. Re-run the same command. |
+| `0` | The campaign completed on this invocation, and this is the invocation that wrote the record. |
+| `1` | The pick-off sigma came out NaN — a real failure, same as before. |
+
+**A record is written exactly once, by whichever invocation completes the last
+deck.** An incomplete campaign — budget-stopped or killed outright — writes
+**none**: `run_noise_tran()` raises `NoiseTranCampaignIncomplete` instead of
+returning a result, so `--record` cannot fire. That preserves the "a killed run
+produces no record" property #89 relied on, and it is the property that
+matters: a partial record would state an N on its face that its own statistics
+were not computed at. Pinned by
+`test_an_interrupted_chunk_writes_no_record_and_leaves_a_resumable_dir`
+(`sim/tests/test_comparator_decision.py`).
+
+**Budgeting the chunks.** At the measured ~35–285 s per deck, a 388-deck corner
+is **~3.8 h to ~30 h** of wall clock, i.e. **6 to 41** chunks at 45 min each —
+the spread is co-tenant load on these shared 8 vCPUs, not the corner. Budget the
+*sequence*, not a chunk: `--chunk-seconds` makes each command's length
+predictable regardless of how many decks fit inside it, which is why it, not
+`--chunk-decks`, is the flag the example uses.
+
+**What the scratch directory holds.**
+
+```
+<resume-dir>/campaign.json    the campaign KEY (see below)
+<resume-dir>/preamble.json    the AC/calibration preamble, persisted whole
+<resume-dir>/decks/<key>.json one derived scalar per completed deck
+```
+
+Per deck, only the one value the statistics consume is kept (`_pickoff_value()`'s
+pick-off difference, or `_decision_from_csv()`'s latched decision), written
+atomically via `os.replace`. Raw per-seed ngspice logs and csvs are **not**
+kept: no record has ever cited one, and 388 of them would make the scratch dir
+the campaign's largest artifact for no evidentiary gain. The three logs a record
+*does* embed (`latch_noise`, `injcal_input`, `injcal_gate`) belong to the
+preamble, which is persisted whole — so a resumed chunk reuses the **identical**
+injection amplitudes rather than re-deriving them, and the record's netlist
+snapshot is bit-identical to an unchunked run's.
+
+**The campaign key, and why a wrong `--resume-dir` is refused rather than
+merged.** `campaign.json` records corner, temperature, `--n`,
+`--seeds-per-point`, DUT provenance, and the DUT fragment's own sha256. Pointing
+a command with a *different* key at an existing directory is an error naming the
+field that differs, not a silent resume — mixing two campaigns' decks into one
+record is exactly the failure mode a resumable runner could otherwise introduce,
+and a fragment that changed underneath a half-finished campaign is not one
+campaign either. Start a new campaign in a fresh directory. (Re-invoking an
+*already complete* campaign re-runs nothing and re-emits the same record.)
+
+**The chunking does not change the result.** Every deck pins its own
+`.option rndseed` derived from its index, and the decision points' overdrives
+are a deterministic function of the completed pick-off set, so a deck's
+contribution does not depend on which invocation ran it. Structurally, the
+chunked and unchunked paths are the *same* code: `NoiseTranCampaign.resolve()`
+is the only difference, and with no `--resume-dir` it dispatches exactly the
+batch `_run_many*` call the un-chunked runner always made.
+`test_a_resumed_campaign_matches_an_unchunked_run_at_the_same_n` pins the
+equivalence at full float precision over every field the record is a function
+of.
+
+**Resume order is stage order**, and one stage genuinely cannot be reordered:
+the decision-transition overdrives are `k * sigma_hat`, and `sigma_hat` needs
+the *whole* pick-off set, so the decision decks have no keys until statistic (a)
+is complete. A chunk that stops inside the pick-off stage simply never names
+them. This is not an extra constraint the chunking adds — it is the existing
+data dependency, made visible.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
@@ -1291,7 +1403,7 @@ Stated here so the gap is a decision on the record, not a silent absence:
 | `regen` | **7 of 7** graded corners | none |
 | `noise` (AC) | **7 of 7** graded corners | delta only at `tt`/27C (no AC counterpart elsewhere) |
 | `offset` | **5 of 5** `_mm` corners (all at 27C, #80) | none at N=16; no O(100s)-draw post-layout campaign |
-| `noise-tran` | **7 of 7** graded corners (`tt`/27C, #65; `fs`/125 °C, #83; `ss`/-40C and `ff`/125C, #89; **`sf`/-40C, `sf`/125C and `fs`/-40C, #95**) | none at the coverage level -- every graded corner has a post-layout figure. Only three of the seven (`tt`/27C, `ss`/-40C, `ff`/125C) have a schematic-level counterpart to form a ratio; the other four (including the DR-006 closure corner `fs`/125 °C) correctly report no ratio because no schematic-level record exists there. Separately open: every post-layout figure is N=32-64 against the schematic side's N=128, so no individual ratio is resolved -- closing that needs a resumable/chunked runner (issue #100) before the sim time to run full N fits this host's ~60-minute command ceiling |
+| `noise-tran` | **7 of 7** graded corners (`tt`/27C, #65; `fs`/125 °C, #83; `ss`/-40C and `ff`/125C, #89; **`sf`/-40C, `sf`/125C and `fs`/-40C, #95**) | none at the coverage level -- every graded corner has a post-layout figure. Only three of the seven (`tt`/27C, `ss`/-40C, `ff`/125C) have a schematic-level counterpart to form a ratio; the other four (including the DR-006 closure corner `fs`/125 °C) correctly report no ratio because no schematic-level record exists there. Separately open: every post-layout figure is N=32-64 against the schematic side's N=128, so no individual ratio is resolved. The runner that blocked closing it now exists (issue #100 -- see "Chunked, resumable `noise-tran` campaigns"), so what remains is the sim time itself: a full-N corner is a sequence of 6-41 sub-ceiling commands, not a code gap |
 | `reset` | **5 of 5** of its own corner set (#65) | none |
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/

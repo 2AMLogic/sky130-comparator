@@ -59,10 +59,13 @@ comparable in format to every other record under sim/.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import os
 import statistics
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -2021,43 +2024,422 @@ class NoiseTranResult:
     logs: dict[str, str] = field(default_factory=dict)
 
 
+# ---------------------------------------------------------------------------
+# Chunked / resumable noise-tran campaigns (issue #100)
+# ---------------------------------------------------------------------------
+#
+# WHY THIS EXISTS. A full-N post-layout `noise-tran` corner is
+# `4 gaincal + N + 4 x seeds-per-point` decks -- 388 of them at N=128/64 --
+# and this host kills any single agent command at ~60 minutes (measured by
+# issue #89; see README "A second host cost"). At the measured ~35-285 s per
+# deck that is an order of magnitude over the ceiling, so a full-N corner
+# CANNOT run as one command here, and a run killed by the ceiling wrote no
+# record at all: issue #89 spent 59.5 minutes and committed nothing.
+#
+# Issue #95 chose between the three ways out (a resumable/chunked runner, a
+# different execution host, or redefining "full N" below 128) and picked the
+# runner. This is it: `--resume-dir` persists each deck's DERIVED SCALAR as
+# soon as that deck completes, and `--chunk-decks` / `--chunk-seconds` stop
+# an invocation cleanly while it is still inside the ceiling. A full-N corner
+# then becomes a documented SEQUENCE of identical sub-ceiling commands.
+#
+# TWO PROPERTIES THIS IS BUILT AROUND, because the campaign's value depends
+# on them and neither is self-evident from the flags:
+#
+#  1. THE RESULT MUST NOT DEPEND ON THE CHUNKING. Every deck already pins its
+#     own `.option rndseed=<stable seed derived from its index>`, and the
+#     decision points' overdrives are a deterministic function of the
+#     completed pick-off set, so a deck's contribution is a pure function of
+#     its key. The chunked and unchunked paths therefore run the SAME
+#     downstream arithmetic over the SAME per-deck values -- structurally,
+#     not by a parallel re-implementation: `NoiseTranCampaign.resolve()` is
+#     the only thing that differs between them, and in ephemeral mode
+#     (`root is None`) it dispatches exactly the batch `_run_many*` call the
+#     un-chunked runner always made.
+#  2. AN INCOMPLETE CAMPAIGN MUST WRITE NO RECORD. The "a killed run produces
+#     no record" property is a safety property, not an accident: a partial
+#     record would state an N on its face that its own statistics were not
+#     computed at. So an invocation that stops on its own budget raises
+#     `NoiseTranCampaignIncomplete` INSTEAD of returning a result, which
+#     means `--record` cannot fire; the CLI turns that into exit status
+#     `NOISE_TRAN_INCOMPLETE_EXIT` and a progress line.
+#
+# WHAT IS PERSISTED, and what deliberately is not. Per deck: the one derived
+# scalar the statistics consume (`_pickoff_value()`'s pick-off difference, or
+# `_decision_from_csv()`'s latched decision), written atomically to
+# `<resume-dir>/decks/<key>.json`. NOT the deck's raw ngspice log or csv:
+# those are scratch, no record has ever cited a per-seed Monte Carlo log, and
+# keeping 388 of them would make the scratch dir the campaign's largest
+# artifact for no evidentiary gain. The three logs a record DOES embed
+# (`latch_noise`, `injcal_input`, `injcal_gate`) belong to the AC/calibration
+# preamble, which is persisted whole in `<resume-dir>/preamble.json` -- so a
+# resumed chunk reuses the identical injection amplitudes rather than
+# re-deriving them, and the record's netlist snapshot (built from `na_input`
+# / `na_gate`) is bit-identical to the unchunked one's.
+NOISE_TRAN_CAMPAIGN_SCHEMA = 1
+NOISE_TRAN_INCOMPLETE_EXIT = 3
+
+_MISSING = object()
+
+
+class NoiseTranCampaignIncomplete(RuntimeError):
+    """A chunked invocation stopped on its own budget with decks outstanding.
+
+    Raised INSTEAD of returning a `NoiseTranResult`, so no caller can write a
+    record from a partial campaign. The scratch directory is left valid and
+    resumable: re-running the identical command continues from here.
+    """
+
+    def __init__(
+        self, message: str, *, stage: str, resume_dir: Path,
+        completed: int, total: int,
+    ) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.resume_dir = resume_dir
+        self.completed = completed
+        self.total = total
+
+
+class NoiseTranCampaign:
+    """Per-deck result store for one `noise-tran` campaign.
+
+    Two modes behind one interface, so the statistics downstream are computed
+    by exactly the same code either way:
+
+      * EPHEMERAL (`root=None`) -- the un-chunked behaviour this bench has
+        always had: every deck runs, in ONE batch at the caller's `--jobs`
+        width, its derived value is used immediately, nothing is persisted.
+      * RESUMABLE (`root=<dir>`) -- each deck's derived value is written to
+        `<root>/decks/<key>.json` as soon as that deck completes, and a deck
+        whose file is already there is not re-run. Decks are dispatched in
+        batches of `--jobs` so persistence keeps up with completion; at the
+        `--jobs 1` this host is limited to (one-core cgroup quota, #83) that
+        is one deck at a time.
+
+    The campaign KEY is what makes a scratch directory safe to point a second
+    command at: corner, temperature, N, seeds/point, DUT provenance and the
+    DUT fragment's own sha256 are recorded in `<root>/campaign.json`, and a
+    mismatch is refused loudly rather than silently mixing two campaigns'
+    decks into one record. The fragment hash is in there for the same reason
+    every record carries it: a resumed campaign whose netlist changed
+    underneath it is not one campaign.
+    """
+
+    def __init__(
+        self, root: Path | None = None, key: dict | None = None,
+        chunk_decks: int | None = None, chunk_seconds: float | None = None,
+        quiet: bool = False,
+    ) -> None:
+        if root is None and (chunk_decks is not None or chunk_seconds is not None):
+            raise ValueError(
+                "--chunk-decks / --chunk-seconds need --resume-dir: a chunk "
+                "budget without a scratch directory to persist into would "
+                "throw away every deck it ran"
+            )
+        self.root = Path(root) if root is not None else None
+        self.key = dict(key or {})
+        self.chunk_decks = chunk_decks
+        self.chunk_seconds = chunk_seconds
+        self.quiet = quiet
+        self._ran = 0
+        self._started = time.monotonic()
+        if self.root is not None:
+            self._open()
+
+    # --- scratch-directory layout -----------------------------------------
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.root / "campaign.json"
+
+    @property
+    def decks_dir(self) -> Path:
+        return self.root / "decks"
+
+    @property
+    def preamble_path(self) -> Path:
+        return self.root / "preamble.json"
+
+    def _manifest(self) -> dict:
+        return dict(self.key, schema=NOISE_TRAN_CAMPAIGN_SCHEMA)
+
+    def _open(self) -> None:
+        self.decks_dir.mkdir(parents=True, exist_ok=True)
+        want = self._manifest()
+        if self.manifest_path.exists():
+            try:
+                have = json.loads(self.manifest_path.read_text())
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"{self.manifest_path} is not readable JSON ({exc}) -- "
+                    "point --resume-dir at a fresh directory"
+                ) from exc
+            if have != want:
+                differing = sorted(
+                    k for k in set(have) | set(want) if have.get(k) != want.get(k)
+                )
+                raise RuntimeError(
+                    f"--resume-dir {self.root} holds a DIFFERENT campaign: "
+                    + ", ".join(
+                        f"{k}={have.get(k)!r} on disk vs {want.get(k)!r} requested"
+                        for k in differing
+                    )
+                    + ". Resuming across a changed campaign key would mix two "
+                    "campaigns' decks into one record -- use a fresh "
+                    "--resume-dir for the new configuration."
+                )
+        else:
+            self.manifest_path.write_text(
+                json.dumps(want, indent=2, sort_keys=True) + "\n"
+            )
+
+    @staticmethod
+    def _file_key(name: str) -> str:
+        """Deck name -> filename stem. The decision decks' names carry the
+        overdrive SIGN as a literal `+`/`-`; both are spelled out so the
+        stem is portable and a `+` can never be read as a `-`."""
+        return name.replace("+", "plus").replace("-", "minus")
+
+    def _deck_path(self, name: str) -> Path:
+        return self.decks_dir / f"{self._file_key(name)}.json"
+
+    # --- reading / writing one deck's derived value -----------------------
+
+    def _load_json(self, path: Path):
+        """A truncated or unreadable file is reported MISSING, not fatal: a
+        kill can land mid-write, and re-running one deck is always cheaper
+        and safer than trusting a partial one. (The writes below are atomic
+        via `os.replace`, so this should not happen -- but "should not" is
+        not the bar for a file the ceiling is expected to interrupt.)"""
+        if not path.exists():
+            return _MISSING
+        try:
+            return json.loads(path.read_text())
+        except (ValueError, OSError):
+            return _MISSING
+
+    @staticmethod
+    def _store_json(path: Path, payload: dict) -> None:
+        tmp = path.parent / (path.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        os.replace(tmp, path)
+
+    def load_deck(self, name: str):
+        if self.root is None:
+            return _MISSING
+        blob = self._load_json(self._deck_path(name))
+        if blob is _MISSING or "value" not in blob:
+            return _MISSING
+        return blob["value"]
+
+    def store_deck(self, name: str, value) -> None:
+        if self.root is None:
+            return
+        self._store_json(self._deck_path(name), {"deck": name, "value": value})
+
+    def load_preamble(self):
+        if self.root is None:
+            return _MISSING
+        return self._load_json(self.preamble_path)
+
+    def store_preamble(self, payload: dict) -> None:
+        if self.root is None:
+            return
+        self._store_json(self.preamble_path, payload)
+
+    # --- progress and the chunk budget ------------------------------------
+
+    def total_decks(self) -> int:
+        """Every deck this campaign will ever run: the gain calibration, the
+        pick-off MC, and both signs of both decision points."""
+        return (
+            len(VINDIFF_GAIN_CAL_MV)
+            + int(self.key.get("n_pickoff", 0))
+            + 2 * len(NOISE_TRAN_DECIDE_PAIRS) * int(self.key.get("seeds_per_point", 0))
+        )
+
+    def completed_decks(self) -> int:
+        if self.root is None:
+            return 0
+        return len(list(self.decks_dir.glob("*.json")))
+
+    def _budget_spent(self) -> bool:
+        if self.chunk_decks is not None and self._ran >= self.chunk_decks:
+            return True
+        if self.chunk_seconds is not None:
+            return (time.monotonic() - self._started) >= self.chunk_seconds
+        return False
+
+    def _stop(self, stage: str) -> None:
+        completed = self.completed_decks()
+        total = self.total_decks()
+        elapsed = time.monotonic() - self._started
+        raise NoiseTranCampaignIncomplete(
+            f"noise-tran campaign INCOMPLETE and RESUMABLE -- stopped in stage "
+            f"'{stage}' on this invocation's chunk budget after {self._ran} deck(s) "
+            f"/ {elapsed / 60:.1f} min. {completed} of {total} campaign decks are "
+            f"complete in {self.root}. NO record was written (a partial campaign "
+            f"must never produce one). Re-run the IDENTICAL command to continue "
+            f"from here; the campaign emits its record on the invocation that "
+            f"completes the last deck.",
+            stage=stage, resume_dir=self.root, completed=completed, total=total,
+        )
+
+    # --- the one place decks are dispatched -------------------------------
+
+    def resolve(
+        self, stage: str, builds: list, extract, run_batch, jobs: int = 1,
+        logs: dict[str, str] | None = None,
+    ) -> dict:
+        """Return `{deck name: derived value}` for every `(name, build)` in
+        `builds`, running only the decks not already persisted.
+
+        `run_batch(batch)` runs one batch of `(name, build)` pairs and returns
+        their ngspice logs; `extract(name)` reads that deck's derived value
+        out of the scratch directory right after it ran. Raises
+        `NoiseTranCampaignIncomplete` if the chunk budget runs out with decks
+        still pending.
+        """
+        values: dict = {}
+        pending: list = []
+        for name, build in builds:
+            cached = self.load_deck(name)
+            if cached is _MISSING:
+                pending.append((name, build))
+            else:
+                values[name] = cached
+        if self.root is not None and not self.quiet:
+            print(
+                f"  [{stage}] {len(values)} of {len(builds)} decks already in "
+                f"{self.root}, {len(pending)} to run"
+            )
+        # Ephemeral mode dispatches the whole stage as ONE batch -- byte-for-
+        # byte the call the un-chunked runner always made, including its
+        # `--jobs`-wide parallelism across the entire stage.
+        width = len(pending) if self.root is None else max(1, jobs)
+        index = 0
+        while index < len(pending):
+            if self._budget_spent():
+                self._stop(stage)
+            batch = pending[index:index + width]
+            batch_logs = run_batch(batch)
+            if logs is not None:
+                logs.update(batch_logs)
+            for name, _build in batch:
+                value = extract(name)
+                self.store_deck(name, value)
+                values[name] = value
+            self._ran += len(batch)
+            index += len(batch)
+        return values
+
+
 def run_noise_tran(
     corner: str = "tt", temp_c: float = 27.0, n_pickoff: int = 128,
     seeds_per_point: int = NOISE_TRAN_SEEDS_PER_POINT, quiet: bool = False,
-    jobs: int = 1,
+    jobs: int = 1, resume_dir: Path | None = None,
+    chunk_decks: int | None = None, chunk_seconds: float | None = None,
 ) -> NoiseTranResult:
     info = pdk.resolve_or_raise()
+    campaign = NoiseTranCampaign(
+        root=resume_dir,
+        key={
+            "corner": corner,
+            "temp_c": float(temp_c),
+            "n_pickoff": int(n_pickoff),
+            "seeds_per_point": int(seeds_per_point),
+            "dut": dut_provenance(),
+            "netlist_sha256": evidence.sha256_file(_dut_fragment()),
+        },
+        chunk_decks=chunk_decks, chunk_seconds=chunk_seconds, quiet=quiet,
+    )
     logs: dict[str, str] = {}
-
-    # Stage 1: preamp input-referred rms + its op point (gate CM for stage 2).
-    preamp = run_noise(corner=corner, temp_c=temp_c, quiet=quiet)
-    # Stage 2: latch front-end gate-referred rms, biased at the preamp's own CM.
-    gate_cm = preamp.op_outp1_v
-    latch = run_latch_noise(corner=corner, temp_c=temp_c, gate_cm_v=gate_cm, quiet=quiet)
-    logs["latch_noise"] = latch.log_text
-    # Stage 3: calibrate TRNOISE std-per-na, then scale the two amplitudes.
-    factor = run_trnoise_calibration(quiet=quiet)
-    na_input = preamp.single_ended_rms_v / factor
-    na_gate = latch.gate_rms_v / factor
-    if not quiet:
-        print(
-            f"  injection amplitudes: input na={na_input:g}V "
-            f"(target {preamp.single_ended_rms_v * 1000:.4f} mV rms/side), "
-            f"gate na={na_gate:g}V (target {latch.gate_rms_v * 1000:.4f} mV rms/side)"
-        )
 
     with tempfile.TemporaryDirectory(prefix="comparator-decision-noisetran-") as scratch:
         scratch_dir = Path(scratch)
 
+        # --- AC / calibration preamble (stages 1-3 + the injection-rms
+        # verification decks). Persisted as ONE unit: it is what fixes the
+        # injected amplitudes, so a resumed chunk MUST reuse it verbatim
+        # rather than re-derive it, and the three logs a record embeds come
+        # from here.
+        preamble = campaign.load_preamble()
+        if preamble is _MISSING:
+            # Stage 1: preamp input-referred rms + its op point (gate CM for stage 2).
+            preamp = run_noise(corner=corner, temp_c=temp_c, quiet=quiet)
+            # Stage 2: latch front-end gate-referred rms, biased at the preamp's own CM.
+            gate_cm = preamp.op_outp1_v
+            latch = run_latch_noise(corner=corner, temp_c=temp_c, gate_cm_v=gate_cm, quiet=quiet)
+            logs["latch_noise"] = latch.log_text
+            # Stage 3: calibrate TRNOISE std-per-na, then scale the two amplitudes.
+            factor = run_trnoise_calibration(quiet=quiet)
+            na_input = preamp.single_ended_rms_v / factor
+            na_gate = latch.gate_rms_v / factor
+            if not quiet:
+                print(
+                    f"  injection amplitudes: input na={na_input:g}V "
+                    f"(target {preamp.single_ended_rms_v * 1000:.4f} mV rms/side), "
+                    f"gate na={na_gate:g}V (target {latch.gate_rms_v * 1000:.4f} mV rms/side)"
+                )
+            # Injection-rms verification decks: the same trnoise sources into a
+            # 1-ohm load, one for each amplitude, so the record can state
+            # achieved-vs-target injection rms directly.
+            for tag, na in (("input", na_input), ("gate", na_gate)):
+                cal_log = _trnoise_calibration_deck(na, NOISE_TRAN_TS)
+                vlog = _run(cal_log, scratch_dir, f"injcal_{tag}")
+                logs[f"injcal_{tag}"] = vlog
+            achieved = {}
+            for tag in ("input", "gate"):
+                for line in logs[f"injcal_{tag}"].splitlines():
+                    if line.strip().startswith("cal_std="):
+                        achieved[tag] = float(line.split("=")[1].strip())
+            campaign.store_preamble({
+                "preamp": dataclasses.asdict(preamp),
+                "latch": dataclasses.asdict(latch),
+                "trnoise_factor": factor,
+                "na_input": na_input,
+                "na_gate": na_gate,
+                "achieved": achieved,
+                "logs": {k: v for k, v in logs.items()},
+            })
+        else:
+            preamp = NoiseResult(**preamble["preamp"])
+            latch = LatchNoiseResult(**preamble["latch"])
+            factor = preamble["trnoise_factor"]
+            na_input = preamble["na_input"]
+            na_gate = preamble["na_gate"]
+            achieved = preamble["achieved"]
+            logs.update(preamble["logs"])
+            if not quiet:
+                print(
+                    f"  resumed the AC/calibration preamble from {campaign.root} "
+                    f"(input na={na_input:g}V, gate na={na_gate:g}V) -- the "
+                    f"injected amplitudes are the first invocation's, verbatim"
+                )
+
         # Gain calibration: ideal devices, plain corner, NO noise -- the
         # same calibration the `offset` sub-command performs, so the
         # pick-off statistic is referred back through the identical gain.
-        cal_jobs = [(f"gaincal_{v}mV", _pickoff_deck(info, corner, temp_c, v, f"gaincal_{v}mV"))
-                    for v in VINDIFF_GAIN_CAL_MV]
-        logs.update(_run_many(cal_jobs, scratch_dir, jobs))
+        def _cal_build(vindiff_mv: float):
+            def build(ts: float) -> str:
+                return _pickoff_deck(
+                    info, corner, temp_c, vindiff_mv, f"gaincal_{vindiff_mv}mV",
+                )
+            return build
+
+        cal_values = campaign.resolve(
+            "gain calibration",
+            [(f"gaincal_{v}mV", _cal_build(v)) for v in VINDIFF_GAIN_CAL_MV],
+            extract=lambda name: _pickoff_value(scratch_dir / f"{name}.csv"),
+            run_batch=lambda batch: _run_many(
+                [(name, build(NOISE_TRAN_TS)) for name, build in batch],
+                scratch_dir, jobs,
+            ),
+            jobs=jobs, logs=logs,
+        )
         gain_cal_points = [
-            (v / 1000.0, _pickoff_value(scratch_dir / f"gaincal_{v}mV.csv"))
-            for v in VINDIFF_GAIN_CAL_MV
+            (v / 1000.0, cal_values[f"gaincal_{v}mV"]) for v in VINDIFF_GAIN_CAL_MV
         ]
         sxy = sum(x * y for x, y in gain_cal_points)
         sxx = sum(x * x for x, y in gain_cal_points)
@@ -2065,18 +2447,8 @@ def run_noise_tran(
         if not quiet:
             print(f"  gain = {gain:.4f} V/V (from {len(gain_cal_points)} calibration points)")
 
-        # Injection-rms verification decks: the same trnoise sources into a
-        # 1-ohm load, one for each amplitude, so the record can state
-        # achieved-vs-target injection rms directly.
-        for tag, na in (("input", na_input), ("gate", na_gate)):
-            cal_log = _trnoise_calibration_deck(na, NOISE_TRAN_TS)
-            vlog = _run(cal_log, scratch_dir, f"injcal_{tag}")
-            logs[f"injcal_{tag}"] = vlog
-        achieved = {}
-        for tag in ("input", "gate"):
-            for line in logs[f"injcal_{tag}"].splitlines():
-                if line.strip().startswith("cal_std="):
-                    achieved[tag] = float(line.split("=")[1].strip())
+        def _mc_batch(batch):
+            return _run_many_ts_retry(batch, scratch_dir, jobs)
 
         # Statistic (a): pick-off MC at Vindiff=0, n_pickoff seeds.
         seed_base = 10_000
@@ -2090,10 +2462,12 @@ def run_noise_tran(
             return build
 
         po_builds = [(f"po_{i}", _po_build(i)) for i in range(n_pickoff)]
-        logs.update(_run_many_ts_retry(po_builds, scratch_dir, jobs))
-        pickoff_diffs = [
-            _pickoff_value(scratch_dir / f"po_{i}.csv") for i in range(n_pickoff)
-        ]
+        po_values = campaign.resolve(
+            "pick-off MC", po_builds,
+            extract=lambda name: _pickoff_value(scratch_dir / f"{name}.csv"),
+            run_batch=_mc_batch, jobs=jobs, logs=logs,
+        )
+        pickoff_diffs = [po_values[f"po_{i}"] for i in range(n_pickoff)]
         sigma_pickoff_v = (
             statistics.pstdev([d / gain for d in pickoff_diffs]) if n_pickoff > 1 else float("nan")
         )
@@ -2139,14 +2513,22 @@ def run_noise_tran(
                     dseed = (dseed_base + int(k * 1000) * 10_000
                              + (seeds_per_point if sign > 0 else 0) + i)
                     d_builds.append((name, _dec_build(name, sign * v_mv, dseed)))
-            d_logs = _run_many_ts_retry(d_builds, scratch_dir, jobs)
-            logs.update(d_logs)
+            # The decision points' overdrives are a function of the COMPLETED
+            # pick-off set (sigma_hat above), so these deck keys cannot exist
+            # -- and this stage cannot start -- until statistic (a) is whole.
+            # That is the resume order, not an extra constraint: a chunk that
+            # stops inside the pick-off stage simply never names these.
+            d_values = campaign.resolve(
+                f"decision pair k={k:g}", d_builds,
+                extract=lambda name: _decision_from_csv(scratch_dir / f"{name}.csv"),
+                run_batch=_mc_batch, jobs=jobs, logs=logs,
+            )
             for sign in (1, -1):
                 ones = 0
                 unresolved = 0
                 for i in range(seeds_per_point):
                     name = f"dec_{k:g}_{ '+' if sign > 0 else '-'}_{i}".replace(".", "p")
-                    dec = _decision_from_csv(scratch_dir / f"{name}.csv")
+                    dec = d_values[name]
                     if dec is None:
                         unresolved += 1
                     elif dec == 1:
@@ -3329,6 +3711,30 @@ def main(argv: list[str] | None = None) -> int:
         "(statistic (b)). The record states the value used, so a run that "
         "trades cross-check precision for wall clock says so on its face.",
     )
+    ap.add_argument(
+        "--resume-dir", default="",
+        help="noise-tran: scratch directory for a CHUNKED, RESUMABLE campaign "
+        "(issue #100). Each deck's derived value is persisted under it as that "
+        "deck completes, and a re-invocation of the IDENTICAL command runs only "
+        "the decks still missing. The record is written by whichever invocation "
+        "completes the last deck; an incomplete campaign writes none. Required "
+        "for --chunk-decks / --chunk-seconds.",
+    )
+    ap.add_argument(
+        "--chunk-decks", type=int, default=None,
+        help="noise-tran: stop this invocation cleanly after N Monte Carlo decks "
+        "(needs --resume-dir). Use it to keep each command inside this host's "
+        "~60-minute wall-clock ceiling; exit status "
+        f"{NOISE_TRAN_INCOMPLETE_EXIT} means 'incomplete, resumable, no record'.",
+    )
+    ap.add_argument(
+        "--chunk-seconds", type=float, default=None,
+        help="noise-tran: stop this invocation cleanly once it has been running "
+        "this long, checked between decks (needs --resume-dir). The wall-clock "
+        "form of --chunk-decks, and the one that actually matches the ceiling "
+        "given the measured 35-285 s per-deck spread; the clock starts at "
+        "campaign setup, so it covers the AC/calibration preamble too.",
+    )
     ap.add_argument("--record", action="store_true", help="write an evidence record under records/")
     ap.add_argument("--note", default="")
     ap.add_argument(
@@ -3369,6 +3775,23 @@ def main(argv: list[str] | None = None) -> int:
         ap.print_help()
         return 2
 
+    chunk_flags = [
+        name for name, given in (
+            ("--resume-dir", bool(args.resume_dir)),
+            ("--chunk-decks", args.chunk_decks is not None),
+            ("--chunk-seconds", args.chunk_seconds is not None),
+        ) if given
+    ]
+    if chunk_flags and args.mode != "noise-tran":
+        # Refused rather than ignored: silently dropping a resume flag would
+        # make a long campaign look resumable when nothing was persisted.
+        ap.error(
+            f"{', '.join(chunk_flags)} only appl{'y' if len(chunk_flags) > 1 else 'ies'} "
+            f"to `noise-tran` (issue #100), not `{args.mode}`"
+        )
+    if (args.chunk_decks is not None or args.chunk_seconds is not None) and not args.resume_dir:
+        ap.error("--chunk-decks / --chunk-seconds need --resume-dir to persist into")
+
     if args.mode == "regen":
         points = run_regen_sweep(corner=args.corner, temp_c=args.temp, quiet=args.quiet, jobs=args.jobs)
         if args.record:
@@ -3397,11 +3820,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.mode == "noise-tran":
-        result = run_noise_tran(
-            corner=args.corner, temp_c=args.temp, n_pickoff=args.n,
-            seeds_per_point=args.seeds_per_point,
-            quiet=args.quiet, jobs=args.jobs,
-        )
+        try:
+            result = run_noise_tran(
+                corner=args.corner, temp_c=args.temp, n_pickoff=args.n,
+                seeds_per_point=args.seeds_per_point,
+                quiet=args.quiet, jobs=args.jobs,
+                resume_dir=Path(args.resume_dir) if args.resume_dir else None,
+                chunk_decks=args.chunk_decks, chunk_seconds=args.chunk_seconds,
+            )
+        except NoiseTranCampaignIncomplete as incomplete:
+            # Deliberately NOT a failure: the chunk did exactly what it was
+            # asked to. Nothing is written, so `--record` cannot have fired.
+            print(str(incomplete))
+            return NOISE_TRAN_INCOMPLETE_EXIT
         if args.record:
             path = write_noise_tran_evidence(result, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
