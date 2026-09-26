@@ -1,0 +1,27 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * trnoise injection calibration -- na=0.0004503238286505947 ts=3.7e-10
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  2.34217e-06
+ Reference value :  4.75106e-06
+ Reference value :  7.14311e-06
+ Reference value :  9.37212e-06
+ Reference value :  1.16791e-05
+ Reference value :  1.40178e-05
+ Reference value :  1.59125e-05
+ Reference value :  1.83443e-05
+ Reference value :  2.08337e-05
+ Reference value :  2.32838e-05
+ Reference value :  2.56340e-05
+ Reference value :  2.80941e-05
+ Reference value :  3.05096e-05
+ Reference value :  3.29803e-05
+ Reference value :  3.51147e-05
+No. of Data Rows : 500008
+cal_std=0.000389407
+Note: Simulation executed from .control section 

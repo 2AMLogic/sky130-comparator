@@ -807,14 +807,17 @@ not exceeded either: 0.2540 mV is 0.76x of it.
 **What it does NOT do, stated so the closure is not over-read:**
 
 - **The `<= 0.6 mV` stretch figure stays recorded as breached at four of seven
-  corners on the AC basis.** The transient basis clears it but has only 2 of 7
-  corners and the two bases disagree; per `CLAUDE.md` the breach record stands
-  rather than being erased by a different method's number. DR-006 Decision 4 is
-  unchanged.
+  corners on the AC basis.** The transient basis clears it but had only 2 of 7
+  corners when this record was written (4 of 7 since issue #89, which does not
+  change the disposition) and the two bases disagree; per `CLAUDE.md` the breach
+  record stands rather than being erased by a different method's number. DR-006
+  Decision 4 is unchanged.
 - **Statements that cite the AC lower-bound figure still carry the 1.06x
   qualifier.** That figure is unchanged. What changed is that it is no longer
   the row's *only* basis at this corner.
-- **Five graded corners remain unmeasured post-layout** for this sub-command.
+- **Five graded corners remain unmeasured post-layout** for this sub-command as
+  of this record. Issue #89 has since run two of them (`ss`/-40C, `ff`/125C),
+  leaving three.
 
 **Sample size, and how it is handled.** N=32 pick-off seeds and 4
 seeds/sign/decision point -- smaller than the `tt`/27C post-layout record's 64
@@ -862,6 +865,108 @@ standing candidate (issue #66). It is why the 4 seeds/sign/point reduction
 costs little: the classification `degenerate_cross_check_reason()` derives from
 the counts is the same one 16 seeds/sign produced at the only other
 post-layout corner.
+
+### Post-layout `noise-tran` at `ss`/-40C and `ff`/125C -- the two corners with a schematic counterpart (issue #89)
+
+`records/20260926-110218-b64004b.md` (`ss`/-40C) and
+`records/20260926-102605-b64004b.md` (`ff`/125C), both N=32/4. These are the
+first two post-layout `noise-tran` records to **difference against a committed
+schematic-level counterpart at a corner other than `tt`/27C** -- and they can
+only do that because this same change closed a code gap that would otherwise
+have made them lie.
+
+**The code gap, and why it had to be fixed in the same change.** `run.py`'s
+`SCHEMATIC_BASELINES` carried a `noise-tran` anchor at `tt`/27C **alone**, even
+though the issue #41 schematic-level campaign committed records at `ss`/-40C
+(`20260922-205857-ebea4e2`, 0.1213 mV, N=128) and `ff`/125C
+(`20260923-010427-ebea4e2`, 0.1754 mV, N=128). A post-layout run at either
+corner therefore fell through to `post_layout_delta_lines()`'s "No committed
+schematic-level `noise-tran` record exists at ..." line -- honest in form and
+**false in fact**, with the counterpart sitting in `records/` the whole time.
+Run the corner without the anchor and the record ships a false negative. Both
+anchors are now present and three tests in
+`sim/tests/test_comparator_decision.py` pin the anchor set to exactly the set
+of corners a schematic-level record was committed at, so the same drift cannot
+recur silently.
+
+The four graded points with **no** schematic-level counterpart (`sf`/-40C,
+`sf`/125C, `fs`/-40C, `fs`/125C) deliberately keep falling through to that
+line. That is the correct behaviour, the convention the post-layout `noise`
+records use at six of their seven corners, and what #83's `fs`/125C record
+already does.
+
+| Corner | Schematic (N=128) | Post-layout (N=32) | Ratio | Post-layout 95% CI | Cross-check |
+|---|---|---|---|---|---|
+| `ss`/-40C | 0.1213 mV | **0.1382 mV** | 1.139x | [0.1046, 0.1666] | degenerate -- resolvable-overdrive floor, as on the schematic side |
+| `ff`/125C | 0.1754 mV | **0.1956 mV** | 1.115x | [0.1606, 0.2212] | **0.2175 mV -- MEASURABLE** |
+
+**No single one of these ratios is resolved, and all three that exist point the
+same way.** The schematic figure sits *inside* the post-layout 95% CI at
+`ss`/-40C, at `ff`/125C and at `tt`/27C alike, so no corner on its own
+establishes that the layout moved this quantity. What the three corners
+together add is a **sign**: 1.063x (`tt`/27C), 1.139x (`ss`/-40C), 1.115x
+(`ff`/125C) -- three independent corners, all above 1, in a band of 1.06-1.14x.
+Three-of-three in one direction is a one-sided sign-test p of 0.125: suggestive
+corroboration that the post-layout penalty on this row is small and positive,
+**not** a resolved measurement of it. Resolving it needs N, not more corners,
+and that is the open item below.
+
+**`ff`/125C's cross-check is the first post-layout one that is measurable**, and
+that matters for how the other two are read. At `tt`/27C and `fs`/125C every
+decision pair was degenerate *all-one-way*, which those records attribute to a
+deterministic term (the `offset` sub-command's 0.6547 mV post-layout systematic
+mean, issue #66) swamping the sigma-scaled overdrives -- an explanation that
+would be much weaker if the cross-check never worked post-layout at all. Here
+it does: at +/-0.1467 mV the pair splits 2/4 against 0/4 and yields **0.2175
+mV**, against the same record's 0.1956 mV pick-off figure. Two independent
+statistics on the same extracted fragment agreeing to 11% is the corroboration
+the degenerate corners could not supply. `ss`/-40C is degenerate for the third,
+distinct reason its own schematic-level counterpart already recorded -- the
+overdrives sit below that corner's resolvable-overdrive floor -- so degeneracy
+there is the corner's behaviour, not a post-layout finding.
+
+**Corner scaling on the regeneration-inclusive basis**, now four corners deep
+and monotone in temperature: 0.1382 mV (`ss`/-40C), 0.1448 mV (`tt`/27C),
+0.1956 mV (`ff`/125C), 0.2540 mV (`fs`/125C). The hot corners bind this row on
+the transient basis exactly as they do on the AC one. **Nothing here touches
+DR-006**: its compliance basis was closed at its own named binding corner,
+`fs`/125C, by `20260926-055806-3034c41` and Amendment 1. Every figure above
+clears the ratified `<= 1.0 mV` target by more than 5x even at its CI's upper
+bound, so no decision record is filed.
+
+#### A second host cost, measured by #89: a hard ~60-minute wall-clock ceiling
+
+#83 recorded the one-core cgroup quota (`cpu.max 100000 100000`) that makes
+`--jobs 2` worthless here. #89 hit a second limit that constrains campaign
+scoping at least as hard, and it is **wall clock, not CPU time**: an agent
+session's background-task supervisor **kills any single command at ~60
+minutes**. An N=32/4 run at `ss`/-40C was killed by it at 59.5 min with the
+pick-off phase complete (N=32 -> 0.1280 mV) and the decision phase in flight,
+and **no record was written** -- the entire hour produced nothing committable.
+
+Two consequences for anyone scoping the remaining corners:
+
+- **Budget a corner as `4 gaincal + N + 4 x seeds-per-point` decks against a
+  hard 60-minute ceiling**, not against a CPU-time estimate. Measured per-deck
+  wall clock on this fragment ranged **~35 s to ~285 s** purely with co-tenant
+  load on these shared 8 vCPUs -- an 8x spread, which is why the same N=32/4
+  configuration took 59.5+ min (killed) and then 35 min at the same corner
+  hours apart.
+- **A full-N (128 + 256) corner cannot be run as one command on this host at
+  all.** It is not a budgeting question; it exceeds the ceiling by an order of
+  magnitude. Closing item 3 of #89 needs either a resumable/chunked runner or a
+  different execution host, and that is a scoping fact, not a preference.
+
+The `ss`/-40C corner carries **two** records for this reason, and both are
+committed. `20260926-100015-b64004b` is an N=16/2 run made while the host was
+loaded, so that the corner would have *some* post-layout figure; it read
+0.0955 mV (95% CI [0.0646, 0.1149]), a 0.788x ratio. When the host quietened
+the corner was re-run at N=32/4 as `20260926-110218-b64004b`, which
+`--supersedes` it and reads 0.1382 mV / 1.139x. The pair is kept rather than
+quietly dropped because it *is* the item-3 measurement in miniature: at one
+corner, on one fragment, with nothing changed but N, the point estimate moved
+45% and the sign of the ratio flipped. Cite the superseding record; read the
+superseded one as evidence that N=16 is below this statistic's useful floor.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
@@ -1104,14 +1209,14 @@ Stated here so the gap is a decision on the record, not a silent absence:
   `tt`/27C (see "Post-layout records (issue #65)" above). **Issue #83 has
   since added `fs`/125 °C**, the corner DR-006 named as the one that would
   close the re-opened noise row, and it does close it (DR-006 Amendment 1).
-  `noise-tran`'s remaining **five** graded corners (`ss`/-40C, `ff`/125C,
-  `sf`/-40C, `sf`/125C, `fs`/-40C) are still unmeasured post-layout. Two of
-  those five (`ss`/-40C, `ff`/125C) have committed *schematic-level*
-  `noise-tran` records to difference against, but `SCHEMATIC_BASELINES` in
-  `run.py` carries a `noise-tran` entry only at `tt`/27C -- so a post-layout run at
-  either would currently print the "no committed counterpart" line even though
-  a counterpart exists. That entry gap has to be filled in the same change
-  that runs those corners.
+  **Issue #89 has since added `ss`/-40C and `ff`/125C** -- the two remaining
+  corners that have a committed *schematic-level* `noise-tran` counterpart to
+  difference against -- and filled the `SCHEMATIC_BASELINES` entry gap that
+  would otherwise have made both records print "no committed counterpart" when
+  one existed (see "Post-layout `noise-tran` at `ss`/-40C and `ff`/125C"
+  above). `noise-tran`'s remaining **three** graded corners (`sf`/-40C,
+  `sf`/125C, `fs`/-40C) are still unmeasured post-layout; none of the three has
+  a schematic-level counterpart, so each will correctly report no ratio.
 - **The supply nets' `--distributed-rc` re-extraction** was not done. The
   single lumped star R on `GND`/`VDD` is 52.0% of the block's total series R
   and is expected to be pessimistic, so every post-layout degradation above
@@ -1123,7 +1228,7 @@ Stated here so the gap is a decision on the record, not a silent absence:
 | `regen` | **7 of 7** graded corners | none |
 | `noise` (AC) | **7 of 7** graded corners | delta only at `tt`/27C (no AC counterpart elsewhere) |
 | `offset` | **5 of 5** `_mm` corners (all at 27C, #80) | none at N=16; no O(100s)-draw post-layout campaign |
-| `noise-tran` | **2 of 7** graded corners (`tt`/27C, #65; **`fs`/125 °C, #83**) | 5 corners -- but **not** the corner DR-006 closes on: `fs`/125 °C is measured and DR-006 Amendment 1 closes the target-bound basis on it |
+| `noise-tran` | **4 of 7** graded corners (`tt`/27C, #65; `fs`/125 °C, #83; **`ss`/-40C and `ff`/125C, #89**) | 3 corners (`sf`/-40C, `sf`/125C, `fs`/-40C) -- but **not** the corner DR-006 closes on: `fs`/125 °C is measured and DR-006 Amendment 1 closes the target-bound basis on it. All three remaining corners lack a schematic-level counterpart, so none can yield a ratio; the two that could, #89 ran. Separately open: every post-layout figure is N=32-64 against the schematic side's N=128, so no individual ratio is resolved |
 | `reset` | **5 of 5** of its own corner set (#65) | none |
 
 Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
