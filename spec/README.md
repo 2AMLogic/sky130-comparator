@@ -71,6 +71,27 @@ line, which is the case `spec/README.md`'s "A DR is owed the first time
 that table's rows are ratified, changed, or rescoped" should be read to
 cover.
 
+**Update (issue #83,
+[DR-006 Amendment 1](decision-records/DR-006-post-layout-noise-headroom-reopened.md),
+2026-09-26).** The closure condition DR-006 named for itself ran, and it
+closes. Post-layout `noise-tran` at `fs`/125 °C — regeneration-inclusive,
+extracted netlist, the corner that binds the row — measures **0.2540 mV rms
+differential** (N=32 pick-off seeds, 95% CI [0.1961, 0.3009];
+`sim/comparator-decision/records/20260926-055806-3034c41.md`), clearing the
+≤ 1.0 mV target with **3.94×** margin and **3.32×** read at the CI's upper
+bound. Again **no bound changes**: what moves is the same *disposition*
+DR-006 moved, back the other way, because the evidence that record
+pre-committed to now exists. The Input-referred noise row's target-bound
+compliance no longer rests on a lower bound plus a headroom argument. Two
+things stay open and are recorded as such: the ≤ 0.6 mV **stretch** figure
+remains breached at four of seven corners on the AC basis (the transient
+basis clears it but has 2 of 7 corners, and per `CLAUDE.md` a different
+method's number does not erase a recorded breach), and five graded corners
+remain unmeasured post-layout for that sub-command. This is the mirror of the
+case above: a record whose ratification *reasoning* was checked, found stale,
+and then re-established by the measurement it demanded — which is why an
+amendment was the right instrument rather than a new record.
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar

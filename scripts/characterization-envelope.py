@@ -292,9 +292,11 @@ def build_envelope(status: str, verification: dict, failures: list[str]) -> dict
             f"sky130-comparator characterization report: all five target-spec "
             f"rows aggregated; {REPORT_REL} and {verified}/{pinned} cited "
             "artifacts re-hashed and current. Asserts aggregation and "
-            "currency only -- not that any bound is met (the Input-referred "
-            "noise row's compliance basis is re-opened by DR-006, and the "
-            "Supply/power row is DRAFT/OPEN with no ratified bound)."
+            "currency only -- not that any bound is met (the Supply/power row "
+            "is DRAFT/OPEN with no ratified bound, and the Input-referred "
+            "noise row's stretch figure is breached at 4 of 7 corners on the "
+            "AC basis -- its target-bound compliance basis was re-opened by "
+            "DR-006 and re-closed by DR-006 Amendment 1, issue #83)."
         )
     else:
         summary = (

@@ -22,14 +22,18 @@ and does not prove.
   decision records that dispose it (DR-002, DR-004, DR-005, DR-006). Per
   `CLAUDE.md`, nothing here relaxes a ratified bound, and no row is rendered
   compliant that the specs do not support.
-- **Two rows are not compliant as read, and this report says so on their
-  face.** The **Input-referred noise** row's bound is ratified but its
-  *compliance basis* is **RE-OPENED** by
-  [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)
-  (closure condition still open —
-  [#83](https://github.com/2AMLogic/sky130-comparator/issues/83)). The
-  **Supply / power** row is still **DRAFT / OPEN**: it has no ratified bound at
-  all, and the measurements it does have already exceed its DRAFT figure.
+- **One row is not compliant as read, and this report says so on its face.**
+  The **Supply / power** row is still **DRAFT / OPEN**: it has no ratified
+  bound at all, and the measurements it does have already exceed its DRAFT
+  figure. The **Input-referred noise** row was the second such row until
+  [#83](https://github.com/2AMLogic/sky130-comparator/issues/83): its bound is
+  ratified, its *compliance basis* was **RE-OPENED** by
+  [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md),
+  and **DR-006 Amendment 1 has since re-closed the target-bound basis** on the
+  regeneration-inclusive `fs`/125 °C measurement that record named as its own
+  closure condition. Its ≤ 0.6 mV **stretch** figure is still recorded as
+  breached at four of seven corners on the AC basis — recorded, not relaxed,
+  and not a compliance requirement.
 - **Freshness is enforced, not asserted.** See
   [Freshness enforcement](#freshness-enforcement) at the end: a drifted report
   or a drifted evidence record makes T1 item 8 grade non-`met`.
@@ -70,14 +74,20 @@ bound on the supply-network contribution**, not a best estimate of it. See
 | # | Row | Status | Target | Stretch | Worst measured (post-layout unless noted) | Target met? | Stretch met? |
 |---|---|---|---|---|---|---|---|
 | 1 | Offset sigma | RATIFIED (DR-002; coverage by DR-005) | ≤ 15 mV, 3σ | ≤ 8 mV, 3σ | 7.3338 mV 3σ (`tt_mm`/27 °C, N=16) | **yes** (2.05×) | yes (1.09×) |
-| 2 | Input-referred noise | RATIFIED (DR-002); compliance basis **RE-OPENED** (DR-006) | ≤ 1.0 mV rms diff | ≤ 0.6 mV rms diff | 0.9423 mV rms (`fs`/125 °C, AC **lower bound**) | **basis re-opened — see row 2** | no (breached at 4 of 7) |
+| 2 | Input-referred noise | RATIFIED (DR-002); compliance basis re-opened (DR-006), **RE-CLOSED** (DR-006 Amendment 1, #83) | ≤ 1.0 mV rms diff | ≤ 0.6 mV rms diff | 0.2540 mV rms regeneration-inclusive (`fs`/125 °C); 0.9423 mV rms on the AC **lower bound**, same corner | **yes** (3.94×; 3.32× at the CI's upper bound) — on the regeneration-inclusive basis; see row 2 | no (breached at 4 of 7 on the AC basis) |
 | 3 | Decision time vs. overdrive | RATIFIED (DR-005) | ≤ 1.5 ns @ 50 mV | ≤ 0.8 ns @ 50 mV | 0.7725 ns (`fs`/125 °C) | **yes** (1.94×) | yes, but 1.04× |
 | 4 | Kickback | RATIFIED (DR-002 bound; DR-004 first compliant design) | ≤ 5 mV into 1 kΩ | ≤ 2 mV | 3.1989 mV (`sf`/−40 °C) | **yes** (1.56×) | no (breached at 6 of 7) |
 | 5 | Supply / power | **DRAFT / OPEN** (DR-002) | *(draft)* ≤ 50 µW avg at a TBD clock rate | *(draft)* ≤ 20 µW | ~95 µW static at 1.8 V | **no ratified bound exists** | — |
 
-Row 2's "target met?" cell deliberately does not say "yes". Every measured
-figure clears the ratified target bound, but DR-006 retired the argument the
-ratification rested on; the row's full disposition is in
+Row 2's "target met?" cell says "yes" only on the **regeneration-inclusive**
+basis, and only since #83. Until then it deliberately did not: every measured
+figure cleared the ratified target bound, but DR-006 had retired the argument
+the ratification rested on. The measurement DR-006 named has now been made, so
+the row's target compliance rests on a direct regeneration-inclusive figure at
+the binding corner rather than on a lower bound plus a headroom argument. Two
+qualifiers survive and both matter: a statement citing the **AC lower-bound**
+figure instead still carries that figure's 1.06× worst-corner margin, and the
+stretch column is still "no". The row's full disposition is in
 [row 2](#2-input-referred-noise) and must be read before the row is cited.
 
 ---
@@ -143,8 +153,8 @@ bounds do not cover at all.
 
 ## 2. Input-referred noise
 
-- **Status**: bounds RATIFIED by [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) §2. **Compliance basis RE-OPENED** by [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md) (2026-09-25).
-- **Bounds**: target ≤ 1.0 mV rms differential, stretch ≤ 0.6 mV rms differential. **Unchanged** — DR-006 changed the disposition of the *claim*, not the numbers.
+- **Status**: bounds RATIFIED by [DR-002](../spec/decision-records/DR-002-target-spec-ratification.md) §2. Compliance basis RE-OPENED by [DR-006](../spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md) (2026-09-25), then **the target-bound basis RE-CLOSED by that record's Amendment 1** (2026-09-26, issue #83) on the regeneration-inclusive `fs`/125 °C measurement it named as its own closure condition. The ≤ 0.6 mV stretch figure's four-of-seven AC breach is unchanged.
+- **Bounds**: target ≤ 1.0 mV rms differential, stretch ≤ 0.6 mV rms differential. **Unchanged** — DR-006 and its Amendment 1 both changed the disposition of the *claim*, not the numbers.
 - **Two methods, deliberately**: `run.py noise` is an AC `.noise` analysis on a loop-broken sub-model and is a **lower bound by construction** (it excludes the regeneration phase's own noise). `run.py noise-tran` is the regeneration-inclusive transient-noise Monte Carlo (ngspice-46 has no device-noise transient, so noise is injected as equivalent sources and propagated through the real clocked evaluate trajectory).
 
 ### AC loop-broken lower bound — all seven graded corners post-layout
@@ -177,6 +187,7 @@ The hot corners bind this row — the post-layout AC figure is ≈ 1.9× worse a
 | `ss`/−40 °C | schematic | 0.1213 | [0.1084, 0.1335] | 128 | not measurable (overdrives below the corner's resolvable floor) | `sim/comparator-decision/records/20260922-205857-ebea4e2.md` |
 | `ff`/125 °C | schematic | 0.1754 | [0.1594, 0.1905] | 128 | 0.1515 mV — agrees | `sim/comparator-decision/records/20260923-010427-ebea4e2.md` |
 | `tt`/27 °C | **post-layout** | **0.1448** | [0.1224, 0.1641] | 64 | degenerate — a *deterministic* term sets the outcome | `sim/comparator-decision/records/20260925-214740-81f594b.md` |
+| **`fs`/125 °C** | **post-layout** | **0.2540** | [0.1961, 0.3009] | 32 | degenerate — same all-one-way cause | `sim/comparator-decision/records/20260926-055806-3034c41.md` |
 
 The schematic→post-layout ratio at `tt`/27 °C is **1.063×**, and it sits
 **inside** the post-layout 95 % CI. So that record establishes the post-layout
@@ -184,46 +195,86 @@ figure *and its uncertainty*; it does **not** establish that this quantity moved
 with the layout. The post-layout sample size is deliberately smaller (N=64 vs.
 128) for wall-clock reasons stated on the record's own face.
 
-The post-layout cross-check's degeneracy is independent evidence for the
-sub-20 mV polarity asymmetry
-([#66](https://github.com/2AMLogic/sky130-comparator/issues/66)): all 64 runs
-resolved and all decided the same way at both signs of a ±0.109 / ±0.217 mV
-overdrive, consistent with the 0.6547 mV systematic offset measured on row 1.
+**`fs`/125 °C carries no ratio at all**, and says so instead of inventing one:
+no committed schematic-level `noise-tran` record exists at that corner (the
+three that do are `tt`/27 °C, `ss`/−40 °C and `ff`/125 °C) — the same convention
+the AC table above uses at its six counterpart-less corners. Its N=32 and
+4 seeds/sign/point are likewise stated on the record's face, with the measured
+reason: this dispatch host budgets each agent a **one-core cgroup CPU quota**
+(so `--jobs 2` buys no parallel throughput), and extracted decks at `fs`/125 °C
+cost ~350–500 s of CPU each — roughly **3×** the `tt`/27 °C cost the #65 budget
+was extrapolated from. Every disposition drawn from it below is therefore read
+against the **conservative end of its 95 % CI**, not the point estimate.
+
+**A resolved corner-dependence, unlike the schematic→layout ratio.** 0.2540 mV
+at `fs`/125 °C against 0.1448 mV at `tt`/27 °C is **1.754×** with
+**non-overlapping** 95 % CIs, so this difference *is* resolved at these sample
+sizes. It degrades faster with corner than the AC sub-model's own 1.433×
+(0.9423 / 0.6576), and the AC-to-transient gap at `fs`/125 °C is 3.71× —
+squarely inside the ~3–4× gap the other corners show, so the closing figure is
+not a method outlier at the corner where it matters most.
+
+Both post-layout cross-checks are degenerate, and that is independent evidence
+for the sub-20 mV polarity asymmetry
+([#66](https://github.com/2AMLogic/sky130-comparator/issues/66)): at `tt`/27 °C
+all 64 runs resolved and all decided the same way at both signs of a
+±0.109 / ±0.217 mV overdrive, and at `fs`/125 °C all 16 did the same at
+±0.191 / ±0.381 mV — the all-one-way branch, not the resolvable-overdrive
+floor, and consistent with the 0.6547 mV systematic offset measured on row 1.
 
 ### Verdict — read this before citing the row
 
-**Every measured figure clears the ratified ≤ 1.0 mV target bound. The row is
-nevertheless NOT to be reported as compliant.** DR-006's disposition, reproduced
-in substance:
+**Every measured figure clears the ratified ≤ 1.0 mV target bound, and since
+#83 the row's target compliance rests on a direct regeneration-inclusive
+measurement at the binding corner rather than on a lower bound plus a headroom
+argument.** DR-006's disposition and its Amendment 1, reproduced in substance:
 
 1. The **bounds are unchanged** — target ≤ 1.0 mV rms differential, stretch
    ≤ 0.6 mV rms differential, exactly as DR-002 ratified them. Nothing here is
    relaxed, and nothing failed.
-2. The row's **compliance basis moves RATIFIED-and-clear → RATIFIED, basis
-   OPEN**. The bound stays ratified; what is re-opened is the claim that the
-   measured evidence establishes compliance with it. DR-002 §2's headroom
+2. DR-006 moved the row's **compliance basis RATIFIED-and-clear → RATIFIED,
+   basis OPEN**. The bound stayed ratified; what was re-opened is the claim that
+   the measured evidence establishes compliance with it. DR-002 §2's headroom
    argument is **superseded by measurement** and must not be cited as current
    justification: it reasoned that the excluded regeneration-phase term would
    have to reach ~0.90 mV rms to threaten the target, and from the post-layout
-   worst corner's 0.9423 mV rms it now needs only
+   worst corner's 0.9423 mV rms it needs only
    `sqrt(1.0² − 0.9423²)` = **0.335 mV rms** in quadrature — 2.7× less headroom
    than the ratification reasoned from, on a figure the methodology states is a
    **lower** bound.
-3. **The evidence that would close it again** is a regeneration-inclusive
-   input-referred noise measurement against the extracted netlist at
-   **`fs`/125 °C** — post-layout `noise-tran` at the corner that binds the row.
-   Issue [#65](https://github.com/2AMLogic/sky130-comparator/issues/65) built
-   the post-layout deck form and ran it at `tt`/27 °C, so the closing run is now
-   a scheduling question rather than a missing capability, but **it has not been
-   run**. DR-006's closure condition is open and tracked as
-   [#83](https://github.com/2AMLogic/sky130-comparator/issues/83).
-4. **The stretch figure is breached at four of seven corners** post-layout
+3. **The evidence DR-006 named as what would close it again** — a
+   regeneration-inclusive input-referred noise measurement against the extracted
+   netlist at **`fs`/125 °C**, the corner that binds the row — **has now been
+   made** ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83),
+   `sim/comparator-decision/records/20260926-055806-3034c41.md`, built on the
+   post-layout deck form [#65](https://github.com/2AMLogic/sky130-comparator/issues/65)
+   added). It measures **0.2540 mV rms differential**, which clears the target
+   with **3.94×** margin and **3.32×** at its 95 % CI's upper bound. Stated a
+   second way so the closure does not rest on one arithmetic: even under a
+   deliberately indefensible double-count — adding the *entire* measured figure
+   in quadrature on top of the same corner's 0.9423 mV AC lower bound, which
+   double-counts because both are dominated by the same preamp input-referred
+   source — `sqrt(0.9423² + 0.2540²)` = 0.9759 mV rms is *still* inside the
+   target (1.025×; 0.9892 mV / 1.011× at the CI's upper bound). DR-006's own
+   0.335 mV allowance is not exceeded either (0.2540 mV is 0.76× of it).
+   **DR-006 Amendment 1 therefore moves the target-bound basis back to
+   RATIFIED-and-clear and discharges its own §3 closure condition.**
+4. **The stretch figure is breached at four of seven corners** on the AC basis
    (`tt`/27 °C, `ff`/125 °C, `sf`/125 °C, `fs`/125 °C) and cleared at the three
-   cold ones. Unchanged in value; not a compliance requirement.
+   cold ones. **Unchanged, and explicitly not re-closed by #83**: the transient
+   basis clears the stretch figure at both of its corners, but the two bases
+   disagree, the transient basis has 2 of 7 corners, and per `CLAUDE.md` a
+   different method's number does not erase a recorded breach. Unchanged in
+   value; not a compliance requirement.
 
-Until the `fs`/125 °C post-layout `noise-tran` exists, **every statement of this
-row must carry the 1.06× worst-corner qualifier**. A bare "clears the noise
-target" is not supportable.
+**What still needs a qualifier.** A bare "clears the noise target" *is* now
+supportable — provided it cites the regeneration-inclusive basis. What must
+still carry the **1.06× worst-corner qualifier** is any statement that cites the
+**AC lower-bound** figure as the row's basis: that figure is unchanged at
+0.9423 mV rms, and what #83 changed is that it is no longer the row's *only*
+basis at that corner. Five graded corners also remain unmeasured post-layout for
+`noise-tran`, so the regeneration-inclusive basis covers the binding corner and
+`tt`/27 °C, not the full seven.
 
 ---
 
@@ -386,7 +437,7 @@ not move it materially.
 | `regen` | 3 | **7 of 7** graded corners | none |
 | `noise` (AC) | 2 | **7 of 7** graded corners | schematic→post-layout ratio available only at `tt`/27 °C (no AC counterpart elsewhere) |
 | `offset` | 1 | **1 of 5** `_mm` corners (`tt_mm`/27 °C) | 4 corners, deliberately skipped for cost; no post-layout large-N |
-| `noise-tran` | 2 | **1 of 7** graded corners (`tt`/27 °C) | 6 corners, **including `fs`/125 °C — the corner DR-006 would close on** ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) |
+| `noise-tran` | 2 | **2 of 7** graded corners (`tt`/27 °C; **`fs`/125 °C**, [#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) | 5 corners — but **not** `fs`/125 °C, the corner DR-006 closes on: that one is measured, and DR-006 Amendment 1 closes row 2's target-bound basis on it. No schematic→post-layout ratio at `fs`/125 °C (no counterpart record there) |
 | `reset` | 5 (current column) | **5 of 5** of its own corner set | none |
 
 Two coverage facts that apply to every row above:
@@ -408,9 +459,22 @@ Two coverage facts that apply to every row above:
 These are stated so a reader does not mistake an aggregated report for a closed
 one:
 
-- [#83](https://github.com/2AMLogic/sky130-comparator/issues/83) — post-layout
-  `noise-tran` at `fs`/125 °C. **DR-006's closure condition.** Until it lands,
-  row 2's compliance basis is open.
+- **Row 2's remaining five post-layout `noise-tran` corners** (`ss`/−40 °C,
+  `ff`/125 °C, `sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C). DR-006's closure
+  condition — `fs`/125 °C — **has landed**
+  ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) and Amendment
+  1 closes the target-bound basis on it, so what is open here is *coverage*, not
+  the basis. Two of the five (`ss`/−40 °C, `ff`/125 °C) have committed
+  schematic-level counterparts, but `run.py`'s `SCHEMATIC_BASELINES` carries a
+  `noise-tran` entry only at `tt`/27 °C — that entry gap must be filled in the
+  same change that runs them, or their records will print "no committed
+  counterpart" when one exists. Also open on row 2: a full-N re-run of the
+  `tt`/27 °C post-layout figure (N=64/16 against its counterpart's 128/64) and
+  of `fs`/125 °C (N=32/4), which would separate each figure from its own
+  uncertainty rather than merely establishing it.
+- **The ≤ 0.6 mV stretch figure on row 2** stays breached at four of seven
+  corners on the AC basis. Not a compliance requirement, and deliberately not
+  re-closed by #83's transient figure.
 - [#66](https://github.com/2AMLogic/sky130-comparator/issues/66) — the
   layout-induced systematic offset (0.6547 mV) and the sub-20 mV
   decision-polarity asymmetry. Affects rows 1, 2 and 3 as a caveat; touches no
@@ -515,6 +579,7 @@ versa) is a `status: "fail"`.
 | `sim/comparator-decision/records/20260922-205857-ebea4e2.md` | 2 | `noise-tran` `ss`/−40 °C, schematic |
 | `sim/comparator-decision/records/20260923-010427-ebea4e2.md` | 2 | `noise-tran` `ff`/125 °C, schematic |
 | `sim/comparator-decision/records/20260925-214740-81f594b.md` | 2 | `noise-tran` `tt`/27 °C, post-layout |
+| `sim/comparator-decision/records/20260926-055806-3034c41.md` | 2 | `noise-tran` **`fs`/125 °C, post-layout** — DR-006's closure condition |
 | `sim/comparator-decision/records/20260922-070800-e084b55.md` | 3 | `regen` `tt`/27 °C, schematic |
 | `sim/comparator-decision/records/20260922-071313-e084b55.md` | 3 | `regen` `ss`/−40 °C, schematic |
 | `sim/comparator-decision/records/20260922-175252-e23c509.md` | 3 | `regen` `ff`/125 °C, schematic |
