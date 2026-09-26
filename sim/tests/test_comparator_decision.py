@@ -750,6 +750,21 @@ class TestPostLayoutDelta(unittest.TestCase):
                         f"{corner}/{temp_c}C",
                     )
 
+    def test_every_mismatch_corner_has_an_offset_baseline(self):
+        """Issue #80: the post-layout `offset` campaign differences all five
+        `_mm` mismatch corners at 27 C, so an anchor must exist for each.
+        Issue #64's campaign skipped the four non-`tt` corners and the
+        anchors were never added; a run without one silently records a bare
+        post-layout number instead of the delta issue #57's acceptance
+        criteria require."""
+        for corner, temp_c in cd_run.OFFSET_GRADED_CORNERS:
+            with self.subTest(corner=corner, temp_c=temp_c):
+                self.assertIsNotNone(
+                    cd_run.baseline_for("offset", corner, temp_c),
+                    f"no schematic-level offset anchor at {corner}_mm/"
+                    f"{temp_c}C",
+                )
+
 
 class TestKickbackSubsetJustification(unittest.TestCase):
     """Issue #64: the `kickback` record's subset-corner justification used to

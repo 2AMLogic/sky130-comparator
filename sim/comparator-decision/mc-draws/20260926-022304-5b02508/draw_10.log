@@ -1,0 +1,54 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision offset pick-off -- vindiff=0.0mv corner=ss_mm temp=27.0c seed=11 (issue #9)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  1.24560e-10
+ Reference value :  1.32560e-10
+ Reference value :  3.80560e-10
+ Reference value :  8.72560e-10
+ Reference value :  8.80560e-10
+ Reference value :  1.17256e-09
+ Reference value :  1.17856e-09
+ Reference value :  1.31456e-09
+ Reference value :  1.46456e-09
+ Reference value :  2.02056e-09
+ Reference value :  2.13056e-09
+ Reference value :  2.13656e-09
+ Reference value :  2.14256e-09
+ Reference value :  2.15056e-09
+ Reference value :  2.76456e-09
+ Reference value :  2.77256e-09
+ Reference value :  3.09856e-09
+ Reference value :  3.27056e-09
+ Reference value :  3.63856e-09
+ Reference value :  3.64656e-09
+ Reference value :  3.90256e-09
+ Reference value :  3.91056e-09
+ Reference value :  3.91656e-09
+ Reference value :  3.92456e-09
+ Reference value :  4.46856e-09
+ Reference value :  4.47456e-09
+ Reference value :  4.73656e-09
+ Reference value :  5.19500e-09
+ Reference value :  5.89500e-09
+ Reference value :  6.21700e-09
+ Reference value :  6.32500e-09
+ Reference value :  6.36700e-09
+ Reference value :  6.55700e-09
+ Reference value :  6.56500e-09
+ Reference value :  6.92500e-09
+ Reference value :  7.04100e-09
+ Reference value :  7.21700e-09
+ Reference value :  7.53100e-09
+No. of Data Rows : 3814
+Note: Simulation executed from .control section 
