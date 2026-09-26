@@ -29,7 +29,6 @@ import json
 import subprocess
 import sys
 import tempfile
-from collections import Counter
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
