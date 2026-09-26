@@ -464,6 +464,17 @@ GRADED_CORNERS: tuple[tuple[str, float], ...] = (
     ("fs", 125.0),
 )
 
+# `offset`'s own graded axis, which is NOT GRADED_CORNERS. The sub-command
+# grades the `_mm` mismatch variant of each process corner, and every
+# committed offset record in this repo -- schematic-level and post-layout
+# alike -- holds temperature at 27 C so the five figures differ only in
+# process. So the coverage question for this row is "all five `_mm` corners
+# at 27 C", not "all seven (corner, temperature) points". Named once here so
+# a coverage claim is checkable against a list (issue #80).
+OFFSET_GRADED_CORNERS: tuple[tuple[str, float], ...] = tuple(
+    (corner, 27.0) for corner in PROCESS_CORNERS
+)
+
 
 SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     ("regen", "tt", 27.0): Baseline(
@@ -541,6 +552,36 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     ("offset", "tt", 27.0): Baseline(
         "20260922-065300-e084b55", "input-referred offset stdev",
         1.7857, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
+        "same-seed negative control stdev exactly 0",
+    ),
+    # The other four `_mm` mismatch corners of the DR-005 schematic-level
+    # campaign (issue #41), all at 27 C -- `offset` grades the mismatch
+    # variant of each process corner at the ONE temperature every committed
+    # offset record in this repo uses, so its corner axis is the five `_mm`
+    # corners rather than the seven (corner, temperature) points
+    # GRADED_CORNERS lists. Added by issue #80, which runs the post-layout
+    # counterparts #64 deliberately skipped; without these anchors each of
+    # those runs would fall back to `post_layout_delta_lines()`'s
+    # "no committed counterpart" note and record a bare number.
+    ("offset", "ss", 27.0): Baseline(
+        "20260922-173622-e23c509", "input-referred offset stdev",
+        1.8244, "mV", "N=16 draws at `ss_mm`, seed 1, pick-off 0.65 ns, "
+        "same-seed negative control stdev exactly 0; the nominally binding "
+        "schematic-level corner",
+    ),
+    ("offset", "ff", 27.0): Baseline(
+        "20260922-174326-e23c509", "input-referred offset stdev",
+        1.5954, "mV", "N=16 draws at `ff_mm`, seed 1, pick-off 0.65 ns, "
+        "same-seed negative control stdev exactly 0",
+    ),
+    ("offset", "sf", 27.0): Baseline(
+        "20260922-174831-e23c509", "input-referred offset stdev",
+        1.6706, "mV", "N=16 draws at `sf_mm`, seed 1, pick-off 0.65 ns, "
+        "same-seed negative control stdev exactly 0",
+    ),
+    ("offset", "fs", 27.0): Baseline(
+        "20260922-175152-e23c509", "input-referred offset stdev",
+        1.8218, "mV", "N=16 draws at `fs_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("noise", "tt", 27.0): Baseline(

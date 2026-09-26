@@ -1,0 +1,60 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision offset pick-off -- vindiff=0.0mv corner=ff temp=27.0c seed=9 (issue #9)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  2.30560e-10
+ Reference value :  2.38560e-10
+ Reference value :  3.64560e-10
+ Reference value :  1.17456e-09
+ Reference value :  1.36456e-09
+ Reference value :  1.37256e-09
+ Reference value :  1.46456e-09
+ Reference value :  1.47056e-09
+ Reference value :  1.47656e-09
+ Reference value :  1.48256e-09
+ Reference value :  1.57856e-09
+ Reference value :  1.89456e-09
+ Reference value :  1.90256e-09
+ Reference value :  1.90856e-09
+ Reference value :  1.91656e-09
+ Reference value :  1.92456e-09
+ Reference value :  1.93056e-09
+ Reference value :  1.93656e-09
+ Reference value :  1.94456e-09
+ Reference value :  1.95256e-09
+ Reference value :  1.96056e-09
+ Reference value :  1.96856e-09
+ Reference value :  1.97656e-09
+ Reference value :  1.98456e-09
+ Reference value :  1.99256e-09
+ Reference value :  2.00056e-09
+ Reference value :  2.00856e-09
+ Reference value :  2.01656e-09
+ Reference value :  2.02456e-09
+ Reference value :  2.03056e-09
+ Reference value :  2.03856e-09
+ Reference value :  2.11856e-09
+ Reference value :  2.12856e-09
+ Reference value :  2.13656e-09
+ Reference value :  2.14456e-09
+ Reference value :  2.19656e-09
+ Reference value :  2.62056e-09
+ Reference value :  3.28256e-09
+ Reference value :  4.20656e-09
+ Reference value :  4.71656e-09
+ Reference value :  5.45100e-09
+ Reference value :  6.26300e-09
+ Reference value :  6.91700e-09
+ Reference value :  7.38900e-09
+No. of Data Rows : 3814
+Note: Simulation executed from .control section 

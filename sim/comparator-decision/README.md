@@ -307,12 +307,18 @@ this campaign, serially, on the shared dispatch host:
 |---|---|---|
 | `kickback` | 2 | **~30-40 s** (first corner 7.6 min, queued behind a sibling sweep's ngspice) |
 | `regen` | 8 | **~20 min** |
-| `offset` | ~37 | ~25 min (issue #57's measurement; not re-run per-corner here) |
+| `offset` | ~37 | **19-64 min** (issue #80's four corners, serially; #57 estimated ~25) |
 
 So the six remaining `kickback` corners cost ~14 min in total and the five
 remaining `regen` corners ~100 min -- both inside one session, with no
-parallel grid and no fleet submission. `offset` and `noise` are the
-deliberately-skipped part; see "Deliberately skipped, and why" below.
+parallel grid and no fleet submission. `offset` and `noise` were the
+deliberately-skipped part of *this* campaign; see "Deliberately skipped, and
+why" below. Issue #80 later ran `offset`'s four remaining corners under the
+same rule, at ~2.6 h total. Its per-corner spread is worth noting for future
+budgeting: the same 37-deck run took **19 min** on a quiet host and **64
+min** at a 15-min load average of 14.5 on these 8 vCPUs. Per-corner wall
+clock on this host is set by sibling-sweep contention at least as much as by
+the corner, so a serial-campaign estimate should carry a range, not a point.
 
 **The host rule this respects.** This is a shared 8-vCPU dispatch worker, not
 a simulation box, and other sweeps run concurrently on it (one sibling sweep's
@@ -767,6 +773,13 @@ the standing layout-stage gate) and `regen` -- leaving `offset` and `noise` at
 #57's single anchor for the stated reason below. Dispatch: serial, one
 ngspice at a time, per "Dispatch decision (issue #64)" above.
 
+**Issue #80 has since closed the `offset` half of that skip**, running all
+four remaining `_mm` mismatch corners post-layout under the same serial
+dispatch rule; its results are the `offset` subsection below, and the
+"Deliberately skipped, and why" entry is struck through accordingly. `noise`
+was never a coverage gap in the same sense -- all seven graded corners were
+run, six simply have no schematic-level AC counterpart to difference against.
+
 #### `kickback` -- all seven graded corners now measured post-layout
 
 | Corner | Schematic | Post-layout | Ratio | Record |
@@ -861,21 +874,130 @@ corners, not this AC sub-model, so there is no committed schematic-level AC
 counterpart to difference against. Each record says exactly that instead of
 inventing a ratio, and the figure is still graded against the ratified bound.
 
+#### `offset` -- all five `_mm` corners now measured post-layout (issue #80)
+
+Issue #64 deliberately skipped `offset` at the four non-`tt_mm` mismatch
+corners and recorded why (see "Deliberately skipped, and why" below, now
+closed). Issue #80 ran them: `--dut extracted` at `ss_mm`, `ff_mm`, `sf_mm`
+and `fs_mm`, each at **27 C, N=16, seed 1** -- the one methodology anchor
+every committed offset record in this repo uses, schematic-level and
+post-layout alike, so the five figures differ only in process. Dispatch was
+the same as #64's: `--jobs 1`, one corner at a time, serial.
+
+Note that `offset`'s graded axis is **not** `GRADED_CORNERS`. It grades the
+`_mm` mismatch variant of each process corner at a single temperature, so the
+coverage question for this row is "all five `_mm` corners at 27 C", not "all
+seven (corner, temperature) points". `run.py` names that axis explicitly as
+`OFFSET_GRADED_CORNERS`, and a test asserts a schematic-level anchor exists
+for each, so the claim below is checkable against a list rather than prose.
+
+| Corner | Schematic | Post-layout | Ratio | Negative-control mean (systematic) | Record |
+|---|---|---|---|---|---|
+| `tt_mm`/27C | 1.7857 mV | 2.4446 mV | 1.369x | 0.6547 mV | `records/20260925-112809-4694692.md` (#57) |
+| `ss_mm`/27C | 1.8244 mV | **2.4133 mV** | 1.323x | **0.6780 mV** | `records/20260926-022304-5b02508.md` |
+| `ff_mm`/27C | 1.5954 mV | **2.4796 mV** | **1.554x** | **0.6355 mV** | `records/20260926-032735-85c288e.md` |
+| `sf_mm`/27C | 1.6706 mV | **2.4794 mV** | 1.484x | **0.6350 mV** | `records/20260926-034704-dfaee77.md` |
+| `fs_mm`/27C | 1.8218 mV | **2.4078 mV** | 1.322x | **0.6874 mV** | `records/20260926-041419-38f6227.md` |
+
+Every corner's same-seed mismatch-disabled negative control reproduced stdev
+**exactly 0**, and every mismatch-enabled positive control showed genuine
+spread, so all five records are `Overall: PASS` and the deck is still
+isolating mismatch rather than an artifact of the extracted fragment.
+
+**Against the ratified bounds.** The worst corner is `ff_mm` at stdev 2.4796
+mV, **3 sigma = 7.4388 mV**. The `<= 15 mV` 3-sigma **target** bound is
+cleared at all five corners with worst-case **2.02x** margin, and the `<= 8
+mV` 3-sigma **stretch** figure is *also* still cleared everywhere, worst case
+**1.08x**. The Offset sigma row is therefore **not** re-opened and **no
+decision record is filed** -- per `CLAUDE.md`, a ratified bound is only
+re-opened by evidence, and this evidence does not breach one.
+
+**The corner spread collapses, and that is the finding.** Schematic-level the
+five corners span 1.5954-1.8244 mV (**14.4%**, `ss_mm` nominally binding).
+Post-layout they span 2.4078-2.4796 mV -- **3.0%**. Two consequences, and the
+second matters more than the first:
+
+1. **The schematic-level ranking does not survive layout.** `ss_mm`, the
+   nominally binding schematic corner and the reason this issue was filed, is
+   now the *second-lowest* post-layout figure; `ff_mm`, the *lowest*
+   schematic corner, is the highest. So the worry that motivated the work --
+   that `ss_mm` might bind harder post-layout -- is answered, and answered
+   negatively.
+2. **But no post-layout binding corner is resolvable at N=16 either.** The
+   3.0% post-layout span sits far inside this sample size's own **18.3%**
+   relative standard error on the stdev. The five post-layout corners are
+   statistically indistinguishable from one another; the honest reading is
+   not "`ff_mm` binds" but "**at N=16 this row has no identifiable worst
+   corner post-layout**". Separating them needs the O(100s)-draw post-layout
+   campaign, which is explicitly *not* part of this work and remains open.
+
+**The ratio is corner-dependent, and anti-correlated with the schematic-level
+value.** The post-layout penalty spans **1.322x-1.554x**, and it is largest
+exactly where the schematic-level figure was *smallest* (`ff_mm` 1.5954 mV ->
+1.554x) and smallest where it was largest (`fs_mm` 1.8218 -> 1.322x, `ss_mm`
+1.8244 -> 1.323x). Unlike the stdevs themselves, these ratios are *paired*
+comparisons -- same seed sequence, same draws, same deck template, only the
+DUT fragment differs -- so the ordering is better determined than an
+independent-sample reading of the 18.3% SE would suggest.
+
+This confirms #64's central finding from a third direction, and extends it.
+`kickback`'s post-layout penalty was largest at the corner that was already
+worst pre-layout (**reinforcing**: 1.583x at `sf`/-40C); `regen`'s was largest
+hot (1.437x at `fs`/125C); `offset`'s is largest where the schematic figure
+was *best* (**compressing**). Three rows, three different corner shapes -- so
+no row's PVT shape can be inferred from another's, and a single-corner
+post-layout ratio remains an unsafe basis for extrapolating any of them.
+
+**The ratio ordering is not a gain-loss ordering.** #57 attributed the
+`tt_mm` offset rise to the 2.12x pick-off-gain loss, and that remains the
+mechanism for the overall *level*. It does not explain the corner-to-corner
+*ordering*, because the two run opposite ways: `ff_mm` and `sf_mm` retain the
+**most** gain post-layout (35.7356 and 35.9542 V/V, losses of only 1.81x and
+1.84x) yet carry the **largest** offset ratios, while `fs_mm` and `ss_mm`
+lose the most gain (2.37x and 2.07x, down to 25.7414 and 26.0386 V/V) and
+carry the **smallest**. Layout also *widens* the gain spread (schematic
+53.9582-66.0461 V/V, 1.22x; post-layout 25.7414-35.9542 V/V, 1.40x) while
+*narrowing* the input-referred offset spread. So the flat post-layout offset
+figure is a net of two spreads that partially cancel, not a gain artifact.
+
+**The systematic term is essentially corner-independent.** The
+mismatch-disabled negative control's *mean* -- exactly 0 by construction on
+the symmetric schematic fragment, and the first measurement of a systematic,
+layout-induced offset on this block (#57) -- is non-zero at every corner and
+spans only **0.6350-0.6874 mV (8.3%)** across all five. It is the second
+output this campaign was scoped for. Because it barely moves with process, it
+is a robust term to carry into [issue
+#66](https://github.com/2AMLogic/sky130-comparator/issues/66)'s analysis of
+the sub-20 mV polarity asymmetry rather than a corner-specific artifact: the
+0.6547 mV figure that analysis already leans on is representative of the
+whole `_mm` set, not just of `tt_mm`. Note this row's bounds are stated on
+sigma only, so they do not cover this term at any corner.
+
+**Measured wall clock.** 19-64 min per corner serially on the shared
+dispatch host, against #57's ~25 min estimate -- the spread is contention
+from sibling sweeps, not from the corner (the slowest ran at a 15-min load
+average of 14.5 on 8 vCPUs). ~2.6 h total for the four corners.
+
 #### Deliberately skipped, and why
 
 Stated here so the gap is a decision on the record, not a silent absence:
 
-- **`offset` is measured post-layout at `tt_mm`/27C only** (issue #57). The
-  other four `_mm` corners were **not** run. Reason: `offset` is the
-  campaign's most expensive sub-command by an order of magnitude (~37 decks
-  per corner, ~25 min each serially), and under the serial dispatch decision
-  above the four remaining corners cost ~100 min of additional host time on
-  a shared dispatch worker. The two rows whose ratified compliance the layout
-  was *expected* to move -- `kickback` (DR-002/DR-005's named layout-stage
-  gate) and `regen` -- were prioritised for that budget instead. Offset's
-  post-layout `tt_mm` figure clears its stretch bound with 1.09x margin, so
-  the corner spread matters, and measuring it is genuine open work rather
-  than a closed question.
+- ~~**`offset` is measured post-layout at `tt_mm`/27C only** (issue #57)~~ --
+  **CLOSED by issue #80**, which ran the other four `_mm` corners; see
+  "`offset` -- all five `_mm` corners now measured post-layout" above. The
+  original reason is kept on the record: `offset` is the campaign's most
+  expensive sub-command by an order of magnitude (~37 decks per corner,
+  ~25 min each serially), and under the serial dispatch decision above the
+  four remaining corners cost ~100 min of additional host time on a shared
+  dispatch worker, so the two rows whose ratified compliance the layout was
+  *expected* to move -- `kickback` (DR-002/DR-005's named layout-stage gate)
+  and `regen` -- were prioritised for that budget instead. That reasoning was
+  sound on cost and wrong on outcome in one respect worth recording: the
+  skipped corners turned out to carry the campaign's *largest* post-layout
+  ratio (1.554x at `ff_mm`, against `tt_mm`'s 1.369x anchor), so the skip did
+  cost information, not merely coverage. What it did not cost is compliance
+  -- every corner clears both bounds. An O(100s)-draw post-layout campaign
+  remains genuinely open and is not part of #80.
 - **`reset` and `noise-tran` had no post-layout deck form at all** when this
   campaign ran, and refused `--dut extracted`. Not a coverage choice at the
   time -- there was nothing to run. **Issue #65 has since built that deck
@@ -894,7 +1016,7 @@ Stated here so the gap is a decision on the record, not a silent absence:
 | `kickback` | **7 of 7** graded corners | none |
 | `regen` | **7 of 7** graded corners | none |
 | `noise` (AC) | **7 of 7** graded corners | delta only at `tt`/27C (no AC counterpart elsewhere) |
-| `offset` | **1 of 5** `_mm` corners (`tt_mm`/27C) | 4 corners, deliberately skipped (cost) |
+| `offset` | **5 of 5** `_mm` corners (all at 27C, #80) | none at N=16; no O(100s)-draw post-layout campaign |
 | `noise-tran` | **1 of 7** graded corners (`tt`/27C, #65) | 6 corners, incl. `fs`/125 °C (the corner DR-006 would close on) |
 | `reset` | **5 of 5** of its own corner set (#65) | none |
 
