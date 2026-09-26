@@ -91,12 +91,20 @@ claims**, and neither will ever substantiate a spec row:
 
 They exist because issue #8 stands the harness up *before* any comparator
 schematic exists. `sim/comparator-decision/` (issue #9) has since landed
-alongside them — but it exercises a **placeholder DUT**, not a real
-`design/comparator.sch` (see `sim/comparator-decision/README.md`), and it is
-a bespoke driver reusing `sim/harness/{pdk,toolchain,evidence,corners}.py`
-directly rather than `sim/run_corners.py` / `sim/monte_carlo.py` (a dynamic
-latched comparator has no static `.op` operating point during regeneration —
-see that experiment's `run.py` module docstring for the full argument).
+alongside them, and **since issue #24 it exercises this repo's own
+`design/comparator.sch`** — its `testbench/comparator_core.spice` is a
+generated artifact of that schematic, produced by `./design/netlist.sh`,
+not the ported placeholder the plumbing was first stood up against. Each
+record's `Netlist provenance` field is what tells the two generations apart
+— `schematic, placeholder (...)` for the issue-#9 placeholder versus
+`schematic-derived (design/comparator.sch -> ./design/netlist.sh -> ...)`
+for this repo's own design (see `sim/comparator-decision/README.md`, which
+also documents the post-layout `--dut extracted` provenance added in issue
+#57). What is still true of it is that it is a bespoke driver, reusing
+`sim/harness/{pdk,toolchain,evidence,corners}.py` directly rather than
+`sim/run_corners.py` / `sim/monte_carlo.py` (a dynamic latched comparator
+has no static `.op` operating point during regeneration — see that
+experiment's `run.py` module docstring for the full argument).
 `harness-corner-smoke/` and `mc-smoke/` stay as the regression that proves
 the *harness's own* PVT/MC plumbing still works, independent of whichever
 DUT `sim/comparator-decision/` currently exercises.
@@ -107,7 +115,8 @@ DUT `sim/comparator-decision/` currently exercises.
 sim/
   <experiment-slug>/                 # e.g. harness-corner-smoke, mc-smoke,
                                      # comparator-decision (issue #9 --
-                                     # placeholder DUT, own bespoke run.py)
+                                     # design/comparator.sch DUT since #24,
+                                     # own bespoke run.py)
     testbench/
       tb.json                        # manifest: netlist fragment, PVT axes,
                                      # measurements, checks
