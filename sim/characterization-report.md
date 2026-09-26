@@ -250,6 +250,16 @@ The hot corners bind this row — the post-layout AC figure is ≈ 1.9× worse a
 | **`fs`/125 °C** | **post-layout** | **0.2540** | [0.1961, 0.3009] | 32 | degenerate — same all-one-way cause | `sim/comparator-decision/records/20260926-055806-3034c41.md` |
 | **`ss`/−40 °C** | **post-layout** | **0.1382** | [0.1046, 0.1666] | 32 | degenerate — resolvable-overdrive floor, as on the schematic side | `sim/comparator-decision/records/20260926-110218-b64004b.md` |
 | **`ff`/125 °C** | **post-layout** | **0.1956** | [0.1606, 0.2212] | 32 | **0.2175 mV — measurable, and agrees** | `sim/comparator-decision/records/20260926-102605-b64004b.md` |
+| **`sf`/−40 °C** | **post-layout** | **0.0929** | [0.0718, 0.1094] | 32 | degenerate — same all-one-way cause | `sim/comparator-decision/records/20260926-193923-e8c407f.md` |
+| **`sf`/125 °C** | **post-layout** | **0.1682** | [0.1362, 0.1903] | 32 | degenerate — same all-one-way cause | `sim/comparator-decision/records/20260926-195443-e8c407f.md` |
+| **`fs`/−40 °C** | **post-layout** | **0.1084** | [0.0838, 0.1282] | 32 | degenerate — same all-one-way cause | `sim/comparator-decision/records/20260926-200900-e8c407f.md` |
+
+All seven graded corners now carry a post-layout `noise-tran` record
+([#95](https://github.com/2AMLogic/sky130-comparator/issues/95) added the last
+three: `sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C). Like `fs`/125 °C, none of the
+three has a schematic-level counterpart — `SCHEMATIC_BASELINES` never carried
+a `noise-tran` anchor at any of them — so each states its post-layout figure
+alone rather than inventing a ratio.
 
 **Three corners now carry a schematic→post-layout ratio, none of them resolved,
 and all three pointing the same way**: 1.063× (`tt`/27 °C), 1.139× (`ss`/−40 °C,
@@ -302,11 +312,15 @@ at `fs`/125 °C against 0.1448 mV at `tt`/27 °C is **1.754×** with
 sizes. It degrades faster with corner than the AC sub-model's own 1.433×
 (0.9423 / 0.6576), and the AC-to-transient gap at `fs`/125 °C is 3.71× —
 squarely inside the ~3–4× gap the other corners show, so the closing figure is
-not a method outlier at the corner where it matters most. #89's two corners
-extend that scaling to four points, monotone in temperature: 0.1382 mV
-(`ss`/−40 °C), 0.1448 mV (`tt`/27 °C), 0.1956 mV (`ff`/125 °C), 0.2540 mV
-(`fs`/125 °C). The hot corners bind this row on the regeneration-inclusive basis
-exactly as they do on the AC one.
+not a method outlier at the corner where it matters most. The
+regeneration-inclusive basis now covers all seven graded corners: 0.0929 mV
+(`sf`/−40 °C), 0.1084 mV (`fs`/−40 °C), 0.1382 mV (`ss`/−40 °C), 0.1448 mV
+(`tt`/27 °C), 0.1682 mV (`sf`/125 °C), 0.1956 mV (`ff`/125 °C), 0.2540 mV
+(`fs`/125 °C). The ordering is not a simple monotone temperature trend — the
+two coldest skew corners sit *below* `tt`/27 °C while the two hottest skew
+corners sit above it alongside `fs`/125 °C, which remains this row's worst
+corner exactly as DR-006 Amendment 1 recorded. The hot corners still bind this
+row on the regeneration-inclusive basis exactly as they do on the AC one.
 
 Three of the four post-layout cross-checks are degenerate, and the two
 *all-one-way* ones are independent evidence for the sub-20 mV polarity asymmetry
@@ -360,26 +374,30 @@ argument.** DR-006's disposition and its Amendment 1, reproduced in substance:
    RATIFIED-and-clear and discharges its own §3 closure condition.**
 4. **The stretch figure is breached at four of seven corners** on the AC basis
    (`tt`/27 °C, `ff`/125 °C, `sf`/125 °C, `fs`/125 °C) and cleared at the three
-   cold ones. **Unchanged, and explicitly not re-closed by #83 or #89**: the
-   transient basis clears the stretch figure at all four of its corners, but the
-   two bases disagree, the transient basis has 4 of 7 corners, and per
-   `CLAUDE.md` a different method's number does not erase a recorded breach.
-   Unchanged in value; not a compliance requirement. Note that #89's two new
-   corners include `ff`/125 °C, one of the four the AC basis records as
-   breached — and the transient figure there (0.1956 mV) clears the stretch
-   figure by 3.07×. That widens the disagreement between the two bases at a
-   *breached* corner rather than resolving it, which is precisely why the AC
-   breach record is left standing.
+   cold ones. **Unchanged, and explicitly not re-closed by #83, #89 or #95**:
+   the transient basis now covers all seven graded corners (coverage completed
+   by #95) and clears the stretch figure at every one of them, but the two
+   bases disagree, and per `CLAUDE.md` a different method's number does not
+   erase a recorded breach. Unchanged in value; not a compliance requirement.
+   Two of the AC basis's four breached corners are transient-basis corners with
+   the widest margin: `ff`/125 °C (0.1956 mV, 3.07×) and `sf`/125 °C
+   (0.1682 mV, 3.57×) both clear the stretch bound by more than 3× on the
+   transient basis while the AC basis records them breached — widening the
+   disagreement between the two bases at those corners rather than resolving
+   it, which is precisely why the AC breach record is left standing.
 
 **What still needs a qualifier.** A bare "clears the noise target" *is* now
 supportable — provided it cites the regeneration-inclusive basis. What must
 still carry the **1.06× worst-corner qualifier** is any statement that cites the
 **AC lower-bound** figure as the row's basis: that figure is unchanged at
 0.9423 mV rms, and what #83 changed is that it is no longer the row's *only*
-basis at that corner. Three graded corners (`sf`/−40 °C, `sf`/125 °C,
-`fs`/−40 °C) also remain unmeasured post-layout for `noise-tran`, so the
-regeneration-inclusive basis covers the binding corner, `tt`/27 °C, `ss`/−40 °C
-and `ff`/125 °C — not the full seven.
+basis at that corner. The regeneration-inclusive basis now covers all seven
+graded corners ([#95](https://github.com/2AMLogic/sky130-comparator/issues/95)
+added the last three, `sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C), but only three of
+the seven (`tt`/27 °C, `ss`/−40 °C, `ff`/125 °C) have a schematic-level
+counterpart to form a ratio against — the other four, including the binding
+`fs`/125 °C corner, have none, which is a coverage fact about the schematic
+side's own campaign, not a gap in this row's post-layout basis.
 
 ---
 
@@ -542,7 +560,7 @@ not move it materially.
 | `regen` | 3 | **7 of 7** graded corners | none |
 | `noise` (AC) | 2 | **7 of 7** graded corners | schematic→post-layout ratio available only at `tt`/27 °C (no AC counterpart elsewhere) |
 | `offset` | 1 | **5 of 5** `_mm` corners (all at 27 °C; the four non-`tt_mm` ones by [#80](https://github.com/2AMLogic/sky130-comparator/issues/80)) | none at N=16; no post-layout large-N campaign, and at N=16 the 3.0 % post-layout corner spread is unresolved inside an 18.3 % relative SE |
-| `noise-tran` | 2 | **4 of 7** graded corners (`tt`/27 °C; `fs`/125 °C, [#83](https://github.com/2AMLogic/sky130-comparator/issues/83); **`ss`/−40 °C and `ff`/125 °C**, [#89](https://github.com/2AMLogic/sky130-comparator/issues/89)) | 3 corners (`sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C) — but **not** `fs`/125 °C, the corner DR-006 closes on: that one is measured, and DR-006 Amendment 1 closes row 2's target-bound basis on it. None of the three remaining corners has a schematic-level counterpart, so none can yield a ratio; the only two that could, #89 ran. Separately open: every post-layout figure is N=32–64 against the schematic side's N=128, so no individual ratio is resolved |
+| `noise-tran` | 2 | **7 of 7** graded corners (`tt`/27 °C; `fs`/125 °C, [#83](https://github.com/2AMLogic/sky130-comparator/issues/83); `ss`/−40 °C and `ff`/125 °C, [#89](https://github.com/2AMLogic/sky130-comparator/issues/89); **`sf`/−40 °C, `sf`/125 °C and `fs`/−40 °C**, [#95](https://github.com/2AMLogic/sky130-comparator/issues/95)) | none at the coverage level. Only three of the seven (`tt`/27 °C, `ss`/−40 °C, `ff`/125 °C) have a schematic-level counterpart to form a ratio; the other four (including the DR-006 closure corner `fs`/125 °C) correctly report no ratio because no schematic-level record exists there. Separately open: every post-layout figure is N=32–64 against the schematic side's N=128, so no individual ratio is resolved — closing that needs a resumable/chunked runner ([#100](https://github.com/2AMLogic/sky130-comparator/issues/100)) before the full-N sim time fits this host's ~60-minute command ceiling |
 | `reset` | 5 (current column) | **5 of 5** of its own corner set | none |
 
 Two coverage facts that apply to every row above:
@@ -564,29 +582,32 @@ Two coverage facts that apply to every row above:
 These are stated so a reader does not mistake an aggregated report for a closed
 one:
 
-- **Row 2's remaining three post-layout `noise-tran` corners** (`sf`/−40 °C,
-  `sf`/125 °C, `fs`/−40 °C). DR-006's closure condition — `fs`/125 °C — **has
-  landed** ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) and
-  Amendment 1 closes the target-bound basis on it, so what is open here is
-  *coverage*, not the basis. The two corners that had committed schematic-level
-  counterparts (`ss`/−40 °C, `ff`/125 °C) **have since been run**
-  ([#89](https://github.com/2AMLogic/sky130-comparator/issues/89)), together with
-  the `run.py` `SCHEMATIC_BASELINES` fix they needed in order to difference
-  against those counterparts at all. None of the three remaining corners has a
-  counterpart, so each will correctly report no ratio.
-- **Row 2's sample sizes are the binding open item, not its corner count.** Every
-  post-layout `noise-tran` figure is N=32–64 pick-off seeds against the schematic
-  side's N=128, and at all three corners where a ratio exists the schematic value
-  sits inside the post-layout CI — so the schematic→layout change on this row is
-  *unresolved* at every corner, and adding the last three corners will not
-  resolve it. A full-N re-run would: `tt`/27 °C (N=64/16),
-  `fs`/125 °C (N=32/4), `ss`/−40 °C and `ff`/125 °C (N=32/4 each), each
-  `--supersedes`-ing the record it replaces. **This cannot be done on the present
-  dispatch host as a single command**: #89 measured a hard ~60-minute wall-clock
-  ceiling on any one agent command (on top of the one-core cgroup quota #83
-  measured), and a full-N corner is 388 decks — an order of magnitude over it. A
-  resumable/chunked runner or a different execution host is a prerequisite, not a
-  scheduling preference.
+- **Row 2's post-layout `noise-tran` coverage is now complete.** DR-006's
+  closure condition — `fs`/125 °C — **landed**
+  ([#83](https://github.com/2AMLogic/sky130-comparator/issues/83)) and
+  Amendment 1 closes the target-bound basis on it. The two corners that had
+  committed schematic-level counterparts (`ss`/−40 °C, `ff`/125 °C) were run by
+  [#89](https://github.com/2AMLogic/sky130-comparator/issues/89), together with
+  the `run.py` `SCHEMATIC_BASELINES` fix they needed. The last three
+  (`sf`/−40 °C, `sf`/125 °C, `fs`/−40 °C) were run by
+  [#95](https://github.com/2AMLogic/sky130-comparator/issues/95). None of the
+  four counterpart-less corners has a schematic-level record, so each correctly
+  reports no ratio.
+- **Row 2's sample sizes are the binding open item, now that coverage is
+  closed.** Every post-layout `noise-tran` figure is N=32–64 pick-off seeds
+  against the schematic side's N=128, and at all three corners where a ratio
+  exists the schematic value sits inside the post-layout CI — so the
+  schematic→layout change on this row is *unresolved* at every corner. A
+  full-N re-run would: `tt`/27 °C (N=64/16), `fs`/125 °C (N=32/4), `ss`/−40 °C
+  and `ff`/125 °C (N=32/4 each), each `--supersedes`-ing the record it
+  replaces. **This cannot be done on the present dispatch host as a single
+  command**: #89 measured a hard ~60-minute wall-clock ceiling on any one
+  agent command (on top of the one-core cgroup quota #83 measured), and a
+  full-N corner is 388 decks — an order of magnitude over it. #95 settled the
+  prerequisite decision: a resumable/chunked runner is the recommended path
+  (not a different execution host or a redefinition of "full N" below 128),
+  tracked as [#100](https://github.com/2AMLogic/sky130-comparator/issues/100);
+  no full-N sim time has been spent yet.
 - **The ≤ 0.6 mV stretch figure on row 2** stays breached at four of seven
   corners on the AC basis. Not a compliance requirement, and deliberately not
   re-closed by #83's transient figure.
@@ -709,6 +730,9 @@ versa) is a `status: "fail"`.
 | `sim/comparator-decision/records/20260926-110218-b64004b.md` | 2 | `noise-tran` **`ss`/−40 °C, post-layout** (N=32/4) — the cited figure at this corner |
 | `sim/comparator-decision/records/20260926-100015-b64004b.md` | 2 | `noise-tran` `ss`/−40 °C, post-layout at N=16/2 — **superseded** by the row above; kept because the N=16→N=32 move at one fixed corner is itself the evidence that N=16 is below this statistic's useful floor |
 | `sim/comparator-decision/records/20260926-102605-b64004b.md` | 2 | `noise-tran` **`ff`/125 °C, post-layout** (N=32/4) — the only post-layout corner whose decision-transition cross-check is measurable |
+| `sim/comparator-decision/records/20260926-193923-e8c407f.md` | 2 | `noise-tran` **`sf`/−40 °C, post-layout** (N=32/4) — no schematic-level counterpart exists |
+| `sim/comparator-decision/records/20260926-195443-e8c407f.md` | 2 | `noise-tran` **`sf`/125 °C, post-layout** (N=32/4) — no schematic-level counterpart exists |
+| `sim/comparator-decision/records/20260926-200900-e8c407f.md` | 2 | `noise-tran` **`fs`/−40 °C, post-layout** (N=32/4) — no schematic-level counterpart exists; coverage of all seven graded `noise-tran` corners is now complete |
 | `sim/comparator-decision/records/20260922-070800-e084b55.md` | 3 | `regen` `tt`/27 °C, schematic |
 | `sim/comparator-decision/records/20260922-071313-e084b55.md` | 3 | `regen` `ss`/−40 °C, schematic |
 | `sim/comparator-decision/records/20260922-175252-e23c509.md` | 3 | `regen` `ff`/125 °C, schematic |
