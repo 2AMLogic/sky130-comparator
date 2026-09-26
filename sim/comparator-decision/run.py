@@ -713,11 +713,28 @@ def _resolve_pdk_line(info: pdk.PdkInfo) -> str:
     return f"{info.variant} @ {pdk.resolved_commit(info)}"
 
 
+def _begin_dut_record(subdir: str) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
+    """Shared head, the counterpart of `_finalize_record` below: resolve the
+    PDK, mint a record id, hash + snapshot the DUT fragment, and create the
+    per-record log directory the caller drops its raw ngspice logs into.
+
+    Returns `(info, record_id, netlist_sha, record_path, logs_dir)`, where
+    `logs_dir` is `<EXPERIMENT_DIR>/<subdir>/<record_id>` -- `subdir` is the
+    one thing that varies across callers today (`"corners"` for the
+    deterministic sweeps, `"mc-draws"` for the Monte Carlo runner)."""
+    info = pdk.resolve()
+    record_id = evidence.new_record_id()
+    netlist_sha = evidence.sha256_file(_dut_fragment())
+    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    logs_dir = EXPERIMENT_DIR / subdir / record_id
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return info, record_id, netlist_sha, record_path, logs_dir
+
+
 def _finalize_record(
     lines: list[str],
     record_path: Path,
-    pdk_line: str,
-    ng_version: str,
+    info: pdk.PdkInfo,
     netlist_sha: str,
     cmd: str,
     extra: dict[str, str] | None = None,
@@ -725,10 +742,11 @@ def _finalize_record(
 ) -> Path:
     """Shared tail: append the environment block + append-only footer and
     write the record. `cmd` is the subcommand name, used in the "Written by"
-    attribution."""
+    attribution. The PDK and ngspice identity lines are resolved here from
+    `info` so no caller has to repeat that derivation."""
     lines.extend(evidence.environment_block(
-        pdk_line=pdk_line,
-        ngspice_line=ng_version,
+        pdk_line=_resolve_pdk_line(info),
+        ngspice_line=toolchain._ngspice_version() or "unknown",
         netlist_sha256=netlist_sha,
         extra=extra,
     ))
@@ -825,12 +843,7 @@ def write_regen_evidence(
     points: list[RegenPoint], corner: str, temp_c: float,
     note: str = "", supersedes: str = "",
 ) -> Path:
-    info = pdk.resolve()
-    record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
-    corners_dir = EXPERIMENT_DIR / "corners" / record_id
-    corners_dir.mkdir(parents=True, exist_ok=True)
+    info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
         safe = f"{p.vindiff_mv}mV".replace("-", "neg").replace(".", "p")
         (corners_dir / f"vindiff_{safe}.log").write_text(p.log_text)
@@ -887,8 +900,7 @@ def write_regen_evidence(
         lines.extend(post_layout_delta_lines("regen", corner, temp_c, ref))
         a("")
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "regen", supersedes=supersedes,
+        lines, record_path, info, netlist_sha, "regen", supersedes=supersedes,
     )
 
 
@@ -1052,12 +1064,7 @@ def run_offset_mc(
 def write_offset_evidence(
     result: OffsetResult, note: str = "", supersedes: str = "",
 ) -> Path:
-    info = pdk.resolve()
-    record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
-    draws_dir = EXPERIMENT_DIR / "mc-draws" / record_id
-    draws_dir.mkdir(parents=True, exist_ok=True)
+    info, record_id, netlist_sha, record_path, draws_dir = _begin_dut_record("mc-draws")
     for name, text in result.logs.items():
         (draws_dir / f"{name}.log").write_text(text)
 
@@ -1175,8 +1182,7 @@ def write_offset_evidence(
         "offset", result.corner, result.temp_c, draws_stdev, unit_scale=1000.0))
     a("")
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "offset",
+        lines, record_path, info, netlist_sha, "offset",
         extra={"MC seed": str(result.seed), "MC N": str(result.n)},
         supersedes=supersedes,
     )
@@ -1449,8 +1455,7 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
         unit_scale=1000.0))
     a("")
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "noise", supersedes=supersedes,
+        lines, record_path, info, netlist_sha, "noise", supersedes=supersedes,
     )
 
 
@@ -2408,8 +2413,7 @@ def write_noise_tran_evidence(
     a("")
     seeds = result.decision_points[0]["m"] if result.decision_points else 0
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "noise-tran",
+        lines, record_path, info, netlist_sha, "noise-tran",
         extra={
             "noise-tran N pickoff": str(len(result.pickoff_diffs)),
             "noise-tran seeds/sign/decision point": str(seeds),
@@ -2688,12 +2692,7 @@ def run_reset_check(
 def write_reset_evidence(
     points: list[ResetPoint], note: str = "", supersedes: str = "",
 ) -> Path:
-    info = pdk.resolve()
-    record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
-    corners_dir = EXPERIMENT_DIR / "corners" / record_id
-    corners_dir.mkdir(parents=True, exist_ok=True)
+    info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
         safe = f"{p.variant.replace('-', '_')}_{p.corner}_{str(p.temp_c).replace('-', 'neg').replace('.', 'p')}c"
         (corners_dir / f"reset_{safe}.log").write_text(p.log_text)
@@ -2910,8 +2909,7 @@ def write_reset_evidence(
         )
         a("")
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "reset", supersedes=supersedes,
+        lines, record_path, info, netlist_sha, "reset", supersedes=supersedes,
     )
 
 
@@ -3116,12 +3114,7 @@ def run_kickback(
 def write_kickback_evidence(
     points: list[KickbackPoint], note: str = "", supersedes: str = "",
 ) -> Path:
-    info = pdk.resolve()
-    record_id = evidence.new_record_id()
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
-    corners_dir = EXPERIMENT_DIR / "corners" / record_id
-    corners_dir.mkdir(parents=True, exist_ok=True)
+    info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
         (corners_dir / f"kickback_{p.variant}.log").write_text(p.log_text)
 
@@ -3242,8 +3235,7 @@ def write_kickback_evidence(
         unit_scale=1000.0))
     a("")
     return _finalize_record(
-        lines, record_path, _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown",
-        netlist_sha, "kickback", supersedes=supersedes,
+        lines, record_path, info, netlist_sha, "kickback", supersedes=supersedes,
     )
 
 
