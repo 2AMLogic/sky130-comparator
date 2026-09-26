@@ -122,7 +122,12 @@ def gate(klt: str, pdk_root: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="CI gate re-running the independent klt extract "
+                    "device-count assertion over the committed "
+                    "layout/comparator.gds; see layout/README.md for the "
+                    "rationale."
+    )
     parser.add_argument("mode", choices=["gate", "selftest"])
     parser.add_argument("--klt", default="klt")
     parser.add_argument("--pdk-root", default="~/.volare")

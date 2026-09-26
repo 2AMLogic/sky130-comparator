@@ -36,7 +36,7 @@ Method (adapted from the sky130-sar-adc comparator sub-block's proven flow,
 same PDK pin, same klt version; and the gf180 twin's ``gen_comparator.py``
 naming convention):
 
-* **Devices** are 100%% ``klt gen`` geometry -- one block per schematic
+* **Devices** are 100% ``klt gen`` geometry -- one block per schematic
   device group, no hand-drawn transistors:
 
     - ``inpair`` -- M_PINN/M_PINP, the offset-critical input pair
@@ -80,7 +80,7 @@ naming convention):
 
 * **Floorplan against the parasitic asymmetry** (DR-004/DR-005 Open items):
   layout capacitance at VINP/VINN raises kickback (Kickback row margin thin:
-  1.06-1.13x at the DR-004 anchors, a 1%% stretch-bound breach already
+  1.06-1.13x at the DR-004 anchors, a 1% stretch-bound breach already
   recorded at sf/-40C), so the block order keeps the clock shaper
   (``rclks``/``clkcap``, the CLKT net) and the three large gate-cap devices
   (``absorb`` W=40 x2, ``clkcap`` W=20) on the far side of the steering
@@ -2143,7 +2143,11 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description="Generate and verify layout/comparator.gds and its "
+                    "committed evidence artifacts; see layout/README.md for "
+                    "the floorplan, routing and verification rationale."
+    )
     parser.add_argument("--check", action="store_true",
                         help="regenerate into a temp dir and byte-compare the "
                              "GDS against layout/comparator.gds; commit nothing")
