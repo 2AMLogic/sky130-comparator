@@ -277,3 +277,29 @@ def summary() -> str:
         f"python: {sys.version.split()[0]} (floor {cfg['python_min']})\n"
         f"PDK: {pdk_line}\n"
     )
+
+
+def report_env(allow_drift: bool = False) -> int:
+    """Run check_env(), print the human-readable `--check-env` report, and
+    return the exit status unchanged.
+
+    The single implementation behind every `--check-env` spelling in this repo
+    (sim/run_corners.py via harness/cli.py, and
+    sim/comparator-decision/run.py). Both drivers used to carry a verbatim
+    copy of this block, and they had already drifted: only the cli.py copy
+    threaded --allow-toolchain-drift, so the two spellings disagreed about
+    drift tolerance on the same install (issue #108).
+
+    `allow_drift` defaults to False -- the strict behaviour the evidence
+    driver needs -- so a caller that wants the escape hatch has to ask for it
+    on one visible line. The exit status is `check_env()`'s verbatim: 0 clean,
+    1 pinned version drifted, 3 tool/PDK missing (see this module's docstring
+    and sim/README.md); nothing here transforms it.
+    """
+    result = check_env(allow_drift=allow_drift)
+    print(summary())
+    for w in result.warnings:
+        print(f"  ! warning: {w}")
+    for m in result.messages:
+        print(f"  - {m}")
+    return result.status

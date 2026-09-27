@@ -15,6 +15,8 @@ numbering."""
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -583,6 +585,10 @@ class TestToolchainDriftVsWarning(unittest.TestCase):
             variant = "sky130A"
             variant_dir = Path("/fake/sky130A")
             error = ""
+            # summary() (and so report_env()) renders pdk.resolved_commit(),
+            # which falls back to this field for a non-volare path layout
+            # like the fake one above.
+            open_pdks_commit_expected = self.pinned_pdk
 
         toolchain.pdk.resolve = lambda: FakeInfo()
         toolchain.pdk.resolved_commit_verified = lambda info: self.pinned_pdk
@@ -649,6 +655,61 @@ class TestToolchainDriftVsWarning(unittest.TestCase):
         result = toolchain.check_env(allow_drift=True)
         self.assertEqual(result.status, 0)
         self.assertEqual(len(result.messages), 1)
+
+    # -- report_env(): the one implementation behind every --check-env
+    # spelling (sim/run_corners.py and sim/comparator-decision/run.py), whose
+    # printed shape used to be duplicated verbatim in both drivers and
+    # asserted nowhere (issue #108).
+
+    def _report_env_stdout(self, **kwargs) -> tuple[int, str]:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            status = toolchain.report_env(**kwargs)
+        return status, buf.getvalue()
+
+    def test_report_env_prints_summary_then_warnings_then_messages(self):
+        """status 0 WITH a message: proves report_env() prints
+        result.messages independently of result.status, and pins the
+        summary -> warnings -> messages order plus both line prefixes."""
+        toolchain._ngspice_version = lambda: f"ngspice-{self.ngspice_floor - 1}"
+        toolchain._xschem_version = lambda: "0.0.1-definitely-not-the-pin"
+        status, out = self._report_env_stdout(allow_drift=True)
+
+        self.assertEqual(status, 0)
+        self.assertIn("ngspice: ", out)  # summary() block
+        self.assertIn("PDK: ", out)
+
+        warn_lines = [ln for ln in out.splitlines() if ln.startswith("  ! warning: ")]
+        msg_lines = [ln for ln in out.splitlines() if ln.startswith("  - ")]
+        self.assertEqual(len(warn_lines), 1)
+        self.assertIn("not fatal", warn_lines[0])
+        self.assertEqual(len(msg_lines), 1)
+        self.assertIn("below floor", msg_lines[0])
+
+        # summary first, then the warning, then the message.
+        self.assertLess(out.index("ngspice: "), out.index(warn_lines[0]))
+        self.assertLess(out.index(warn_lines[0]), out.index(msg_lines[0]))
+
+    def test_report_env_returns_drift_status_unchanged(self):
+        """Same install as above without allow_drift: status 1 (the drift
+        exit code sim/README.md documents), message still printed. This is
+        sim/comparator-decision/run.py --check-env's effective behaviour."""
+        toolchain._ngspice_version = lambda: f"ngspice-{self.ngspice_floor - 1}"
+        toolchain._xschem_version = lambda: self.pinned_xschem
+        status, out = self._report_env_stdout()
+
+        self.assertEqual(status, 1)
+        msg_lines = [ln for ln in out.splitlines() if ln.startswith("  - ")]
+        self.assertEqual(len(msg_lines), 1)
+        self.assertIn("below floor", msg_lines[0])
+
+    def test_report_env_returns_missing_status_unchanged(self):
+        toolchain._ngspice_version = lambda: None
+        toolchain._xschem_version = lambda: self.pinned_xschem
+        status, out = self._report_env_stdout()
+
+        self.assertEqual(status, 3)
+        self.assertIn("  - ngspice not found on PATH", out)
 
 
 class TestPdkResolve(unittest.TestCase):

@@ -49,13 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.check_env:
-        result = toolchain.check_env(allow_drift=args.allow_toolchain_drift)
-        print(toolchain.summary())
-        for w in result.warnings:
-            print(f"  ! warning: {w}")
-        for m in result.messages:
-            print(f"  - {m}")
-        return result.status
+        return toolchain.report_env(allow_drift=args.allow_toolchain_drift)
 
     if not args.experiment:
         ap.print_help()
