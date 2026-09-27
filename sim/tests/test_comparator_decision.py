@@ -333,9 +333,9 @@ class TestNoiseTranDecks(unittest.TestCase):
 
 
 class TestPairSigmaEstimator(unittest.TestCase):
-    """`pair_sigma_mv()` / `_probit()` (issue #41): the pair-symmetric
-    decision-statistic estimator. Checks against hand-derived Gaussian
-    fractions, offset cancellation, and the degenerate-pair guard."""
+    """`pair_sigma_mv()` (issue #41): the pair-symmetric decision-statistic
+    estimator. Checks against hand-derived Gaussian fractions, offset
+    cancellation, and the degenerate-pair guard."""
 
     def test_recovers_sigma_from_exact_gaussian_fractions(self):
         # Phi(1) ~= 0.8413: at v = sigma exactly, p+ - p- ~= 0.683.
@@ -370,10 +370,6 @@ class TestPairSigmaEstimator(unittest.TestCase):
         # floor) makes arg exactly 0.5 and probit 0 -- no sigma information.
         est = cd_run.pair_sigma_mv(0.5, 0, 64, 0, 64)
         self.assertNotEqual(est, est)  # NaN
-
-    def test_probit_inverts_norm_cdf(self):
-        for x in (-2.0, -0.5, 0.0, 0.37, 1.3, 2.7):
-            self.assertAlmostEqual(cd_run._norm_cdf(cd_run._probit(cd_run._norm_cdf(x))), cd_run._norm_cdf(x), places=9)
 
 
 class TestJobsPlumbing(unittest.TestCase):

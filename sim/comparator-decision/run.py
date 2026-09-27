@@ -61,6 +61,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import math
 import os
 import statistics
 import sys
@@ -1974,21 +1975,7 @@ def _decision_from_csv(csv_path: Path) -> int | None:
     return None
 
 
-def _norm_cdf(x: float) -> float:
-    return 0.5 * (1.0 + __import__("math").erf(x / 2 ** 0.5))
-
-
-def _probit(p: float) -> float:
-    """Inverse normal CDF by bisection on _norm_cdf (no scipy in the
-    toolchain; the estimator only needs a few digits)."""
-    lo, hi = -8.0, 8.0
-    for _ in range(200):
-        mid = 0.5 * (lo + hi)
-        if _norm_cdf(mid) < p:
-            lo = mid
-        else:
-            hi = mid
-    return 0.5 * (lo + hi)
+_NORMAL_DIST = statistics.NormalDist()
 
 
 def pair_sigma_mv(v_mv: float, plus_ones: int, plus_n: int, minus_ones: int, minus_n: int) -> float:
@@ -2004,7 +1991,7 @@ def pair_sigma_mv(v_mv: float, plus_ones: int, plus_n: int, minus_ones: int, min
     arg = 0.5 * (1.0 + p_plus - p_minus)
     if not (0.01 < arg < 0.99):
         return float("nan")
-    denom = _probit(arg)
+    denom = _NORMAL_DIST.inv_cdf(arg)
     if abs(denom) < 1e-9:
         return float("nan")
     return v_mv / denom
@@ -2567,10 +2554,9 @@ def run_noise_tran(
             continue
         p_plus = point["plus_ones"] / m
         p_minus = point["minus_ones"] / m
-        arg = 0.5 * (1.0 + p_plus - p_minus)
-        darg = _probit(arg)
+        darg = point["v_mv"] / sigma_i
         # var(sigma_i)/sigma_i^2 ~ (dPhi^-1/darg)^2 * var(arg) / darg^2
-        dprobit = (2 * 3.141592653589793) ** 0.5 * pow(2.718281828459045, 0.5 * darg * darg)
+        dprobit = math.sqrt(2 * math.pi) * math.exp(0.5 * darg * darg)
         var_arg = (p_plus * (1 - p_plus) + p_minus * (1 - p_minus)) / m
         rel_var = (dprobit * dprobit * var_arg) / (darg * darg)
         pair_sigmas.append((sigma_i, (sigma_i * sigma_i) * rel_var))
