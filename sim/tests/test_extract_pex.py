@@ -182,7 +182,33 @@ class TestSchematicPairing(unittest.TestCase):
         self.assertIn("Vvsubs vsubs 0 dc 0", self.dut)
 
 
-class TestPreampPartition(unittest.TestCase):
+class NoDanglingStarLegMixin:
+    """The no-dangling-star-leg property, shared by both partition suites.
+
+    Properties 3 and 4 assert the same thing about their own partition, so
+    the assertion lives here once: a copy per partition class had already
+    drifted (one lost the explanation below), and a partition whose star legs
+    stopped being checked would silently stop being evidence. Every class
+    mixing this in must set `self.instances` in `setUp`.
+    """
+
+    instances: dict[str, list[str]]
+
+    def test_no_dangling_star_leg(self):
+        # Every `__t` leg node in the partition must appear at least twice:
+        # once on its device, once on its star resistor to the hub.
+        counts: dict[str, int] = {}
+        for tokens in self.instances.values():
+            for token in tokens:
+                if "__t" in token:
+                    counts[token] = counts.get(token, 0) + 1
+        self.assertTrue(counts, "partition has no star legs at all")
+        for node, count in sorted(counts.items()):
+            with self.subTest(node=node):
+                self.assertGreaterEqual(count, 2)
+
+
+class TestPreampPartition(NoDanglingStarLegMixin, unittest.TestCase):
     """Property 3: the partition is the schematic sub-model's loop break."""
 
     def setUp(self):
@@ -203,21 +229,8 @@ class TestPreampPartition(unittest.TestCase):
         hubs = {n.partition("__t")[0] for n in _nodes(self.preamp)}
         self.assertEqual(hubs & pex.LATCH_NETS, set())
 
-    def test_no_dangling_star_leg(self):
-        # Every `__t` leg node in the partition must appear at least twice:
-        # once on its device, once on its star resistor to the hub.
-        counts: dict[str, int] = {}
-        for tokens in self.instances.values():
-            for token in tokens:
-                if "__t" in token:
-                    counts[token] = counts.get(token, 0) + 1
-        self.assertTrue(counts, "partition has no star legs at all")
-        for node, count in sorted(counts.items()):
-            with self.subTest(node=node):
-                self.assertGreaterEqual(count, 2)
 
-
-class TestLatchFrontEndPartition(unittest.TestCase):
+class TestLatchFrontEndPartition(NoDanglingStarLegMixin, unittest.TestCase):
     """Issue #65's partition: the post-layout counterpart of `run.py`'s
     steering+tail AC sub-model, which gives `noise-tran` its stage-2
     gate-referred injection amplitude."""
@@ -246,17 +259,6 @@ class TestLatchFrontEndPartition(unittest.TestCase):
                           "R_OUTN1__t4_OUTN1", "C_TAIL2_vsubs"):
             with self.subTest(parasitic=parasitic):
                 self.assertIn(parasitic, self.instances)
-
-    def test_no_dangling_star_leg(self):
-        counts: dict[str, int] = {}
-        for tokens in self.instances.values():
-            for token in tokens:
-                if "__t" in token:
-                    counts[token] = counts.get(token, 0) + 1
-        self.assertTrue(counts, "partition has no star legs at all")
-        for node, count in sorted(counts.items()):
-            with self.subTest(node=node):
-                self.assertGreaterEqual(count, 2)
 
     def test_substrate_is_tied(self):
         self.assertIn("Vvsubs vsubs 0 dc 0", self.latch)
