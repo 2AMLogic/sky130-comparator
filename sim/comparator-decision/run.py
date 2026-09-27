@@ -3774,13 +3774,10 @@ def main(argv: list[str] | None = None) -> int:
     set_dut_provenance(args.dut)
 
     if args.check_env:
-        result = toolchain.check_env()
-        print(toolchain.summary())
-        for w in result.warnings:
-            print(f"  ! warning: {w}")
-        for m in result.messages:
-            print(f"  - {m}")
-        return result.status
+        # allow_drift=False deliberately: this driver writes evidence records,
+        # so a drifted pin must stay fatal here. It has no
+        # --allow-toolchain-drift flag (issue #108, out of scope).
+        return toolchain.report_env()
 
     if not args.mode:
         ap.print_help()
