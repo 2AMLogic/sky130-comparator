@@ -90,10 +90,26 @@ _INDEX_ROW_RE = re.compile(r"^\|\s*`([^`|]+)`\s*\|")
 
 #: Any evidence record the report mentions *anywhere*. Used for the
 #: under-indexing check: a figure cited in a row table but forgotten in the
-#: index would otherwise be unpinned, and could rot unnoticed.
+#: index would otherwise be unpinned, and could rot unnoticed. This is one of
+#: TWO sources feeding that check -- see `measurement_row_paths` below for the
+#: other, which catches non-record artifacts this regex cannot match.
 _RECORD_PATH_RE = re.compile(
     r"sim/comparator-decision/records/[0-9]{8}-[0-9]{6}-[0-9a-f]+\.md"
 )
+
+#: The numbered measurement sections' table rows: everything from '## 1.' up
+#: to (not including) '## Coverage'. The provenance table at the top of the
+#: report, and every heading before '## 1.', sit outside this window on
+#: purpose -- their citations (`sim/pdk.json`, `design/comparator.sch`, the
+#: testbench decks, etc.) are tooling/process mentions, not the report's own
+#: measurement figures, and must not feed the under-indexing check.
+_MEASUREMENT_SECTION_START_RE = re.compile(r"^## 1\. ", re.MULTILINE)
+_MEASUREMENT_SECTION_END_RE = re.compile(r"^## Coverage", re.MULTILINE)
+
+#: A backticked repo-relative path inside a measurement-section table row --
+#: at least one directory separator and a file extension, so a plain
+#: backticked corner name (`` `tt_mm` ``) or unit (`` `V/V` ``) can't match.
+_MEASUREMENT_PATH_RE = re.compile(r"`([\w./-]+/[\w.-]+\.[\w]+)`")
 
 
 def sha256_file(path: Path) -> str | None:
@@ -135,6 +151,31 @@ def parse_index(report_text: str) -> list[str]:
 
 def mentioned_records(report_text: str) -> set[str]:
     return set(_RECORD_PATH_RE.findall(report_text))
+
+
+def measurement_row_paths(report_text: str) -> set[str]:
+    """Every backticked repo-relative path cited from a table row inside the
+    numbered measurement sections ('## 1.' through '## 5.', ending at
+    '## Coverage') -- record or not.
+
+    Unlike `mentioned_records`, this is not anchored to the evidence-record
+    filename family, so it also catches a non-record artifact (a probe deck,
+    a `spec/decision-records/*.md` cited from a row rather than in prose)
+    when it drifts out of the Evidence index. When the report has no '## 1.'
+    heading at all -- as the hermetic selftest fixtures do -- this returns an
+    empty set rather than raising, so the fixtures that predate the numbered
+    sections are unaffected; only `mentioned_records` fires for them.
+    """
+    start = _MEASUREMENT_SECTION_START_RE.search(report_text)
+    if start is None:
+        return set()
+    end = _MEASUREMENT_SECTION_END_RE.search(report_text, start.end())
+    section = report_text[start.end() : end.start() if end else len(report_text)]
+    paths: set[str] = set()
+    for line in section.splitlines():
+        if line.lstrip().startswith("|"):
+            paths.update(_MEASUREMENT_PATH_RE.findall(line))
+    return paths
 
 
 def compute_pins(root: Path) -> dict:
@@ -250,7 +291,14 @@ def verify(root: Path) -> tuple[str, dict, list[str]]:
             indexed = []
         unpinned = [rel for rel in indexed if rel not in pinned_paths]
         stale = [rel for rel in pinned_paths if rel not in indexed]
-        unindexed = sorted(mentioned_records(report_text) - set(indexed))
+        # Union, not either check alone: the record-family regex and the
+        # measurement-row-table scan cover different citation shapes (prose
+        # vs. table row; record filename vs. any path), and neither
+        # subsumes the other -- see `measurement_row_paths`'s docstring for
+        # why the fixtures without numbered sections still need
+        # `mentioned_records` to fire.
+        cited = mentioned_records(report_text) | measurement_row_paths(report_text)
+        unindexed = sorted(cited - set(indexed))
         verification["index"]["unpinned"] = unpinned
         verification["index"]["stale_pins"] = stale
         verification["index"]["unindexed_records"] = unindexed
@@ -266,9 +314,9 @@ def verify(root: Path) -> tuple[str, dict, list[str]]:
             )
         for rel in unindexed:
             failures.append(
-                f"{REPORT_REL} cites evidence record {rel} in its body but "
-                "does not list it in the Evidence index -- it would go "
-                "unpinned"
+                f"{REPORT_REL} cites {rel} (an evidence record, or a "
+                "measurement-section table-row artifact) but does not list "
+                "it in the Evidence index -- it would go unpinned"
             )
 
     return ("pass" if not failures else "fail"), verification, failures
@@ -407,6 +455,53 @@ def _make_fixture(tmp: Path, report_text: str = _FIXTURE_REPORT) -> Path:
     return root
 
 
+#: A fixture with a numbered measurement section citing a non-record
+#: artifact from a table row -- the shape issue #102 fixes. `_FIXTURE_REPORT`
+#: above has no '## 1.' heading at all, so it can only ever exercise
+#: `_RECORD_PATH_RE`; this fixture exercises `measurement_row_paths` instead.
+_FIXTURE_REPORT_WITH_MEASUREMENT_ROW = """# Fixture characterization report with a measurement row
+
+## 1. Fixture measurement
+
+| Quantity | Figure | Source |
+|---|---|---|
+| something | 1.23 | `spec/fixture-support/probe.spice` |
+
+## Coverage
+
+Nothing else measured.
+
+## Evidence index
+
+| Artifact | Row(s) | What it carries |
+|---|---|---|
+| `sim/comparator-decision/records/20260101-000000-abc1234.md` | 1 | fixture |
+| `spec/decision-records/DR-000-fixture.md` | 1 | fixture |
+| `spec/fixture-support/probe.spice` | 1 | fixture non-record artifact, cited from a measurement row |
+"""
+
+
+def _make_fixture_with_measurement_row(tmp: Path) -> Path:
+    root = tmp
+    (root / "sim" / "comparator-decision" / "records").mkdir(parents=True)
+    (root / "spec" / "decision-records").mkdir(parents=True)
+    (root / "spec" / "fixture-support").mkdir(parents=True)
+    (root / REPORT_REL).write_text(
+        _FIXTURE_REPORT_WITH_MEASUREMENT_ROW, encoding="utf-8"
+    )
+    (
+        root / "sim/comparator-decision/records/20260101-000000-abc1234.md"
+    ).write_text("fixture record\n", encoding="utf-8")
+    (root / "spec/decision-records/DR-000-fixture.md").write_text(
+        "fixture DR\n", encoding="utf-8"
+    )
+    (root / "spec/fixture-support/probe.spice").write_text(
+        "* fixture probe deck\n", encoding="utf-8"
+    )
+    run_update(root, quiet=True)
+    return root
+
+
 def _emit(root: Path) -> tuple[int, dict]:
     """Run the emit path exactly as `klt signoff` would, capturing stdout."""
     import io
@@ -420,10 +515,10 @@ def run_selftest() -> int:
     cases: list[tuple[str, bool]] = []
     invariant_holds = True
 
-    def scenario(name, mutate, expect_status):
+    def scenario(name, mutate, expect_status, make_fixture=_make_fixture):
         nonlocal invariant_holds
         with tempfile.TemporaryDirectory() as td:
-            root = _make_fixture(Path(td))
+            root = make_fixture(Path(td))
             mutate(root)
             code, env = _emit(root)
         passed = env.get("status") == expect_status
@@ -487,6 +582,14 @@ def run_selftest() -> int:
     )
 
     scenario(
+        "non-record artifact cited from a measurement-section table row but "
+        "absent from the index emits status: fail (issue #102)",
+        lambda root: _repin_without_measurement_index_entry(root),
+        "fail",
+        make_fixture=_make_fixture_with_measurement_row,
+    )
+
+    scenario(
         "missing pins file emits status: fail (and still valid JSON)",
         lambda root: (root / PINS_REL).unlink(),
         "fail",
@@ -529,6 +632,21 @@ def _repin_without_index_entry(root: Path) -> None:
         line
         for line in text.splitlines()
         if "20260101-000000-abc1234.md` | 1 | fixture" not in line
+    )
+    (root / REPORT_REL).write_text(trimmed + "\n", encoding="utf-8")
+    run_update(root, quiet=True)
+
+
+def _repin_without_measurement_index_entry(root: Path) -> None:
+    """Drop the non-record artifact's index row, then re-pin, leaving its
+    measurement-section table-row citation intact -- issue #102's live
+    defect: a citation this narrow before the fix (only `_RECORD_PATH_RE`)
+    would keep passing after `--update` even though it rots unpinned."""
+    text = (root / REPORT_REL).read_text(encoding="utf-8")
+    trimmed = "\n".join(
+        line
+        for line in text.splitlines()
+        if "spec/fixture-support/probe.spice` | 1 | fixture" not in line
     )
     (root / REPORT_REL).write_text(trimmed + "\n", encoding="utf-8")
     run_update(root, quiet=True)

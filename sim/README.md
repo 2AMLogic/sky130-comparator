@@ -294,7 +294,9 @@ for every artifact its "Evidence index" names;
 signoff` run. What that catches is **drift in what the report already leans
 on**: an edited report, a modified or deleted record it cites, an index that
 has drifted out of step with the pins in either direction, or a record cited
-in the report body but absent from its index. Any of those renders T1 item 8
+in the report body -- or any artifact cited from a table row inside the
+numbered measurement sections, record or not -- but absent from its index.
+Any of those renders T1 item 8
 `unmet` rather than leaving a stale summary in place. Regenerate with
 `python3 scripts/characterization-envelope.py --update`.
 
