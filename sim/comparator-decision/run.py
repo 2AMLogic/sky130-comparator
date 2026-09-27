@@ -1638,6 +1638,13 @@ LATCH_NOISE_CL_FF = 10.0        # steering-sub-model drain load (bandwidth only 
 NOISE_TRAN_RETRY_TS = 0.41e-9    # perturbed update grid for the per-deck retry
 
 
+def _decision_deck_name(k: float, sign: int, i: int) -> str:
+    """The decision deck's name, which is also its persistence key in a
+    resumable campaign's scratch directory -- so the build loop and the
+    read-back loop MUST agree on it byte for byte. Single-sourced here."""
+    return f"dec_{k:g}_{'+' if sign > 0 else '-'}_{i}".replace(".", "p")
+
+
 def _run_many_ts_retry(builds, scratch_dir: Path, workers: int = 1) -> dict[str, str]:
     """Parallel batch of noise-tran decks, each retried once at the
     perturbed update interval on ngspice failure. `builds` is a list of
@@ -2509,7 +2516,7 @@ def run_noise_tran(
 
             for sign in (1, -1):
                 for i in range(seeds_per_point):
-                    name = f"dec_{k:g}_{ '+' if sign > 0 else '-'}_{i}".replace(".", "p")
+                    name = _decision_deck_name(k, sign, i)
                     dseed = (dseed_base + int(k * 1000) * 10_000
                              + (seeds_per_point if sign > 0 else 0) + i)
                     d_builds.append((name, _dec_build(name, sign * v_mv, dseed)))
@@ -2527,7 +2534,7 @@ def run_noise_tran(
                 ones = 0
                 unresolved = 0
                 for i in range(seeds_per_point):
-                    name = f"dec_{k:g}_{ '+' if sign > 0 else '-'}_{i}".replace(".", "p")
+                    name = _decision_deck_name(k, sign, i)
                     dec = d_values[name]
                     if dec is None:
                         unresolved += 1
@@ -3722,8 +3729,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-decks", type=int, default=None,
-        help="noise-tran: stop this invocation cleanly after N Monte Carlo decks "
-        "(needs --resume-dir). Use it to keep each command inside this host's "
+        help="noise-tran: stop this invocation cleanly after N campaign decks "
+        "(needs --resume-dir). N counts EVERY deck this invocation dispatches -- "
+        "the same all-deck 'campaign decks' count the stop message reports -- so "
+        "the four gain-calibration decks are included: on a fresh campaign a "
+        "budget of N reaches N-4 Monte Carlo decks, and any N<=4 reaches none. "
+        "Use it to keep each command inside this host's "
         "~60-minute wall-clock ceiling; exit status "
         f"{NOISE_TRAN_INCOMPLETE_EXIT} means 'incomplete, resumable, no record'.",
     )

@@ -1054,7 +1054,7 @@ Three flags, `noise-tran` only:
 | Flag | What it does |
 |---|---|
 | `--resume-dir DIR` | Persist each deck's derived value under `DIR` as that deck completes; on re-invocation, run only the decks still missing. |
-| `--chunk-decks N` | Stop this invocation cleanly after `N` Monte Carlo decks. Needs `--resume-dir`. |
+| `--chunk-decks N` | Stop this invocation cleanly after `N` **campaign** decks — every deck the invocation dispatches, the same all-deck count the stop message and the completed/total pair report. The first four decks of a fresh campaign are the gain calibration (which runs with no noise at all), so a fresh campaign reaches `N - 4` Monte Carlo decks and any `N <= 4` reaches none. Needs `--resume-dir`. |
 | `--chunk-seconds S` | Stop this invocation cleanly once it has been running `S` seconds, checked between decks. Needs `--resume-dir`. The clock starts at campaign setup, so it covers the AC/calibration preamble too. |
 
 **The invocation pattern.** Run the *identical* command repeatedly until it
