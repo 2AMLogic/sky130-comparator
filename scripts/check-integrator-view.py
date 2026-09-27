@@ -16,13 +16,12 @@ path (so it can never cite a vanished record), and if it states an
 `N/M T1 items met` figure, that figure FAILS unless it agrees with the
 report's `t1_met_count`/`t1_item_count` (issue #50).
 
-Honest nulls are first-class: `gds.path` and `measured_area.value_um2` are
-`null` today (no layout exists), and that is accepted -- but ONLY with the
-"not yet produced" note beside them, so an integrator reads a deliberate
-absence, never an accidentally-empty field. When layout lands, the fields
-flip to real values and the same gate holds them to the same existence
-check (issue #36's edge case: "the validator must accept both but never a
-stale path").
+Honest nulls are first-class: a null `gds.path` or `measured_area.value_um2`
+is accepted -- but ONLY with a "not yet produced" note beside it, so an
+integrator reads a deliberate absence, never an accidentally-empty field.
+Once a field carries a real value, the same gate holds it to the same
+existence check (issue #36's edge case: "the validator must accept both
+but never a stale path").
 
 `selftest` exercises the validation logic against hermetic fixtures (no
 network, no klt binary, no PDK) so the gate's own behavior is itself a

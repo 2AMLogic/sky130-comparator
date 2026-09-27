@@ -375,10 +375,10 @@ for existence like any other cited path), and if it states an
 `N/M T1 items met` figure, that figure must agree with the report's
 `t1_met_count`/`t1_item_count` or the gate fails — a hand-maintained
 sentence about a machine-graded verdict can no longer drift from the
-record unnoticed. Honest nulls (`gds`, `measured_area`) are accepted only
-with their "not yet produced" notes; when layout lands and the fields
-flip to real values, the same existence check applies. The gate is
-stdlib-only Python and needs no klt install.
+record unnoticed. A null `gds` or `measured_area` is accepted only with a
+"not yet produced" note; once a field carries a real value, the same
+existence check applies. The gate is stdlib-only Python and needs no klt
+install.
 
 ## Fleet context
 
