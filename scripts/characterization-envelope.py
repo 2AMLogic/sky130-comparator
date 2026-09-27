@@ -62,6 +62,7 @@ import json
 import re
 import sys
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -440,7 +441,18 @@ Row 1 rests on `sim/comparator-decision/records/20260101-000000-abc1234.md`.
 """
 
 
-def _make_fixture(tmp: Path, report_text: str = _FIXTURE_REPORT) -> Path:
+def _make_fixture(
+    tmp: Path,
+    report_text: str = _FIXTURE_REPORT,
+    extra_files: Mapping[str, str] | None = None,
+) -> Path:
+    """The fixture skeleton every selftest scenario is built on.
+
+    `report_text` swaps in a different report body; `extra_files` maps
+    repo-relative paths to contents for any artifact that body cites beyond
+    the two the skeleton always writes (parent directories are created as
+    needed).
+    """
     root = tmp
     (root / "sim" / "comparator-decision" / "records").mkdir(parents=True)
     (root / "spec" / "decision-records").mkdir(parents=True)
@@ -451,6 +463,14 @@ def _make_fixture(tmp: Path, report_text: str = _FIXTURE_REPORT) -> Path:
     (root / "spec/decision-records/DR-000-fixture.md").write_text(
         "fixture DR\n", encoding="utf-8"
     )
+    # Load-bearing ordering: every extra artifact must exist BEFORE
+    # `run_update` pins the report's citations. `sha256_file` returns None for
+    # a path it cannot read, so a file written after the pin step would be
+    # pinned as a null hash instead of its contents.
+    for rel, text in (extra_files or {}).items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
     run_update(root, quiet=True)
     return root
 
@@ -482,24 +502,11 @@ Nothing else measured.
 
 
 def _make_fixture_with_measurement_row(tmp: Path) -> Path:
-    root = tmp
-    (root / "sim" / "comparator-decision" / "records").mkdir(parents=True)
-    (root / "spec" / "decision-records").mkdir(parents=True)
-    (root / "spec" / "fixture-support").mkdir(parents=True)
-    (root / REPORT_REL).write_text(
-        _FIXTURE_REPORT_WITH_MEASUREMENT_ROW, encoding="utf-8"
+    return _make_fixture(
+        tmp,
+        _FIXTURE_REPORT_WITH_MEASUREMENT_ROW,
+        {"spec/fixture-support/probe.spice": "* fixture probe deck\n"},
     )
-    (
-        root / "sim/comparator-decision/records/20260101-000000-abc1234.md"
-    ).write_text("fixture record\n", encoding="utf-8")
-    (root / "spec/decision-records/DR-000-fixture.md").write_text(
-        "fixture DR\n", encoding="utf-8"
-    )
-    (root / "spec/fixture-support/probe.spice").write_text(
-        "* fixture probe deck\n", encoding="utf-8"
-    )
-    run_update(root, quiet=True)
-    return root
 
 
 def _emit(root: Path) -> tuple[int, dict]:
