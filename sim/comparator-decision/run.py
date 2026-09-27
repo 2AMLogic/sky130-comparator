@@ -3722,8 +3722,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-decks", type=int, default=None,
-        help="noise-tran: stop this invocation cleanly after N Monte Carlo decks "
-        "(needs --resume-dir). Use it to keep each command inside this host's "
+        help="noise-tran: stop this invocation cleanly after N campaign decks "
+        "(needs --resume-dir). N counts EVERY deck this invocation dispatches -- "
+        "the same all-deck 'campaign decks' count the stop message reports -- so "
+        "the four gain-calibration decks are included: on a fresh campaign a "
+        "budget of N reaches N-4 Monte Carlo decks, and any N<=4 reaches none. "
+        "Use it to keep each command inside this host's "
         "~60-minute wall-clock ceiling; exit status "
         f"{NOISE_TRAN_INCOMPLETE_EXIT} means 'incomplete, resumable, no record'.",
     )
