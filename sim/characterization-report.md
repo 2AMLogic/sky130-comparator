@@ -663,7 +663,9 @@ stdout. The script
    [`sim/characterization-envelope.json`](characterization-envelope.json),
 3. checks that the pinned set and the indexed set agree, and that every
    `sim/comparator-decision/records/*.md` path mentioned anywhere in this report
-   appears in the index, and
+   *and* every artifact cited from a table row inside the numbered measurement
+   sections (§1–§5, i.e. any non-record artifact too, such as
+   `spec/dr-004-support/evaluate_idd_probe.spice` in §5) appears in the index, and
 4. emits the generic envelope with `status: "pass"` only when all of that holds,
    and `status: "fail"` otherwise.
 
@@ -696,9 +698,13 @@ record".
 
 ## Evidence index
 
-Every artifact this report draws a figure from. The script above pins each one
-by SHA-256; adding a citation to a row table without adding it here (or vice
-versa) is a `status: "fail"`.
+Every artifact cited from a table row inside the numbered measurement sections
+(§1–§5) below, plus every `sim/comparator-decision/records/*.md` evidence
+record this report mentions anywhere else (prose included). The script above
+pins each one by SHA-256; adding such a citation without adding it here (or
+vice versa) is a `status: "fail"`. Citations in the provenance table at the
+top of this report, or in prose outside those sections, are process/tooling
+mentions and are not covered by this check.
 
 | Artifact | Row(s) | What it carries |
 |---|---|---|
