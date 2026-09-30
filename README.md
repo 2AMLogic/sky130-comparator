@@ -5,6 +5,8 @@ A dynamic latched comparator on SkyWater sky130 on
 [klayout-tools](https://github.com/2AMLogic/klayout-tools) and the
 open-source xschem + ngspice flow.
 
+![fleet burndown](https://raw.githubusercontent.com/2AMLogic/2am/main/fleet-metrics/charts/sky130-comparator.svg)
+
 **Status: just opened.** Nothing is designed yet. The first work is
 the offset methodology at 1.8 V — sky130's Monte-Carlo mismatch support decides whether the strong or fallback statistical story applies.
 
