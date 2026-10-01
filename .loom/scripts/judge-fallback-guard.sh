@@ -220,6 +220,28 @@ COMMENTS_JSON="$(gh api "repos/{owner}/{repo}/issues/$PR/comments" --paginate 2>
   exit 1
 }
 
+# `<!-- loom:fallback-evaluated sha=... -->` is a control phrase that
+# SUPPRESSES review (it feeds the lifetime cap and the SHA dedup below), so
+# per #9548/#9716 it counts only from a trusted author: a repo insider by
+# author_association, one of THIS fleet's Apps, this daemon's own identity, or
+# `forge.trustedCommenters`. Without the filter, any outsider able to comment
+# on a public repo's PR could post a well-formed marker and silence the
+# Judge's one fallback-mode safety net on their own PR — the exact gap #9716
+# names. `loom-daemon forge trusted-comments` reads a REST comment listing
+# (which carries `user.login` + `author_association`; `gh --json` spells an
+# App as a bare login and cannot be used here, same reasoning as
+# merge-pr.sh's `_trusted_pr_comments`) and returns the trusted subset in the
+# same shape.
+#
+# requires-daemon: forge optional   Without the `trusted-comments` verb (absent binary, or one predating #9548) no author can be authenticated, so EVERY marker counts as absent — never the unfiltered listing. That is the safe direction here: it can only make the guard evaluate a PR it might otherwise have skipped (extra fallback-mode comments, bounded by --cap/--velocity-threshold same as any other PR), never let an outsider's marker suppress a real review.
+TRUSTED_COMMENTS_JSON="$COMMENTS_JSON"
+if [[ -n "$COMMENTS_JSON" && "$COMMENTS_JSON" != "[]" ]]; then
+  TRUSTED_COMMENTS_JSON="$(printf '%s\n' "$COMMENTS_JSON" | "${LOOM_DAEMON_BIN:-loom-daemon}" forge trusted-comments 2>/dev/null)" || {
+    echo "trusted-comments: could not authenticate comment authors ('loom-daemon forge trusted-comments' failed); loom:fallback-evaluated markers read as absent (#9548/#9716)" >&2
+    TRUSTED_COMMENTS_JSON="[]"
+  }
+fi
+
 # One "<ISO-8601 created_at>\t<sha>" line per marker comment, oldest first
 # (matches --paginate's page order). `test(...)` guards the `capture(...)`
 # call so a non-matching comment body is filtered out via `select` rather
@@ -229,7 +251,7 @@ MARKER_LINES="$(jq -r '
   | select(.body != null and (.body | test("<!-- loom:fallback-evaluated sha=[0-9a-f]+ -->")))
   | [.created_at, (.body | capture("<!-- loom:fallback-evaluated sha=(?<sha>[0-9a-f]+) -->").sha)]
   | @tsv
-' <<<"$COMMENTS_JSON" 2>/dev/null || true)"
+' <<<"$TRUSTED_COMMENTS_JSON" 2>/dev/null || true)"
 
 MARKER_COUNT=0
 if [[ -n "$MARKER_LINES" ]]; then
