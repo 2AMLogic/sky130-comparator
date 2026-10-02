@@ -15,9 +15,9 @@ proves the pipeline can tell "real statistical variation" apart from
 
 This module supplies the *mechanism* against a harness-proof circuit (see
 sim/mc-smoke/), not a comparator-offset distribution from a real
-schematic -- there is no comparator schematic yet (see sim/README.md
-"Harness self-test experiments"). A future comparator testbench manifest
-reuses this exact module.
+schematic -- sim/comparator-decision/ measures that distribution with its
+own bespoke driver (see sim/README.md "Harness self-test experiments").
+A future comparator testbench manifest reuses this exact module.
 
 sky130's per-instance local-mismatch switch (MC_MM_SWITCH=1, entered via
 the '<corner>_mm' .lib sections -- see sim/pdk.json's notes) is what
