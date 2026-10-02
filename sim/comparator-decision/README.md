@@ -48,7 +48,12 @@ issue's own scope statement (issue #9) cites in full.
   dynamic latched comparator, not sky130-sar-adc-specific.
 - **`regen`**: single reset->evaluate transient edge per differential-input
   point, sweeping Vindiff and reading the decision (regeneration) time off a
-  `|v(outp)-v(outn)| > 0.5*VDD` threshold crossing.
+  `|v(outp)-v(outn)| > 0.5*VDD` threshold crossing. Since issue #66 the
+  crossing test classifies **both signs**, so each point is labeled
+  `resolved` / `WRONG-POLARITY` (the opposite sign crossed) /
+  `NON-DECISION` (neither did) -- the sign-corrected criterion it ported
+  read both of the last two as one `UNRESOLVED` and could not tell them
+  apart.
 - **`offset`**: a linearized pick-off statistic (differential output at a
   fixed early time after the evaluate edge, well before the latch saturates)
   calibrated to an input-referred gain via a small ideal-device Vindiff
@@ -467,6 +472,39 @@ identical chunked commands against one scratch directory — `--resume-dir`,
 resumable, no record written". See "Chunked, resumable `noise-tran`
 campaigns (issue #100)" below.
 
+`offset-bisect` was added by issue #66 and is this repo's own -- the
+**decision-referred** systematic-offset measurement the `offset`
+sub-command's pick-off statistic (and its negative control's mean) is not:
+
+```sh
+python3 sim/comparator-decision/run.py offset-bisect --corner tt --temp 27 --record
+python3 sim/comparator-decision/run.py offset-bisect --corner ss --temp -40 --dut extracted --record
+```
+
+It probes the DUT with single reset->evaluate transients at a series of
+differential inputs and bisects **two decision boundaries** -- the last
+vindiff that still decides the WRONG polarity and the first that decides
+correctly -- classifying every probe by both output signs over a 200 ns
+evaluate window (`regen` uses 40 ns; a probe just past the boundary
+regenerates from a vanishing overdrive and must not be misread as a
+non-decision by a window too short for it). Where the two boundaries
+coincide, that vindiff IS the input-referred systematic offset, with the
+sign convention "correct decisions require a positive input larger than
+the flip". Where they do not, the gap is a measured **non-decision
+band** -- vindiffs for which no decision occurs at all inside the window
+-- and the record says so instead of pretending a single flip exists.
+
+Two honest limits are stated per record rather than hidden: probes close
+enough to a boundary to be numerically metastable can exhaust the
+solver's wall-clock budget (`SIM_NGSPICE_TIMEOUT_S`, default 120 s;
+such a probe is recorded as a timeout and stops its edge's bisection at
+the measured floor, never classified as a circuit outcome), and the
+schematic fragment's negative control is expected to collapse to ~0 at
+any corner (at `ss`/-40C it instead reveals that corner's intrinsic
+symmetric decision floor -- see the records section below). The bisection
+is inherently sequential (each midpoint depends on the previous
+classification), so unlike `regen` there is no `--jobs`.
+
 ## Committed records
 
 **The aggregated view across all five target-spec rows is
@@ -685,13 +723,28 @@ Three post-layout facts beyond the deltas, each read off a committed record:
 - **The sub-20 mV decision polarity is asymmetric.** `tt`/27C resolves 6/8
   sweep points (+1 mV and +0.5 mV no longer do; the schematic anchor was 8/8)
   and `ss`/-40C resolves 3/8 (+2 through +10 mV do not, while -10 mV resolves
-  in 2.3725 ns). The sweeps *bracket* the asymmetry rather than measuring it:
-  `regen`'s criterion is sign-corrected, so a wrong-polarity decision and a
-  non-decision both read `UNRESOLVED` and this evidence cannot tell them
-  apart. Nor does the 0.6547 mV pick-off-referred systematic term above
-  explain the `ss`/-40C magnitude on its own. Open question, tracked as
-  issue #66;
-  the spec rows are stated at 50 mV overdrive, which resolves at both anchors.
+  in 2.3725 ns). **Issue #66 has since separated the two mechanisms the
+  sign-corrected criterion conflated, and they are DIFFERENT at the two
+  anchors.** `regen` now classifies both signs, and the new `offset-bisect`
+  sub-command bisects the decision boundary in a 200 ns window (see
+  "[Decision polarity and the decision-referred offset (issue
+  #66)](#decision-polarity-and-the-decision-referred-offset-issue-66)"
+  below): at `tt`/27C the two non-resolutions were **wrong-polarity
+  decisions** -- a genuine layout-induced systematic decision offset, flip
+  **+1.8359 mV** against the schematic fragment's -0.0391 mV negative
+  control (records `20261001-232150-e2b808c.md`, `20261002-000502-e2b808c.md`,
+  `20261002-003713-e2b808c.md`) -- while at `ss`/-40C the five non-resolutions
+  were **genuine non-decisions**: no decision boundary exists there at all,
+  only a 28.2422 mV-wide non-decision band [-8.2715, +19.9707] mV (the
+  schematic fragment's own band at that corner is symmetric +/-0.8203 mV
+  centered on 0; records `20261001-232341-e2b808c.md`,
+  `20261002-002613-e2b808c.md`, `20261002-004906-e2b808c.md`). The pick-off
+  0.6547 mV systematic term above neither IS the `tt`/27C decision offset
+  (+1.8359 mV -- the pick-off reads the preamp stage at 0.65 ns, the
+  decision adds the regenerative phase) nor explains `ss`/-40C at all, where
+  an offset model is simply the wrong model. [DR-007](../../spec/decision-records/DR-007-systematic-decision-offset-row.md)
+  proposes the spec consequence; the spec rows themselves are stated at
+  50 mV overdrive, which resolves at both anchors.
 
 Scope of this pass, stated so the gaps are not mistaken for coverage: two
 corners, four sub-commands. `reset` and `noise-tran` had no post-layout deck
@@ -1039,9 +1092,73 @@ item 2 itself -- issue #100 is the runner, not the re-run campaign, and a
 follow-up after it lands is what actually spends the N=128 sim time at the
 corners that have (or would gain) a schematic counterpart.
 
-### Chunked, resumable `noise-tran` campaigns (issue #100)
+### Decision polarity and the decision-referred offset (issue #66)
 
-The subsection above states the blocker: a full-N `noise-tran` corner is
+Six records; the two `regen` re-runs supersede the post-layout anchors'
+records on methodology (both signs classified), and the four `offset-bisect`
+records are the new measurement. Every one of them is append-only evidence;
+the numbers below are transcribed from the records, not re-derived.
+
+**The two mechanisms the sign-corrected `regen` criterion conflated are
+different at the two post-layout anchors -- and only the bisection could
+tell them apart:**
+
+| Record | Corner / DUT | Result |
+|---|---|---|
+| `20261001-232150-e2b808c.md` | `tt`/27 °C, extracted, `regen` | 6/8 resolved; the previously-`UNRESOLVED` +0.5/+1 mV are **WRONG-POLARITY** (opposite-sign crossings at 2.66/3.04 ns) |
+| `20261001-232341-e2b808c.md` | `ss`/−40 °C, extracted, `regen` | 3/8 resolved; the previously-`UNRESOLVED` +0.5..+10 mV are all **NON-DECISION** (no crossing, either sign, 40 ns) |
+| `20261002-000502-e2b808c.md` | `tt`/27 °C, schematic, `offset-bisect` | flip **−0.0391 mV** (negative control: ~0 by symmetry) |
+| `20261002-003713-e2b808c.md` | `tt`/27 °C, extracted, `offset-bisect` | flip **+1.8359 mV** -- the layout-induced systematic decision offset |
+| `20261002-002613-e2b808c.md` | `ss`/−40 °C, schematic, `offset-bisect` | no flip: symmetric **non-decision band ±0.8203 mV** centered on 0 (the corner's intrinsic decision floor) |
+| `20261002-004906-e2b808c.md` | `ss`/−40 °C, extracted, `offset-bisect` | no flip: **non-decision band [−8.2715, +19.9707] mV**, width 28.2422 mV, midpoint +5.8496 mV |
+
+Three findings, each read directly off those records:
+
+- **At `tt`/27 °C the answer is an offset.** The extracted DUT's decision
+  flips at +1.8359 mV where the symmetric schematic fragment's flips at
+  −0.0391 mV: a **+1.875 mV layout-induced, decision-referred systematic
+  offset**, the quantity the sub-20 mV `regen` asymmetry was bracketing.
+  It is NOT the pick-off negative control's 0.6547 mV mean -- that figure
+  reads the preamp stage at 0.65 ns; the decision sees the whole
+  regenerative trajectory, and the two methods disagree by 2.8x in the
+  same direction. Both numbers are correct for what they measure; neither
+  substitutes for the other.
+- **At `ss`/−40 °C the answer is that there is no decision to offset.**
+  Wrong-polarity decisions stop at −8.2715 mV and correct ones do not
+  start until +19.9707 mV; the 28.24 mV in between produces no crossing
+  of either sign within the 200 ns bisection window. The schematic
+  fragment's own band at the same corner is ±0.8203 mV centered on 0 --
+  so the layout **widens the corner's intrinsic decision floor 17.2x**
+  (1.64 -> 28.24 mV) **and shifts it +5.85 mV off center**. An offset
+  model predicts wrong-polarity decisions; this corner instead has a
+  dead zone, and the +2/+5/+10 mV `regen` points sit inside it (the
+  +20 mV point resolves in 2.4925 ns precisely because it sits just
+  past the band's upper edge -- slow for exactly that reason).
+- **The measurement's own controls held.** The schematic `tt`/27 °C leg
+  collapsed to the symmetry point (|flip| < 0.08 mV, the bracket's own
+  width), and the schematic `ss`/−40 °C leg exposed that corner's
+  pre-existing 0.5 mV `regen` non-resolution (record
+  `20260922-071313-e084b55.md`) as the band floor it always was: the
+  bisection places that floor's edges at ±0.82 mV, above 0.5 mV and
+  below every resolving point in that record -- consistent with it on
+  both sides.
+
+The suspected mechanism (the floorplan's `OUTP1`/`OUTN1` and `VINP`/`VINN`
+wire-area imbalances, 7.82 % / 13.52 %) remains a hypothesis with measured
+consequences, not an attribution: the `tt`/27 °C flip's direction (more
+positive input required for a correct decision) is consistent with the
+extracted DC operating point's `OUTN1` starting above `OUTP1` (1.3172 vs
+1.3147 V), and the band widening is consistent with parasitic loading
+slowing regeneration at the cold corner -- but separating routing from the
+disclosed drawn-vs-schematic load-resistor delta would need a counterfactual
+extraction this issue did not build. See
+[`layout/README.md`](../../layout/README.md)'s floorplan section for the
+measured consequence recorded there, and
+[DR-007](../../spec/decision-records/DR-007-systematic-decision-offset-row.md)
+for the proposed spec disposition (a σ-only Offset sigma row cannot express
+either finding).
+
+### Chunked, resumable `noise-tran` campaigns (issue #100)The subsection above states the blocker: a full-N `noise-tran` corner is
 `4 gaincal + N + 4 x seeds-per-point` decks — **388** at N=128/64 — and this
 host kills any single agent command at ~60 minutes, so that corner cannot run
 as one command here. Issue #95 chose a resumable/chunked runner over changing

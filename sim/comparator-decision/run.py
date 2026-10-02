@@ -513,6 +513,25 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "20260922-175918-e23c509", "regeneration time at 50 mV overdrive",
         0.5375, "ns", "8/8 sweep points resolved",
     ),
+    ("offset-bisect", "tt", 27.0): Baseline(
+        "20261002-000502-e2b808c", "decision-flip vindiff (input-referred systematic offset)",
+        -0.0391, "mV", "18 probes, tolerance 0.1 mV; the symmetric fragment's "
+        "flip sits at ~0 by construction (negative control, issue #66)",
+    ),
+    # The ss/-40C schematic counterpart has NO single flip: a symmetric
+    # +/-0.8203 mV NON-DECISION band (neither sign crosses within the
+    # 200 ns bisection window) is that corner's intrinsic resolvable-
+    # overdrive floor, centered on 0 by symmetry. The baseline value is
+    # the band midpoint; the extracted counterpart's delta against it is
+    # the layout's systematic SHIFT of the usable-decision region, and its
+    # own record states its band edges (record 20261002-002613-e2b808c,
+    # issue #66).
+    ("offset-bisect", "ss", -40.0): Baseline(
+        "20261002-002613-e2b808c",
+        "decision-boundary midpoint (schematic: symmetric +/-0.8203 mV non-decision band)",
+        0.0, "mV", "wrong-polarity edge -0.8203, resolved edge +0.8203 mV; "
+        "18 probes, tolerance 0.1 mV",
+    ),
     ("kickback", "tt", 27.0): Baseline(
         "20260922-070119-e084b55", "peak `loaded` input-node disturbance",
         1.8902, "mV", "1 kohm source impedance, 50 mV overdrive, "
@@ -872,6 +891,50 @@ class RegenPoint:
     vindiff_mv: float
     regen_time_ns: float | None
     log_text: str
+    # Issue #66: the three-way outcome the sign-corrected criterion used to
+    # collapse into one "UNRESOLVED". "resolved" keeps regen_time_ns's old
+    # meaning exactly; the two new labels carry the crossing time of the
+    # opposite-sign crossing ("wrong-polarity") or None ("non-decision").
+    outcome: str = "resolved"
+
+
+def _classify_decision(
+    t: list[float], outp: list[float], outn: list[float],
+    evaluate_start_ns: float, expected_sign: float,
+) -> tuple[str, float | None]:
+    """Classify one reset->evaluate transient's decision by checking BOTH
+    signs of the output difference (issue #66).
+
+    `regen`'s original criterion was sign-corrected -- `sign*(outp-outn) >
+    DECIDE_THRESHOLD_V` -- so a decision that settled the WRONG way and a
+    decision that never settled both read `UNRESOLVED`, and nothing could
+    tell them apart. This helper keeps that crossing test as the
+    "resolved" outcome (so every pre-#66 record's numbers keep their
+    meaning) and adds the opposite-sign crossing as "wrong-polarity",
+    leaving "non-decision" for a window in which neither sign crossed.
+
+    Returns `(outcome, crossing_ns)` where `crossing_ns` is the
+    evaluate-relative time at which the classified crossing occurred (for
+    "wrong-polarity" that is the wrong-way crossing -- the evidence for
+    the label), or None for a non-decision. Samples before
+    `evaluate_start_ns` (the reset phase) are ignored, exactly as the old
+    inline loop ignored them.
+    """
+    outcome = "non-decision"
+    crossing_ns: float | None = None
+    for i, tt in enumerate(t):
+        if tt < evaluate_start_ns * 1e-9:
+            continue
+        diff = expected_sign * (outp[i] - outn[i])
+        if diff > DECIDE_THRESHOLD_V:
+            outcome = "resolved"
+            crossing_ns = (tt - evaluate_start_ns * 1e-9) * 1e9
+            break
+        if -diff > DECIDE_THRESHOLD_V:
+            outcome = "wrong-polarity"
+            crossing_ns = (tt - evaluate_start_ns * 1e-9) * 1e9
+            break
+    return outcome, crossing_ns
 
 
 def run_regen_sweep(
@@ -896,18 +959,21 @@ def run_regen_sweep(
             csv_path = scratch_dir / f"{log_name}.csv"
             t, clk, outp, outn = toolchain.read_wrdata_csv(csv_path, 3)
             sign = 1.0 if vindiff_mv >= 0 else -1.0
-            regen_ns = None
-            for i, tt in enumerate(t):
-                if tt < evaluate_start_ns * 1e-9:
-                    continue
-                diff = sign * (outp[i] - outn[i])
-                if diff > DECIDE_THRESHOLD_V:
-                    regen_ns = (tt - evaluate_start_ns * 1e-9) * 1e9
-                    break
-            points.append(RegenPoint(vindiff_mv=vindiff_mv, regen_time_ns=regen_ns, log_text=log_text))
+            outcome, regen_ns = _classify_decision(
+                t, outp, outn, evaluate_start_ns, expected_sign=sign,
+            )
+            points.append(RegenPoint(
+                vindiff_mv=vindiff_mv, regen_time_ns=regen_ns,
+                log_text=log_text, outcome=outcome,
+            ))
             if not quiet:
-                shown = f"{regen_ns:.4f}ns" if regen_ns is not None else "UNRESOLVED"
-                print(f"  vindiff={vindiff_mv:+.4f}mV -> regen_time={shown}")
+                if outcome == "resolved":
+                    shown = f"regen_time={regen_ns:.4f}ns"
+                elif outcome == "wrong-polarity":
+                    shown = f"WRONG-POLARITY (opposite-sign crossing at {regen_ns:.4f}ns)"
+                else:
+                    shown = "NON-DECISION (no crossing within the evaluate window)"
+                print(f"  vindiff={vindiff_mv:+.4f}mV -> {shown}")
     return points
 
 
@@ -939,22 +1005,34 @@ def write_regen_evidence(
     a(
         f"- **Stimulus**: single reset({RESET_NS}ns, CLK=0)->evaluate(CLK={VDD}V) "
         f"edge per run (not a repeating clock); decision threshold "
-        f"|v(outp)-v(outn)| > {DECIDE_THRESHOLD_V}V (0.5*VDD); Vcm={VCM}V"
+        f"|v(outp)-v(outn)| > {DECIDE_THRESHOLD_V}V (0.5*VDD), BOTH signs "
+        "classified (issue #66): `resolved` / `WRONG-POLARITY` (the "
+        "opposite-sign crossing) / `NON-DECISION` (no crossing); "
+        f"Vcm={VCM}V"
     )
     if note:
         a(f"- **Note**: {note}")
-    unresolved = [p for p in points if p.regen_time_ns is None]
+    unresolved = [p for p in points if p.outcome != "resolved"]
+    wrong = [p for p in points if p.outcome == "wrong-polarity"]
+    nondec = [p for p in points if p.outcome == "non-decision"]
     a(f"- **Overall**: {'PASS' if not unresolved else 'INCOMPLETE'} "
       f"({len(points) - len(unresolved)}/{len(points)} points resolved within the "
-      f"{EVALUATE_NS}ns evaluate window)")
+      f"{EVALUATE_NS}ns evaluate window; {len(wrong)} WRONG-POLARITY, "
+      f"{len(nondec)} NON-DECISION)")
     a("")
     a("## Regeneration time vs. differential input")
     a("")
-    a("| Vindiff (mV) | regen time (ns) |")
-    a("|---|---|")
+    a("| Vindiff (mV) | regen time (ns) | decision |")
+    a("|---|---|---|")
     for p in sorted(points, key=lambda p: p.vindiff_mv):
-        shown = f"{p.regen_time_ns:.4f}" if p.regen_time_ns is not None else "UNRESOLVED (> evaluate window)"
-        a(f"| {p.vindiff_mv:+.2f} | {shown} |")
+        if p.outcome == "resolved":
+            shown, label = f"{p.regen_time_ns:.4f}", "OK"
+        elif p.outcome == "wrong-polarity":
+            shown = f"{p.regen_time_ns:.4f} (opposite-sign crossing)"
+            label = "WRONG-POLARITY"
+        else:
+            shown, label = "--", "NON-DECISION (no crossing within window)"
+        a(f"| {p.vindiff_mv:+.2f} | {shown} | {label} |")
     a("")
     a(
         "Expected shape: regeneration time grows roughly as `ln(V_decided/Vindiff)` "
@@ -1256,6 +1334,394 @@ def write_offset_evidence(
     return _finalize_record(
         lines, record_path, info, netlist_sha, "offset",
         extra={"MC seed": str(result.seed), "MC N": str(result.n)},
+        supersedes=supersedes,
+    )
+
+
+# ---------------------------------------------------------------------------
+# offset-bisect: decision-referred systematic offset -- bisect the
+# differential input at which the decision flips POLARITY (issue #66)
+# ---------------------------------------------------------------------------
+#
+# Why a second offset measurement exists (the `offset` sub-command above
+# measures sigma only, and its negative-control mean is a PICK-OFF-referred
+# quantity, read at PICKOFF_NS before the latch regenerates): #57's
+# post-layout records showed the laid-out comparator has a systematic,
+# deterministic input-referred offset whose sub-20 mV decision polarity is
+# asymmetric, and the pick-off term could neither be compared against a
+# decision outcome nor explain the `ss`/-40C magnitude. The decision-referred
+# quantity is measured directly here:
+#
+#  1. Probe the DUT with single reset->evaluate transients at a series of
+#     differential inputs, classifying each decision by BOTH signs of the
+#     output crossing (`_classify_decision`, the same three-way split the
+#     `regen` sub-command now reports). The evaluate window is
+#     BISECT_EVALUATE_NS -- deliberately longer than `regen`'s
+#     EVALUATE_NS, because a probe just past the flip regenerates from a
+#     vanishing overdrive and must not be misread as a non-decision by a
+#     window too short for it.
+#  2. Find anchors: `lo` deciding WRONG-POLARITY for a positive probe and
+#     `hi` deciding resolved (expanding geometrically from
+#     BISECT_BRACKET_START_MV up to BISECT_BRACKET_MAX_MV).
+#  3. Bisect TWO boundaries against those anchors: the wrong-polarity edge
+#     (last vindiff that still decides the wrong way) and the resolved
+#     edge (first vindiff that decides correctly). Every probe outcome
+#     moves exactly one bracket edge -- a probe that decides resolves
+#     moves the resolved edge down, one that decides wrong-polarity moves
+#     the wrong-polarity edge up, and a NON-DECISION probe (neither sign
+#     crosses within the window) moves both edges toward itself, because
+#     it is "not wrong-polarity" for the lower boundary and "not resolved"
+#     for the upper one. The two boundaries coincide (within tolerance) at
+#     a single decision flip -- the input-referred systematic offset, with
+#     the sign convention stated in the record: the comparator decides
+#     correctly for a positive input only when that input exceeds the
+#     flip, i.e. it behaves as though an error of -V_flip were added to
+#     the applied differential input. Where they do NOT coincide, the gap
+#     between them is a measured NON-DECISION BAND -- vindiffs for which
+#     no decision occurs at all inside the window (the shape the
+#     `ss`/-40C post-layout `regen` re-run found: its +0.5..+10 mV points
+#     cross neither sign within 40 ns), and the record reports the band
+#     instead of pretending a single flip exists.
+#
+# The symmetric schematic fragment's flip sits at ~0 by construction --
+# the negative control for the measurement itself. There the probe at
+# exactly vindiff=0 is ideally metastable (a non-decision), which the
+# two-edge bisection handles as just another non-decision probe: both
+# edges converge to it from either side and the band collapses to ~0.
+
+BISECT_EVALUATE_NS = 200.0
+BISECT_BRACKET_START_MV = 10.0
+BISECT_BRACKET_MAX_MV = 160.0  # VCM +/- 0.08 V stays well inside the supply
+BISECT_TOL_MV = 0.1
+BISECT_MAX_MIDPOINT_PROBES = 16
+
+
+def _bisect_probe_name(vindiff_mv: float) -> str:
+    """Unique, minus-sign-free job/log name for one bisection probe.
+
+    Microvolt resolution keeps every distinct probe name distinct (the
+    bisection's own midpoints differ by at least half the tolerance), and
+    encoding the value in the name lets a batched/faked `_run_many`
+    recover the probe's vindiff without parsing deck text."""
+    return f"bisect_{round(vindiff_mv * 1000)}uV".replace("-", "neg")
+
+
+def _bisect_probe_mv(name: str) -> float:
+    """Recover the probe vindiff (mV) from a `_bisect_probe_name` name."""
+    body = name.removeprefix("bisect_").removesuffix("uV")
+    sign = 1.0
+    if body.startswith("neg"):
+        sign, body = -1.0, body[3:]
+    return sign * int(body) / 1000.0
+
+
+def _offset_bisect_deck(
+    info: pdk.PdkInfo, corner: str, temp_c: float, vindiff_mv: float,
+    log_name: str,
+) -> str:
+    """Single reset->evaluate transient for one bisection probe at the
+    nominal supply. Same stimulus shape as `_regen_deck`, with the longer
+    BISECT_EVALUATE_NS window and OUTP/OUTN only (no CLK vector needed --
+    the classification never looks at the clock)."""
+    vindiff_v = vindiff_mv / 1000.0
+    period_ns = RESET_NS + RESET_TR_NS + BISECT_EVALUATE_NS + 10.0
+    lines = [
+        f"* comparator-decision decision-flip offset bisection -- "
+        f"vindiff={vindiff_mv}mV corner={corner} temp={temp_c}C (issue #66)",
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}",
+        "",
+        "Vdd VDD 0 dc {vdd_val}",
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{BISECT_EVALUATE_NS}n {period_ns}n)",
+        f"Vinp VINP 0 dc {VCM + vindiff_v / 2}",
+        f"Vinn VINN 0 dc {VCM - vindiff_v / 2}",
+        "",
+        _dut_lines(),
+        "",
+        ".control",
+        f"tran 0.005n {RESET_NS + RESET_TR_NS + BISECT_EVALUATE_NS}n",
+        f"wrdata {log_name}.csv v(OUTP) v(OUTN)",
+        ".endc",
+        ".end",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+@dataclass
+class OffsetBisectResult:
+    corner: str
+    temp_c: float
+    wrong_edge_bracket: tuple[float, float]  # (last wrong-polarity probe, first probe past it)
+    resolved_edge_bracket: tuple[float, float]  # (last probe below it, first resolved probe)
+    converged: bool
+    probes: list[tuple[float, str]]  # every probe, in order: (vindiff, outcome)
+    solver_floor_hit: bool = False  # an edge stopped at the solver-budget metastability floor
+    logs: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def wrong_edge_mv(self) -> float:
+        lo, hi = self.wrong_edge_bracket
+        return (lo + hi) / 2
+
+    @property
+    def resolved_edge_mv(self) -> float:
+        lo, hi = self.resolved_edge_bracket
+        return (lo + hi) / 2
+
+    @property
+    def band_mv(self) -> float:
+        """The measured NON-DECISION band width: the gap between the
+        wrong-polarity edge and the resolved edge. ~0 (<= tolerance) means
+        a single decision flip; a larger value means vindiffs in between
+        produce no decision at all inside the evaluate window."""
+        return self.resolved_edge_mv - self.wrong_edge_mv
+
+    @property
+    def flip_mv(self) -> float:
+        """The decision-flip vindiff when `band_mv` is ~0 (the
+        wrong-polarity/resolved edges coincide); otherwise the midpoint of
+        the non-decision band, which is NOT a flip -- see `band_mv`."""
+        return (self.wrong_edge_mv + self.resolved_edge_mv) / 2
+
+
+def run_offset_bisect(
+    corner: str = "tt", temp_c: float = 27.0, quiet: bool = False,
+    bracket_start_mv: float = BISECT_BRACKET_START_MV,
+) -> OffsetBisectResult:
+    """Bisect the wrong-polarity and resolved decision boundaries.
+
+    Probes are strictly sequential (each midpoint depends on the previous
+    classification), so unlike `regen` there is no `jobs` parameter -- a
+    parallel batch here would be a different (gradient/interpolation)
+    measurement, not a bisection."""
+    info = pdk.resolve_or_raise()
+    evaluate_start_ns = RESET_NS + RESET_TR_NS
+    probes: list[tuple[float, str]] = []
+    logs: dict[str, str] = {}
+
+    def classify(vindiff_mv: float) -> str:
+        name = _bisect_probe_name(vindiff_mv)
+        deck = _offset_bisect_deck(info, corner, temp_c, vindiff_mv, name)
+        try:
+            probe_logs = _run_many([(name, deck)], scratch_dir, 1)
+        except RuntimeError as exc:
+            # A solver BUDGET timeout is not a circuit outcome -- it means
+            # this probe sits so close to the decision boundary that the
+            # numerically metastable latch makes ngspice's step control
+            # crawl (the same probes decide in ~5 ns of simulated time
+            # when they decide at all). Surface it as its own outcome so
+            # the edge bisection can stop at the measured floor instead of
+            # fabricating a crossing. Any other failure (nonzero ngspice
+            # exit, missing PDK) is a real error and propagates.
+            if "timed out" in str(exc):
+                outcome = "timeout"
+                probes.append((vindiff_mv, outcome))
+                if not quiet:
+                    print(
+                        f"  probe vindiff={vindiff_mv:+.4f}mV -> TIMEOUT "
+                        f"(solver budget exhausted; near-boundary "
+                        f"metastability)"
+                    )
+                return outcome
+            raise
+        logs.update(probe_logs)
+        t, outp, outn = toolchain.read_wrdata_csv(scratch_dir / f"{name}.csv", 2)
+        outcome, cross_ns = _classify_decision(
+            t, outp, outn, evaluate_start_ns, expected_sign=+1.0,
+        )
+        probes.append((vindiff_mv, outcome))
+        if not quiet:
+            if outcome == "resolved":
+                shown = f"RESOLVED (crossing at {cross_ns:.4f}ns)"
+            elif outcome == "wrong-polarity":
+                shown = f"WRONG-POLARITY (opposite-sign crossing at {cross_ns:.4f}ns)"
+            else:
+                shown = "NON-DECISION (no crossing within the window)"
+            print(f"  probe vindiff={vindiff_mv:+.4f}mV -> {shown}")
+        return outcome
+
+    def bisect_edge(
+        lo: float, hi: float, boundary_outcome: str, outcome_owns_low: bool,
+    ) -> tuple[float, float]:
+        """Bisect one decision boundary. `outcome_owns_low=True` names the
+        outcome owning the LOW side of the boundary (probes classifying it
+        move `lo` up; every other outcome -- resolved or a non-decision --
+        moves `hi` down): the wrong-polarity edge. `outcome_owns_low=False`
+        names the outcome owning the HIGH side (probes classifying it move
+        `hi` down; every other outcome moves `lo` up): the resolved edge.
+        Either way every probe moves exactly one bracket edge, so the loop
+        terminates regardless of which three-way outcomes the DUT
+        produces -- except a solver-budget TIMEOUT, which stops the edge
+        where it stands: such a probe is by construction essentially at
+        the boundary, and pushing finer would only burn the budget again."""
+        guard = 0
+        timed_out = False
+        while (hi - lo) > BISECT_TOL_MV:
+            guard += 1
+            if guard > BISECT_MAX_MIDPOINT_PROBES:
+                raise RuntimeError(
+                    f"offset-bisect exceeded {BISECT_MAX_MIDPOINT_PROBES} "
+                    f"midpoint probes on one edge without closing the "
+                    f"bracket to {BISECT_TOL_MV}mV -- outcomes are not "
+                    f"monotone in vindiff, which a deterministic "
+                    f"comparator cannot produce"
+                )
+            mid = (lo + hi) / 2
+            outcome = classify(mid)
+            if outcome == "timeout":
+                timed_out = True
+                break
+            if (outcome == boundary_outcome) == outcome_owns_low:
+                lo = mid
+            else:
+                hi = mid
+        return (lo, hi), timed_out
+
+    with tempfile.TemporaryDirectory(prefix="comparator-decision-bisect-") as scratch:
+        scratch_dir = Path(scratch)
+
+        lo_anchor, hi_anchor = -bracket_start_mv, bracket_start_mv
+        lo_out = classify(lo_anchor)
+        while lo_out != "wrong-polarity":
+            if -lo_anchor >= BISECT_BRACKET_MAX_MV:
+                raise RuntimeError(
+                    f"offset-bisect could not bracket the decision flip at "
+                    f"{corner}/{temp_c}C: vindiff={lo_anchor}mV still "
+                    f"decides {lo_out!r} at the bracket ceiling "
+                    f"-{BISECT_BRACKET_MAX_MV}mV"
+                )
+            lo_anchor *= 2
+            lo_out = classify(lo_anchor)
+        hi_out = classify(hi_anchor)
+        while hi_out != "resolved":
+            if hi_anchor >= BISECT_BRACKET_MAX_MV:
+                raise RuntimeError(
+                    f"offset-bisect could not bracket the decision flip at "
+                    f"{corner}/{temp_c}C: vindiff={hi_anchor}mV still "
+                    f"decides {hi_out!r} at the bracket ceiling "
+                    f"+{BISECT_BRACKET_MAX_MV}mV"
+                )
+            hi_anchor *= 2
+            hi_out = classify(hi_anchor)
+
+        wrong_edge, wrong_stopped = bisect_edge(
+            lo_anchor, hi_anchor, "wrong-polarity", outcome_owns_low=True
+        )
+        resolved_edge, resolved_stopped = bisect_edge(
+            lo_anchor, hi_anchor, "resolved", outcome_owns_low=False
+        )
+
+    return OffsetBisectResult(
+        corner=corner, temp_c=temp_c,
+        wrong_edge_bracket=wrong_edge, resolved_edge_bracket=resolved_edge,
+        converged=(
+            (wrong_edge[1] - wrong_edge[0]) <= BISECT_TOL_MV
+            and (resolved_edge[1] - resolved_edge[0]) <= BISECT_TOL_MV
+            and not (wrong_stopped or resolved_stopped)
+        ),
+        solver_floor_hit=bool(wrong_stopped or resolved_stopped),
+        probes=probes, logs=logs,
+    )
+
+
+def write_offset_bisect_evidence(
+    result: OffsetBisectResult, note: str = "", supersedes: str = "",
+) -> Path:
+    info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
+    for name, log_text in result.logs.items():
+        (corners_dir / f"{name}.log").write_text(log_text)
+
+    lines: list[str] = []
+    a = lines.append
+    a(f"# Record {record_id}")
+    a("")
+    a(f"- **Record ID**: {record_id}")
+    a(CLAIM_TEXT)
+    a(netlist_provenance())
+    a(
+        f"- **Corner matrix run**: process=['{result.corner}'], "
+        f"temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 PVT point -- "
+        "**subset-corner justification**: single-point characterization of "
+        "this repo's own design at the stated corner, per issue #24's "
+        "acceptance criteria; a full ratified PVT corner sweep and Monte "
+        "Carlo campaign remain open work, blocked on the top-level README "
+        "target-spec table's ratification -- see issue #3 item 5 and "
+        "DR-001's 'A full PVT sweep' open item)"
+    )
+    a(
+        f"- **Stimulus**: single reset({RESET_NS}ns, CLK=0)->evaluate"
+        f"(CLK={VDD}V) edge per probe (not a repeating clock); decision "
+        f"threshold |v(outp)-v(outn)| > {DECIDE_THRESHOLD_V}V (0.5*VDD), "
+        "BOTH signs classified; evaluate window "
+        f"{BISECT_EVALUATE_NS}ns; Vcm={VCM}V; bisection tolerance "
+        f"{BISECT_TOL_MV} mV"
+    )
+    if note:
+        a(f"- **Note**: {note}")
+    if result.band_mv <= BISECT_TOL_MV:
+        a(
+            f"- **Overall**: decision flip at vindiff = **{result.flip_mv:+.4f} mV** "
+            f"(wrong-polarity edge bracket "
+            f"[{result.wrong_edge_bracket[0]:+.4f}, {result.wrong_edge_bracket[1]:+.4f}], "
+            f"resolved edge bracket "
+            f"[{result.resolved_edge_bracket[0]:+.4f}, {result.resolved_edge_bracket[1]:+.4f}], "
+            f"{len(result.probes)} probes, tolerance {BISECT_TOL_MV} mV). Sign "
+            "convention: the comparator decides correctly for a POSITIVE "
+            "differential input only when that input exceeds the flip -- it "
+            "behaves as though an error of -(flip) were added to the applied "
+            "differential input. This is the DECISION-REFERRED systematic "
+            "input offset (issue #66): a quantity the pick-off `offset` "
+            "sub-command's sigma statistic does not express, measured at "
+            f"the decision itself rather than read off a {PICKOFF_NS}ns "
+            "pick-off."
+        )
+    else:
+        a(
+            f"- **Overall**: **no single decision flip exists at this corner** "
+            f"-- a measured NON-DECISION band "
+            f"**[{result.wrong_edge_mv:+.4f}, {result.resolved_edge_mv:+.4f}] mV** "
+            f"(width {result.band_mv:.4f} mV) separates the wrong-polarity "
+            f"region below it from the correctly-resolved region above it: "
+            f"for any vindiff inside the band, NEITHER output sign crosses "
+            f"the {DECIDE_THRESHOLD_V}V threshold within the "
+            f"{BISECT_EVALUATE_NS}ns evaluate window. The wrong-polarity "
+            f"edge brackets to "
+            f"[{result.wrong_edge_bracket[0]:+.4f}, {result.wrong_edge_bracket[1]:+.4f}] "
+            f"and the resolved edge to "
+            f"[{result.resolved_edge_bracket[0]:+.4f}, {result.resolved_edge_bracket[1]:+.4f}] "
+            f"({len(result.probes)} probes, tolerance {BISECT_TOL_MV} mV). "
+            "A decision-referred OFFSET is therefore not the right model "
+            "for this corner's sub-band behavior: an offset predicts "
+            "wrong-polarity decisions, and those stop "
+            f"{result.wrong_edge_mv:+.4f} mV below the first vindiff that "
+            "decides anything at all."
+        )
+    if result.solver_floor_hit:
+        a(
+            f"- **Solver metastability floor**: at least one probe exhausted "
+            f"the ngspice wall-clock budget without finishing the window "
+            f"(a numerically balanced latch makes the solver's step "
+            f"control crawl). The edge bisection(s) stopped at the floor "
+            f"rather than fabricating a crossing for that probe, so the "
+            f"bracket widths above -- not the {BISECT_TOL_MV} mV tolerance "
+            f"-- are this record's actual resolution. Raising "
+            f"SIM_NGSPICE_TIMEOUT_S tightens it at wall-clock cost."
+        )
+    a("")
+    a("## Bisection probe trace")
+    a("")
+    a("| vindiff (mV) | decision |")
+    a("|---|---|")
+    for vindiff_mv, outcome in result.probes:
+        a(f"| {vindiff_mv:+.4f} | {outcome} |")
+    a("")
+    lines.extend(post_layout_delta_lines(
+        "offset-bisect", result.corner, result.temp_c, result.flip_mv))
+    a("")
+    return _finalize_record(
+        lines, record_path, info, netlist_sha, "offset-bisect",
         supersedes=supersedes,
     )
 
@@ -3690,7 +4156,7 @@ def write_kickback_evidence(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "noise", "noise-tran", "reset", "kickback"],
+        "mode", nargs="?", choices=["regen", "offset", "offset-bisect", "noise", "noise-tran", "reset", "kickback"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
@@ -3751,8 +4217,9 @@ def main(argv: list[str] | None = None) -> int:
         "`extracted` (post-layout, parasitics-included -- "
         "layout/comparator.pex.spice, generated by layout/extract_pex.py "
         "from layout/comparator.gds). Issue #57 / T1 item 7; `reset` and "
-        "`noise-tran` gained their post-layout deck form in issue #65, so "
-        "all six sub-commands now support both provenances.",
+        "`noise-tran` gained their post-layout deck form in issue #65 and "
+        "`offset-bisect` was added with one in issue #66, so all seven "
+        "sub-commands support both provenances.",
     )
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
@@ -3805,6 +4272,13 @@ def main(argv: list[str] | None = None) -> int:
         negctrl_stdev = statistics.pstdev(result.negctrl_offset_v) if len(result.negctrl_offset_v) > 1 else 0.0
         draws_stdev = statistics.pstdev(result.draws_offset_v) if len(result.draws_offset_v) > 1 else 0.0
         return 0 if (negctrl_stdev == 0.0 and draws_stdev > 0) else 1
+
+    if args.mode == "offset-bisect":
+        result = run_offset_bisect(corner=args.corner, temp_c=args.temp, quiet=args.quiet)
+        if args.record:
+            path = write_offset_bisect_evidence(result, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if result.converged else 1
 
     if args.mode == "noise":
         result = run_noise(corner=args.corner, temp_c=args.temp, quiet=args.quiet)

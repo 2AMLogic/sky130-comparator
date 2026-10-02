@@ -139,7 +139,27 @@ floorplan assumed**:
   symmetric schematic netlist has exactly 0, and the sub-20 mV decision is
   polarity-asymmetric (see the sim README). Wire-area imbalance was committed
   here as a proxy for capacitance imbalance; this is the first measurement of
-  what that proxy costs electrically. Quantifying it is tracked as issue #66.
+  what that proxy costs electrically.
+- **Measured consequence (issue #66): the imbalance has a decision cost, and
+  it is corner-split.** The decision-referred offset bisection
+  (`sim/comparator-decision/run.py offset-bisect`) measures the extracted
+  DUT's decision flip at **+1.8359 mV** at `tt`/27 °C against the symmetric
+  schematic fragment's −0.0391 mV — a **+1.875 mV systematic decision
+  offset**, the number the sub-20 mV asymmetry above was bracketing — and
+  finds **no decision flip at all** at `ss`/−40 °C, only a 28.2422 mV-wide
+  non-decision band [−8.2715, +19.9707] mV where the schematic fragment's
+  own band at that corner is symmetric ±0.8203 mV (records
+  `sim/comparator-decision/records/20261002-000502-e2b808c.md` …
+  `.../20261002-004906-e2b808c.md`). The `tt`/27 °C flip's direction (more
+  positive input required for a correct decision) is consistent with the
+  extracted DC operating point's `OUTN1` starting above `OUTP1` (1.3172 vs
+  1.3147 V), and the 17.2× band widening at the cold corner is consistent
+  with the parasitic loading this section documents slowing regeneration —
+  **consistent-with, not attributed-to**: separating the routing imbalance
+  from the disclosed drawn-vs-schematic load-resistor delta would need a
+  counterfactual extraction this pass did not build. The spec consequence is
+  proposed in
+  [DR-007](../spec/decision-records/DR-007-systematic-decision-offset-row.md).
 
 ## Body ties
 

@@ -1,0 +1,34 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=19.53125mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  1.18175e-08
+ Reference value :  2.25825e-08
+ Reference value :  3.18125e-08
+ Reference value :  4.01475e-08
+ Reference value :  4.89775e-08
+ Reference value :  5.81625e-08
+ Reference value :  6.89375e-08
+ Reference value :  7.95875e-08
+ Reference value :  9.16775e-08
+ Reference value :  1.03073e-07
+ Reference value :  1.14793e-07
+ Reference value :  1.25853e-07
+ Reference value :  1.37128e-07
+ Reference value :  1.48803e-07
+ Reference value :  1.60178e-07
+ Reference value :  1.72413e-07
+ Reference value :  1.84473e-07
+ Reference value :  1.96563e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 

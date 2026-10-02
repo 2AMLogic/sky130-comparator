@@ -92,6 +92,21 @@ case above: a record whose ratification *reasoning* was checked, found stale,
 and then re-established by the measurement it demanded — which is why an
 amendment was the right instrument rather than a new record.
 
+**Update (issue #66,
+[DR-007](decision-records/DR-007-systematic-decision-offset-row.md),
+2026-10-02, **proposed**).** The decision-referred offset measurement this
+repo gained (`run.py offset-bisect`) shows the σ-only Offset sigma row
+cannot express two measured post-layout facts: a **+1.875 mV layout-induced
+systematic decision offset** at `tt`/27 °C (extracted flip +1.8359 mV vs.
+the schematic fragment's −0.0391 mV negative control) and a **28.2422 mV
+non-decision band** at `ss`/−40 °C where the schematic fragment's own band
+is symmetric ±0.8203 mV. DR-007 **proposes** a companion "Systematic
+decision offset" row (target ≤ 2 mV / stretch ≤ 5 mV, `tt`/27 °C reference)
+plus a stated-limitation sentence on the Decision-time row's basis — and
+changes nothing until an operator ratifies it. Per `CLAUDE.md`, the
+proposal is filed by the pass that measured the facts; the ratification is
+not the agent's to give.
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar
