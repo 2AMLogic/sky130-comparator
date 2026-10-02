@@ -1098,5 +1098,340 @@ class TestNoiseTranResumableCampaign(unittest.TestCase):
                 self._campaign(chunk_decks=4)
 
 
+def _wrdata_text(rows: list[tuple], n_vectors: int) -> str:
+    """Synthesize an ngspice `wrdata` file: ngspice repeats the time column
+    once per vector (`time0 a time1 b time2 c`), which is exactly what
+    `toolchain.read_wrdata_csv` parses. Each row carries the time plus
+    `n_vectors` values."""
+    lines = []
+    for row in rows:
+        assert len(row) == n_vectors + 1, row
+        cols = [f"{row[0]:.9g} {row[i + 1]:.9g}" for i in range(n_vectors)]
+        lines.append(" ".join(cols))
+    return "\n".join(lines) + "\n"
+
+
+def _decision_rows(
+    *, settle_sign: int, cross_ns: float | None,
+    eval_start_ns: float = 5.1, t_end_ns: float = 45.0, step_ns: float = 0.1,
+    with_clk: bool = False,
+) -> list[tuple]:
+    """Synthetic reset->evaluate rows. Before `eval_start_ns` both outputs
+    sit at the reset level (equal outputs, no difference). After it, the
+    difference ramps linearly to `settle_sign * 1.2 V` reaching the
+    DECIDE_THRESHOLD_V crossing exactly `cross_ns` after the evaluate edge
+    (so the crossing time is assertable), or -- `settle_sign=0` /
+    `cross_ns=None` -- never separates at all (a non-decision).
+
+    Rows carry the clock vector too when `with_clk` (the `regen` deck's
+    `wrdata v(CLK) v(OUTP) v(OUTN)` shape); the `offset-bisect` deck
+    writes OUTP/OUTN only."""
+    rows: list[tuple] = []
+    threshold = cd_run.DECIDE_THRESHOLD_V
+    n = int(round((t_end_ns) / step_ns))
+    for i in range(n + 1):
+        t_ns = i * step_ns
+        if t_ns < eval_start_ns or settle_sign == 0 or cross_ns is None:
+            diff = 0.0
+        else:
+            slope = threshold / cross_ns
+            diff = settle_sign * min(slope * (t_ns - eval_start_ns), 1.2)
+        outp, outn = 0.9 + diff / 2, 0.9 - diff / 2
+        if with_clk:
+            rows.append((t_ns * 1e-9, 0.0 if t_ns < eval_start_ns else 1.8, outp, outn))
+        else:
+            rows.append((t_ns * 1e-9, outp, outn))
+    return rows
+
+
+class TestDecisionClassification(unittest.TestCase):
+    """`_classify_decision` -- the issue #66 polarity split. `regen`'s old
+    criterion was sign-corrected, so a wrong-polarity decision and a genuine
+    non-decision both read `UNRESOLVED`; these tests pin the three-way
+    outcome (resolved / wrong-polarity / non-decision) and the
+    evaluate-relative crossing time of whichever sign crossed."""
+
+    def _classify(self, rows, expected_sign):
+        t = [r[0] for r in rows]; outp = [r[2] for r in rows]; outn = [r[3] for r in rows]
+        return cd_run._classify_decision(
+            t, outp, outn, evaluate_start_ns=5.1, expected_sign=expected_sign,
+        )
+
+    def test_expected_sign_crossing_is_resolved_with_crossing_time(self):
+        outcome, cross_ns = self._classify(
+            _decision_rows(settle_sign=+1, cross_ns=2.0, with_clk=True), +1.0)
+        self.assertEqual(outcome, "resolved")
+        self.assertAlmostEqual(cross_ns, 2.0, delta=0.2)
+
+    def test_opposite_sign_crossing_is_wrong_polarity(self):
+        outcome, cross_ns = self._classify(
+            _decision_rows(settle_sign=-1, cross_ns=1.5, with_clk=True), +1.0)
+        self.assertEqual(outcome, "wrong-polarity")
+        self.assertAlmostEqual(cross_ns, 1.5, delta=0.2)
+
+    def test_no_crossing_is_non_decision(self):
+        outcome, cross_ns = self._classify(
+            _decision_rows(settle_sign=0, cross_ns=None, with_clk=True), +1.0)
+        self.assertEqual(outcome, "non-decision")
+        self.assertIsNone(cross_ns)
+
+    def test_pre_evaluate_window_samples_are_ignored(self):
+        # A pre-evaluate separation (an unphysical reset-phase glitch, but
+        # exactly what the old loop's `tt < evaluate_start_ns` guard skipped)
+        # must not classify the point: only crossings AFTER the evaluate
+        # edge count.
+        rows = [
+            (t - 4.0e-9, clk, 1.4, 0.4) if t < 4.5e-9 else (t, clk, outp, outn)
+            for t, clk, outp, outn
+            in _decision_rows(settle_sign=0, cross_ns=None, with_clk=True)
+        ]
+        outcome, _ = self._classify(rows, +1.0)
+        self.assertEqual(outcome, "non-decision")
+
+    def test_expected_sign_negative_resolves_negative_difference(self):
+        # A negative-vindiff regen point expects sign(outp-outn) < 0; the
+        # classifier must follow the EXPECTED sign, not hardcode +.
+        outcome, cross_ns = self._classify(
+            _decision_rows(settle_sign=-1, cross_ns=3.0, with_clk=True), -1.0)
+        self.assertEqual(outcome, "resolved")
+        self.assertAlmostEqual(cross_ns, 3.0, delta=0.2)
+
+
+class TestRegenSweepPolarity(unittest.TestCase):
+    """`run_regen_sweep` labels each point resolved / wrong-polarity /
+    non-decision, against a fake comparator with a known decision flip
+    (the exact shape issue #66 measured post-layout at `ss`/-40C: small
+    positive overdrives decide the WRONG way)."""
+
+    FLIP_MV = 12.0
+
+    @staticmethod
+    def _regen_probe_mv(name: str) -> float:
+        # `regen_<v>mV` with "-" -> "neg" and "." -> "p" (run_regen_sweep's
+        # own naming), parsed back.
+        body = name.removeprefix("regen_").removesuffix("mV")
+        sign = 1.0
+        if body.startswith("neg"):
+            sign, body = -1.0, body[3:]
+        return sign * float(body.replace("p", "."))
+
+    def _fake_run_many(self, jobs, scratch_dir, workers=1):
+        out = {}
+        for name, _deck in jobs:
+            v = self._regen_probe_mv(name)
+            # wrong side of the flip -> settles the wrong way (fast); right
+            # side -> settles correctly; exactly on it -> non-decision.
+            if abs(v - self.FLIP_MV) < 1e-9:
+                rows = _decision_rows(settle_sign=0, cross_ns=None, with_clk=True)
+            elif v > self.FLIP_MV:
+                rows = _decision_rows(settle_sign=+1, cross_ns=0.5, with_clk=True)
+            else:
+                rows = _decision_rows(settle_sign=-1, cross_ns=2.0, with_clk=True)
+            (Path(scratch_dir) / f"{name}.csv").write_text(_wrdata_text(rows, 3))
+            out[name] = f"fake log {name}"
+        return out
+
+    def test_outcomes_follow_the_flip(self):
+        with unittest.mock.patch.object(cd_run, "_run_many", self._fake_run_many):
+            with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
+                points = cd_run.run_regen_sweep(quiet=True)
+        by_v = {p.vindiff_mv: p for p in points}
+        self.assertEqual(by_v[-10.0].outcome, "resolved")          # below flip, - sign expected
+        self.assertAlmostEqual(by_v[-10.0].regen_time_ns, 2.0, places=6)  # the crossing time is kept
+        self.assertEqual(by_v[+5.0].outcome, "wrong-polarity")     # 0 < 5 < flip
+        self.assertEqual(by_v[+10.0].outcome, "wrong-polarity")
+        self.assertEqual(by_v[+20.0].outcome, "resolved")
+        self.assertEqual(by_v[+50.0].outcome, "resolved")
+
+
+class TestOffsetBisectDeck(unittest.TestCase):
+    """The issue #66 `offset-bisect` deck: same stimulus shape as `regen`,
+    but a longer evaluate window (near the flip the latch regenerates
+    slowly, and the bisection must not misread a slow correct decision as
+    a flip), and OUTP/OUTN only (no CLK vector needed)."""
+
+    def setUp(self):
+        self.info = FakePdkInfo()
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+
+    def _deck(self, vindiff_mv=3.25):
+        return cd_run._offset_bisect_deck(self.info, "ss", -40.0, vindiff_mv, "probe")
+
+    def test_uses_the_longer_evaluate_window(self):
+        deck = self._deck()
+        tstop = cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.BISECT_EVALUATE_NS
+        self.assertIn(f"tran 0.005n {tstop}n", deck)
+        self.assertGreater(
+            cd_run.BISECT_EVALUATE_NS, cd_run.EVALUATE_NS,
+            "the bisection window must be longer than regen's, or slow "
+            "near-flip decisions would misclassify",
+        )
+
+    def test_clock_pulse_width_matches_the_window(self):
+        # The PULSE width must be the bisect window, so exactly ONE
+        # evaluate edge occurs inside the transient (the regen convention).
+        deck = self._deck()
+        expected = (
+            f"PULSE(0 {{vdd_val}} {cd_run.RESET_NS}n {cd_run.RESET_TR_NS}n "
+            f"{cd_run.RESET_TR_NS}n {cd_run.BISECT_EVALUATE_NS}n"
+        )
+        self.assertIn(expected, deck)
+
+    def test_input_split_is_centered_on_vcm(self):
+        deck = self._deck(vindiff_mv=4.0)
+        self.assertIn(f"dc {cd_run.VCM + 0.002}", deck)
+        self.assertIn(f"dc {cd_run.VCM - 0.002}", deck)
+
+    def test_includes_dut_lines_verbatim(self):
+        deck = self._deck()
+        self.assertIn(cd_run.DUT_FRAGMENT.read_text(), deck)
+
+    def test_extracted_dut_inlines_the_extracted_fragment(self):
+        cd_run.set_dut_provenance("extracted")
+        deck = self._deck()
+        self.assertIn(cd_run.PEX_FRAGMENT.read_text(), deck)
+        self.assertIn("vsubs", deck)
+
+    def test_wrdata_has_both_output_nodes(self):
+        self.assertIn("wrdata probe.csv v(OUTP) v(OUTN)", self._deck())
+
+
+class TestOffsetBisectSearch(unittest.TestCase):
+    """`run_offset_bisect` against fake comparators with known decision
+    structure: the two edge bisections must converge to the flip within
+    the stated tolerance, bracket-expand past a wrong initial guess,
+    collapse to ~0 on the symmetric fragment (the negative control), and
+    report a measured NON-DECISION BAND as a band -- not pretend a single
+    flip exists inside it."""
+
+    def _run_with_fake(self, flip_mv, *, bracket_start=None, dead_band=None,
+                       timeout_band=None):
+        calls = []
+
+        def fake_run_many(jobs, scratch_dir, workers=1):
+            out = {}
+            t_end = cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.BISECT_EVALUATE_NS
+            for name, _deck in jobs:
+                v = cd_run._bisect_probe_mv(name)
+                calls.append(v)
+                if timeout_band is not None and timeout_band[0] <= v <= timeout_band[1]:
+                    raise RuntimeError(
+                        "ngspice timed out after 120s running "
+                        f"{name}.spice (last output:\n)"
+                    )
+                if dead_band is not None and dead_band[0] <= v <= dead_band[1]:
+                    rows = _decision_rows(settle_sign=0, cross_ns=None, t_end_ns=t_end)
+                elif v > flip_mv:
+                    rows = _decision_rows(settle_sign=+1, cross_ns=1.0, t_end_ns=t_end)
+                else:
+                    rows = _decision_rows(settle_sign=-1, cross_ns=2.0, t_end_ns=t_end)
+                (Path(scratch_dir) / f"{name}.csv").write_text(_wrdata_text(rows, 2))
+                out[name] = f"fake log {name}"
+            return out
+
+        kwargs = {"quiet": True}
+        if bracket_start is not None:
+            kwargs["bracket_start_mv"] = bracket_start
+        with unittest.mock.patch.object(cd_run, "_run_many", fake_run_many):
+            with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
+                result = cd_run.run_offset_bisect(corner="tt", temp_c=27.0, **kwargs)
+        return result, calls
+
+    def test_converges_to_a_positive_flip(self):
+        result, _ = self._run_with_fake(flip_mv=12.0)
+        self.assertTrue(result.converged)
+        self.assertLessEqual(result.band_mv, cd_run.BISECT_TOL_MV)
+        self.assertLessEqual(abs(result.flip_mv - 12.0), cd_run.BISECT_TOL_MV)
+        self.assertLessEqual(result.wrong_edge_bracket[0], 12.0)
+        self.assertGreaterEqual(result.resolved_edge_bracket[1], 12.0)
+
+    def test_bracket_expands_past_a_too_small_initial_guess(self):
+        # flip outside the default +/-10 mV start: the +10 mV probe decides
+        # the wrong way, so the high end must expand until it resolves.
+        result, calls = self._run_with_fake(flip_mv=14.0)
+        self.assertTrue(result.converged)
+        self.assertLessEqual(result.band_mv, cd_run.BISECT_TOL_MV)
+        self.assertLessEqual(abs(result.flip_mv - 14.0), cd_run.BISECT_TOL_MV)
+        self.assertIn(20.0, calls, "the bracket must have expanded to +20 mV")
+
+    def test_negative_flip_is_bracketed_by_expanding_low(self):
+        result, calls = self._run_with_fake(flip_mv=-25.0)
+        self.assertTrue(result.converged)
+        self.assertLessEqual(abs(result.flip_mv - (-25.0)), cd_run.BISECT_TOL_MV)
+        self.assertIn(-40.0, calls)
+
+    def test_symmetric_fragment_collapses_to_zero(self):
+        # The symmetric-fragment shape: at exactly vindiff=0 the comparator
+        # is ideally metastable (a non-decision). Both edge bisections must
+        # converge to it from either side -- the negative control.
+        result, _ = self._run_with_fake(flip_mv=0.0, dead_band=(0.0, 0.0))
+        self.assertTrue(result.converged)
+        self.assertLessEqual(result.band_mv, cd_run.BISECT_TOL_MV)
+        self.assertAlmostEqual(result.flip_mv, 0.0, delta=cd_run.BISECT_TOL_MV)
+
+    def test_dead_band_is_reported_as_a_band_not_a_flip(self):
+        # The shape the ss/-40C post-layout re-run found: wrong-polarity
+        # below 2 mV, NO decision from 2 to 12 mV, resolved above 12 mV.
+        # The result must carry the band's measured edges, not a flip.
+        result, _ = self._run_with_fake(flip_mv=12.0, dead_band=(2.0, 12.0))
+        self.assertTrue(result.converged)
+        self.assertGreater(result.band_mv, cd_run.BISECT_TOL_MV)
+        self.assertAlmostEqual(result.wrong_edge_mv, 2.0, delta=cd_run.BISECT_TOL_MV)
+        self.assertAlmostEqual(result.resolved_edge_mv, 12.0, delta=cd_run.BISECT_TOL_MV)
+        self.assertAlmostEqual(result.band_mv, 10.0, delta=2 * cd_run.BISECT_TOL_MV)
+
+    def test_unbracketable_flip_raises(self):
+        # flip beyond the bracket ceiling: honest failure, no result.
+        with self.assertRaises(RuntimeError):
+            self._run_with_fake(flip_mv=1e6)
+
+    def test_solver_floor_stops_the_edge_without_fabricating(self):
+        # The numerically balanced latch: probes too close to the flip
+        # exhaust the solver's wall-clock budget. The edge bisection must
+        # STOP there (recorded as a timeout probe, bracket left as-is),
+        # never classifying the probe as a circuit outcome.
+        result, _ = self._run_with_fake(flip_mv=0.0, timeout_band=(-0.5, 0.5))
+        self.assertTrue(result.solver_floor_hit)
+        self.assertFalse(result.converged)
+        # The timeout probe is recorded as a timeout, not an outcome.
+        self.assertIn((0.0, "timeout"), result.probes)
+        # Both edges' brackets still bound the flip.
+        self.assertLessEqual(result.wrong_edge_bracket[0], 0.0)
+        self.assertGreaterEqual(result.wrong_edge_bracket[1], 0.0)
+        self.assertLessEqual(result.resolved_edge_bracket[0], 0.0)
+        self.assertGreaterEqual(result.resolved_edge_bracket[1], 0.0)
+
+    def test_non_timeout_solver_failure_propagates(self):
+        # A nonzero ngspice exit is a real error, not a floor hit.
+        def fake_run_many(jobs, scratch_dir, workers=1):
+            raise RuntimeError("ngspice exited 1 running x.spice")
+        with unittest.mock.patch.object(cd_run, "_run_many", fake_run_many):
+            with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
+                with self.assertRaises(RuntimeError):
+                    cd_run.run_offset_bisect(corner="tt", temp_c=27.0, quiet=True)
+
+    def test_probe_names_round_trip(self):
+        # Names quantize to microvolts (by design -- that is ~1000x finer
+        # than BISECT_TOL_MV), so round-trip to that resolution, not exactly.
+        for v in (0.0, 10.0, -10.0, 12.34375, -0.05, 160.0):
+            name = cd_run._bisect_probe_name(v)
+            self.assertTrue(name.startswith("bisect_"))
+            self.assertNotIn("-", name, "job names must not carry a raw minus sign")
+            self.assertAlmostEqual(
+                cd_run._bisect_probe_mv(name), v, delta=1e-3)
+
+
+class TestOffsetBisectCli(unittest.TestCase):
+    """Parse-level: the `offset-bisect` mode exists and routes."""
+
+    def test_offset_bisect_mode_in_choices(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                cd_run.main(["offset-bisect", "--help"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn("offset-bisect", buf.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
