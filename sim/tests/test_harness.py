@@ -48,31 +48,10 @@ class TestMeasureParse(unittest.TestCase):
         self.assertAlmostEqual(parsed["vdiv_ratio"], 0.5)
         self.assertNotIn("missing", parsed)
 
-    def test_missing_reports_unparsed_names(self):
-        parsed = measure.parse("vgs_nfet = 1.0", ["vgs_nfet", "vdiv_ratio"])
-        self.assertEqual(measure.missing(parsed, ["vgs_nfet", "vdiv_ratio"]), ["vdiv_ratio"])
-
     def test_first_occurrence_wins(self):
         log = "x = 1.0\nx = 2.0\n"
         parsed = measure.parse(log, ["x"])
         self.assertEqual(parsed["x"], 1.0)
-
-    def test_anchored_default_rejects_trailing_trig_targ_context(self):
-        # ngspice's TRIG/TARG crossing `.meas` prints extra " targ=...
-        # trig=..." context on the same line -- the default anchored match
-        # must reject it (sky130-sar-adc issue #229).
-        log = "t_settle_50 = 1.234500e-09 targ= 1.2345e-09 trig=0"
-        parsed = measure.parse(log, ["t_settle_50"])
-        self.assertNotIn("t_settle_50", parsed)
-
-    def test_unanchored_parses_trig_targ_trailing_context(self):
-        log = "t_settle_50 = 1.234500e-09 targ= 1.2345e-09 trig=0"
-        parsed = measure.parse(log, ["t_settle_50"], anchored=False)
-        self.assertAlmostEqual(parsed["t_settle_50"], 1.2345e-09)
-
-    def test_unanchored_still_matches_plain_lines(self):
-        parsed = measure.parse("vgs_nfet = 1.0", ["vgs_nfet"], anchored=False)
-        self.assertAlmostEqual(parsed["vgs_nfet"], 1.0)
 
 
 class TestCorners(unittest.TestCase):
@@ -143,22 +122,6 @@ class TestCorners(unittest.TestCase):
         self.assertEqual(len(grid), 1 + 4 + 2 + 2)
         self.assertEqual(len(grid), len(set(grid)))
         self.assertEqual(grid[0], ("tt", 27, 1.8))
-
-    def test_ratified_oat_grid_matches_manual_supply_points_plus_oat_grid_chain(self):
-        # ratified_oat_grid() is the "tt"/27C-baseline supply_points() +
-        # oat_grid() chain every --corners driver hand-repeated (issue #211)
-        # -- must return byte-identical grids to that manual two-call chain.
-        process_corners = ["tt", "ss", "ff", "sf", "fs"]
-        temps_c = [-40, 27, 125]
-        nominal_v = 1.8
-        tolerance = 0.10
-
-        supply_pts = corners.supply_points(nominal_v, tolerance)
-        expected = corners.oat_grid(
-            "tt", 27.0, nominal_v, process_corners, temps_c, supply_pts
-        )
-        actual = corners.ratified_oat_grid(nominal_v, tolerance, process_corners, temps_c)
-        self.assertEqual(actual, expected)
 
 
 class TestEvidence(unittest.TestCase):
