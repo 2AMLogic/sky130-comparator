@@ -114,27 +114,3 @@ def oat_grid(
         _add(baseline_process, baseline_temp, supply_v)
 
     return grid
-
-
-def ratified_oat_grid(
-    nominal_v: float,
-    tolerance: float,
-    process_corners: list[str],
-    temps_c: list[float],
-) -> list[tuple[str, float, float]]:
-    """oat_grid() built on the "tt"/27C baseline convention (tt process
-    corner, 27C, nominal supply, as the OAT star's center point) --
-    ported unchanged from sky130-sar-adc's sim/harness/corners.py, where
-    it anchors every --corners driver that sweeps that repo's own
-    ratified corner set. This repo's own target-spec table (top-level
-    README) is still DRAFT (see spec/README.md), so no caller here treats
-    a run against this grid as substantiating a ratified line yet -- the
-    baseline itself is a repo/PDK convention, not a spec value:
-    nominal_v/process_corners/temps_c are still supplied by the caller's
-    own testbench manifest. Named `ratified_oat_grid` to keep the exact
-    ported function name (and therefore the exact ported behavior)
-    unchanged; a future rename can happen alongside this repo's own DR
-    ratification if the name reads confusingly by then."""
-    return oat_grid(
-        "tt", 27.0, nominal_v, process_corners, temps_c, supply_points(nominal_v, tolerance)
-    )
