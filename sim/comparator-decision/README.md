@@ -1527,3 +1527,56 @@ Earlier records (`20260916-*`, `20260921-*`) characterize the DR-001/
 DR-003 single-tail design, and `20260909-*` the **ported placeholder
 DUT**; they remain, unedited, as append-only evidence. See [The DUT](#the-dut)
 for why they remain, unedited.
+
+### Erratum (2026-10-04, issue #75) -- kickback records' hardcoded corner prose
+
+Twelve committed `kickback` records carry corner-justification prose that
+`write_kickback_evidence()` hardcoded for issue #30's single tt/27C
+re-measurement: every one says it "re-measures the SAME single nominal corner
+(tt/27C, 1 kOhm, 50 mV overdrive)" and/or that "the comparison holds for the
+single tt/27C PVT point this record runs", followed by "a full-corner
+kickback sweep remains open work" / "kickback PVT coverage remains open work
+per DR-002". For records measured away from tt/27C that prose contradicts the
+record's own data. The writer was fixed by PR #81 (`937a896`, merged
+2026-09-25, `kickback_subset_justification()` in `run.py`), so no record
+written after that fix is affected. The records themselves are append-only
+evidence and remain, unedited; this section is the correction.
+
+**Each record's `process=` / `temperature_c=` fields are authoritative.**
+Wherever the prose named above disagrees with those fields, the fields are
+right and the prose is wrong. **The "PVT coverage remains open work" clause
+is superseded by DR-005**
+([`spec/decision-records/DR-005-full-corner-campaign.md`](../../spec/decision-records/DR-005-full-corner-campaign.md)),
+whose full-corner campaign completed kickback coverage across all graded
+corners (7 of 7, see the coverage table above). **The measured numbers in
+every listed record are unaffected** -- this is a prose defect only; no
+figure, bound comparison, or pass/fail outcome changes.
+
+Records whose own fields show a corner **other than** tt/27C, so both the
+"single tt/27C PVT point" sentence and the subset-corner justification are
+wrong for them (their `process=`/`temperature_c=` as committed):
+
+- `records/20260922-070212-e084b55.md` -- `process=['ss'], temperature_c=[-40.0]`
+- `records/20260922-070307-e084b55.md` -- `process=['ff'], temperature_c=[125.0]`
+- `records/20260922-180026-e23c509.md` -- `process=['sf'], temperature_c=[-40.0]`
+- `records/20260922-180157-e23c509.md` -- `process=['sf'], temperature_c=[125.0]`
+- `records/20260922-180319-e23c509.md` -- `process=['fs'], temperature_c=[-40.0]`
+- `records/20260922-180425-e23c509.md` -- `process=['fs'], temperature_c=[125.0]`
+
+Records that **did** run at tt/27C (`process=['tt'], temperature_c=[27.0]`),
+so their corner prose is accurate and only the trailing "remains open work"
+clause is superseded by DR-005:
+
+- `records/20260921-185034-bb32850.md`
+- `records/20260921-185118-bb32850.md`
+- `records/20260921-185208-bb32850.md`
+- `records/20260922-070119-e084b55.md`
+- `records/20260925-070601-2e2ef84.md`
+- `records/20260925-094700-4694692.md`
+
+The twelve-record list is exactly the set matched, at `72504f6`
+(2026-10-04), by:
+
+```bash
+for f in $(git grep -l "PVT coverage remains open work" origin/main -- sim/comparator-decision/records | sed 's/^origin\/main://'); do git show origin/main:$f | grep -q "tt/27C" && basename $f; done
+```
