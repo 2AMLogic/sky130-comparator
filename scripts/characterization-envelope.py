@@ -237,7 +237,16 @@ def verify(root: Path) -> tuple[str, dict, list[str]]:
         failures.append(f"pins file has no 'freshness' object: {PINS_REL}")
         return "fail", verification, failures
 
-    pinned_report = (freshness.get("report") or {}).get("content_hash")
+    report_pin = freshness.get("report")
+    if not isinstance(report_pin, dict) or not isinstance(
+        report_pin.get("content_hash"), str
+    ):
+        failures.append(
+            "pins file 'freshness.report' is not an object with a "
+            f"content_hash string: {PINS_REL}"
+        )
+        return "fail", verification, failures
+    pinned_report = report_pin["content_hash"]
     pinned_artifacts = freshness.get("artifacts")
     if not isinstance(pinned_artifacts, list):
         failures.append(f"pins file has no 'freshness.artifacts' array: {PINS_REL}")
@@ -260,8 +269,15 @@ def verify(root: Path) -> tuple[str, dict, list[str]]:
     pinned_paths = []
     verification["artifacts"]["pinned"] = len(pinned_artifacts)
     for entry in pinned_artifacts:
-        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
-            failures.append(f"malformed pin entry in {PINS_REL}: {entry!r}")
+        if (
+            not isinstance(entry, dict)
+            or not isinstance(entry.get("path"), str)
+            or not isinstance(entry.get("content_hash"), str)
+        ):
+            failures.append(
+                f"malformed pin entry in {PINS_REL} (needs string 'path' and "
+                f"'content_hash'): {entry!r}"
+            )
             continue
         rel = entry["path"]
         pinned_paths.append(rel)
@@ -384,6 +400,14 @@ def run_update(root: Path, quiet: bool = False) -> int:
         existing = json.loads(pins_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         existing = {}
+    # A parsable but non-object document (list, string, number, null) is
+    # treated like an absent one: rebuild from scratch. Hashes come solely
+    # from compute_pins, so nothing pass-shaped is carried over.
+    if not isinstance(existing, dict):
+        existing = {}
+    existing_summary = existing.get("summary")
+    if not isinstance(existing_summary, str):
+        existing_summary = None
     freshness = compute_pins(root)
     missing = [a["path"] for a in freshness["artifacts"] if a["content_hash"] is None]
     if freshness["report"]["content_hash"] is None:
@@ -403,7 +427,7 @@ def run_update(root: Path, quiet: bool = False) -> int:
         "schema_version": ENVELOPE_SCHEMA_VERSION,
         "kind": "generic",
         "status": "pass",
-        "summary": existing.get("summary")
+        "summary": existing_summary
         or (
             "Reference shape for T1 item 8's generic evidence envelope, and "
             "the freshness pins scripts/characterization-envelope.py checks "
@@ -612,6 +636,73 @@ def run_selftest() -> int:
         "pin for an artifact the index no longer lists emits status: fail",
         _add_stale_pin,
         "fail",
+    )
+
+    def _set_report_pin(value):
+        def mutate(root):
+            doc = json.loads((root / PINS_REL).read_text(encoding="utf-8"))
+            doc["freshness"]["report"] = value
+            (root / PINS_REL).write_text(json.dumps(doc), encoding="utf-8")
+
+        return mutate
+
+    for label, value in (
+        ("string", "deadbeef"),
+        ("list", ["deadbeef"]),
+        ("number", 7),
+        ("null", None),
+        ("object without content_hash", {}),
+        ("object with non-string content_hash", {"content_hash": 5}),
+    ):
+        scenario(
+            f"freshness.report as {label} emits status: fail",
+            _set_report_pin(value),
+            "fail",
+        )
+
+    for label, text in (
+        ("list", "[]"),
+        ("string", '"x"'),
+        ("number", "3"),
+        ("null", "null"),
+    ):
+        scenario(
+            f"non-object top-level pins document ({label}) emits status: fail",
+            lambda root, text=text: (root / PINS_REL).write_text(
+                text, encoding="utf-8"
+            ),
+            "fail",
+        )
+
+    def _set_artifacts(entries):
+        def mutate(root):
+            doc = json.loads((root / PINS_REL).read_text(encoding="utf-8"))
+            doc["freshness"]["artifacts"] = entries
+            (root / PINS_REL).write_text(json.dumps(doc), encoding="utf-8")
+
+        return mutate
+
+    for label, entries in (
+        ("string entry", ["x"]),
+        ("null entry", [None]),
+        ("entry without path", [{"content_hash": "ab"}]),
+        ("entry without content_hash", [{"path": "a/b.md"}]),
+        ("entry with non-string content_hash", [{"path": "a/b.md", "content_hash": 1}]),
+    ):
+        scenario(
+            f"malformed artifact pin ({label}) emits status: fail",
+            _set_artifacts(entries),
+            "fail",
+        )
+
+    def _update_from_list(root):
+        (root / PINS_REL).write_text("[1, 2]", encoding="utf-8")
+        run_update(root, quiet=True)
+
+    scenario(
+        "--update over a non-object pins document recovers to a verifying pin set",
+        _update_from_list,
+        "pass",
     )
 
     cases.append(
