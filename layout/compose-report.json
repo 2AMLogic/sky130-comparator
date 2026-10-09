@@ -23,7 +23,7 @@
       "generator": "mos_array",
       "cell_name": "PTAIL",
       "source_path": "ptail.gds",
-      "source_digest": "sha256:78af9508bd5c0c5c7487e8ce378f65004bbc95a00a005a60c505e2d60d875520",
+      "source_digest": "sha256:dc39fed18a1eb6c734ebd82d8a816981a5cc7c8b9ff55df53ec9e33dfe028974",
       "offset_um": {
         "x": 2.0,
         "y": 44.6
@@ -34,7 +34,8 @@
         "x1": 3.34,
         "y1": 46.22
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "inpair",
@@ -42,7 +43,7 @@
       "generator": "diff_pair",
       "cell_name": "INPAIR",
       "source_path": "inpair.gds",
-      "source_digest": "sha256:4a4a880052efe8a1a82681bb13d3d31a0761eee9163eb595cfe748709ce854c4",
+      "source_digest": "sha256:575c2540bd54cc90554e5b617ce1df62d2344446981b4418e12f8f4b8abf84e0",
       "offset_um": {
         "x": 5.5,
         "y": 37.89
@@ -53,7 +54,8 @@
         "x1": 8.58,
         "y1": 52.93
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "rload",
@@ -61,7 +63,7 @@
       "generator": "res_array",
       "cell_name": "RLOAD",
       "source_path": "rload.gds",
-      "source_digest": "sha256:40e79e9fec41252d98fd116be50f675760bc67d58fbf104b2afd2032bbbf137b",
+      "source_digest": "sha256:157975a02706bcbb310fdfa10841e45ad5c2dfce4ddae3f4e0db2e9a60a166fe",
       "offset_um": {
         "x": 5.5,
         "y": 65.0
@@ -70,9 +72,10 @@
         "x0": 5.5,
         "y0": 65.0,
         "x1": 28.34,
-        "y1": 66.24
+        "y1": 66.1
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "stn",
@@ -80,7 +83,7 @@
       "generator": "diff_pair",
       "cell_name": "STN",
       "source_path": "stn.gds",
-      "source_digest": "sha256:a80899f57a5cd4ddccd2df2f0ad32a5eb2e29605aed3fc082d93fa0a22226831",
+      "source_digest": "sha256:4d7d19015617fdc01a407b21a8b935a68970e0986a4dd46176a90a9349a6df91",
       "offset_um": {
         "x": 11.0,
         "y": 36.39
@@ -91,7 +94,8 @@
         "x1": 12.34,
         "y1": 54.43
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "tail2",
@@ -99,7 +103,7 @@
       "generator": "mos_array",
       "cell_name": "TAIL2",
       "source_path": "tail2.gds",
-      "source_digest": "sha256:5d085d3e5ae07ba649ff7f632b248440d748cd4c19cb41e1bb5a4ef0ec476c96",
+      "source_digest": "sha256:8fcd2a1cc84d3f0a269c63b6958d01f4ac9ae590ad6e6d76d53c9d3f3ccc8cbe",
       "offset_um": {
         "x": 15.0,
         "y": 41.0
@@ -110,7 +114,8 @@
         "x1": 16.34,
         "y1": 49.82
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "latp",
@@ -118,7 +123,7 @@
       "generator": "diff_pair",
       "cell_name": "LATP",
       "source_path": "latp.gds",
-      "source_digest": "sha256:3a5887f919c97c405e3e028dd024d4939206db563166f05bd4716fec823a172e",
+      "source_digest": "sha256:e615e3f6ea6147055d8a17c8a9084fe393040fed8284437bec1a96d8f097ce95",
       "offset_um": {
         "x": 18.5,
         "y": 28.39
@@ -129,7 +134,8 @@
         "x1": 19.99,
         "y1": 62.58
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "rst",
@@ -137,7 +143,7 @@
       "generator": "diff_pair",
       "cell_name": "RST",
       "source_path": "rst.gds",
-      "source_digest": "sha256:f5b5e32da742e47392febb0f92d58596a63d92cb96bcbda77c65b14578c38304",
+      "source_digest": "sha256:205711d0e62913b5b02d4c7a89d2e2ff70399bc94157f917871281bcf227e8f5",
       "offset_um": {
         "x": 22.5,
         "y": 36.39
@@ -148,7 +154,8 @@
         "x1": 23.99,
         "y1": 54.58
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "absorb",
@@ -156,7 +163,7 @@
       "generator": "diff_pair",
       "cell_name": "ABSORB",
       "source_path": "absorb.gds",
-      "source_digest": "sha256:53198685e3ed9b9ff10f6bc11e6047e97991de1c0558240e60fb6c3843c0caf8",
+      "source_digest": "sha256:a7935a589d97bb46d9baf89a77b2e23d6a5bda8909779bd869d350ca3c8dd515",
       "offset_um": {
         "x": 30.0,
         "y": 4.390000000000001
@@ -167,7 +174,8 @@
         "x1": 31.34,
         "y1": 86.43
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "clkcap",
@@ -175,7 +183,7 @@
       "generator": "mos_array",
       "cell_name": "CLKCAP",
       "source_path": "clkcap.gds",
-      "source_digest": "sha256:fd3b75decf91e1c359ea3ec73509bc69c6bfa7b96cb20ba74fb8f1ec631dd077",
+      "source_digest": "sha256:bb85bfb5861d1113dfa3df39aa5e7d5e4464268fe4946e7878fb05696d65ff99",
       "offset_um": {
         "x": 34.0,
         "y": 35.0
@@ -186,7 +194,8 @@
         "x1": 35.34,
         "y1": 55.82
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "rclks",
@@ -194,18 +203,19 @@
       "generator": "res_array",
       "cell_name": "RCLKS",
       "source_path": "rclks.gds",
-      "source_digest": "sha256:7d5edfd58ceed67573f9b39cb29a7b2e0db21880783624768e02c3ffd1791854",
+      "source_digest": "sha256:04bd7734ec9792f9a72ca6b57b1fa3157136d2447c34efb03d1e3cc9172bb6e0",
       "offset_um": {
         "x": 38.0,
-        "y": 44.79
+        "y": 44.825
       },
       "bbox_um": {
         "x0": 38.0,
-        "y0": 44.79,
+        "y0": 44.825,
         "x1": 40.59,
-        "y1": 45.21
+        "y1": 45.175000000000004
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     },
     {
       "id": "route",
@@ -213,7 +223,7 @@
       "generator": "draw",
       "cell_name": "ROUTE",
       "source_path": "route.gds",
-      "source_digest": "sha256:4e035ecd8f83e61189416f91e3af6a76a67cbbf4c7271327e45766f8399daa04",
+      "source_digest": "sha256:de456355a9c961fe7fa74155f712e7cc064598472de69ab19119aa5a982bb403",
       "offset_um": {
         "x": 0.0,
         "y": 0.0
@@ -224,7 +234,8 @@
         "x1": 40.53,
         "y1": 86.28
       },
-      "orientation": "none"
+      "orientation": "none",
+      "abuts": []
     }
   ],
   "nets": [],
@@ -279,18 +290,18 @@
   "warnings": [
     "block 'route' is placed 0.00um from block 'ptail' (strategy: explicit), closer than ptail's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'inpair' (strategy: explicit), closer than inpair's own declared drc_hints.min_spacing_um of 0.40um",
-    "block 'route' is placed 0.00um from block 'rload' (strategy: explicit), closer than rload's own declared drc_hints.min_spacing_um of 0.50um",
+    "block 'route' is placed 0.00um from block 'rload' (strategy: explicit), closer than rload's own declared drc_hints.foreign_clearance_um of 0.40um",
     "block 'route' is placed 0.00um from block 'stn' (strategy: explicit), closer than stn's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'tail2' (strategy: explicit), closer than tail2's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'latp' (strategy: explicit), closer than latp's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'rst' (strategy: explicit), closer than rst's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'absorb' (strategy: explicit), closer than absorb's own declared drc_hints.min_spacing_um of 0.40um",
     "block 'route' is placed 0.00um from block 'clkcap' (strategy: explicit), closer than clkcap's own declared drc_hints.min_spacing_um of 0.40um",
-    "block 'route' is placed 0.00um from block 'rclks' (strategy: explicit), closer than rclks's own declared drc_hints.min_spacing_um of 0.50um"
+    "block 'route' is placed 0.00um from block 'rclks' (strategy: explicit), closer than rclks's own declared drc_hints.foreign_clearance_um of 0.40um"
   ],
   "provenance": {
-    "klt_version": "0.6.0",
-    "klayout_version": "0.30.10",
+    "klt_version": "0.7.0",
+    "klayout_version": "0.30.12",
     "pdk": {
       "name": "sky130A",
       "source": "search root: ~/.volare",

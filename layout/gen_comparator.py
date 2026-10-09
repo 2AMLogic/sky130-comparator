@@ -2,8 +2,8 @@
 """layout/gen_comparator.py -- generate the comparator's GDS layout (issue #44).
 
 The single reviewable source for ``layout/comparator.gds``: it generates
-every device block with ``klt gen`` (klayout-tools 0.6.0 on the klayout
-0.30.10 engine, pinned the same way as ``docs/environment-setup.md`` and
+every device block with ``klt gen`` (klayout-tools 0.7.0 on the klayout
+0.30.12 engine, pinned the same way as ``docs/environment-setup.md`` and
 ``.github/workflows/t1-signoff.yml``),
 places and routes them with a deterministic router this repo controls, and
 verifies the composition (per-block DRC, composed DRC, ``klt extract``
@@ -18,10 +18,11 @@ seven re-run from the repo root against the *emitted* GDS -- see
 ``emit_drc_evidence`` / ``emit_lvs_evidence`` / ``emit_lvs_coverage_probe`` /
 ``emit_erc_evidence`` / ``emit_erc_coverage_probe``).
 ``drc-report.json`` is what ``manifests/sky130-comparator.json`` cites for
-T1 item 3; ``lvs-report.json`` is committed but deliberately NOT cited for
-item 4, and layout/README.md's "Why item 4 is left uncited" says why; the
-``erc-*`` trio is likewise committed and deliberately NOT cited for item 11
-("Why item 11 is left uncited" in the same file).
+T1 item 3; ``lvs-report.json`` is cited for item 4 (issue #123: the resistors
+are drawn at the schematic's 0.35um and the request compares resistor L/W
+explicitly -- layout/README.md's "Why item 4 is cited"); the ``erc-*`` trio
+plus ``lvs-report.json`` back the item-11 citation ("Why item 11 is cited" in
+the same file).
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
     python3 layout/gen_comparator.py --check    # byte-compare against the
@@ -58,12 +59,13 @@ naming convention):
     - ``rclks`` (R_CLKS) + ``clkcap`` (M_CLKCAP) -- the DR-003 soft-clock
       shaper, one ``res_array`` unit + one ``mos_array`` gate-cap.
 
-  Known generator gap (filed per CLAUDE.md's friction protocol as a
-  klayout-tools issue; see layout/README.md for the number): ``res_array``
-  rejects ``width_um < 0.42``, so the netlist's 0.35um-wide
-  ``res_high_po_0p35`` variant is not expressible -- the load and shaper
-  resistors are drawn at the generator floor, 0.42um, at the schematic's
-  lengths.  The drawn width is recorded in extract-device-count.json.
+  Resistor width: through klt 0.6.0 ``res_array`` rejected
+  ``width_um < 0.42`` (klayout-tools#2407), so the load and shaper resistors
+  were drawn at that floor, 0.42um, against the schematic's 0.35um
+  ``res_high_po_0p35``.  klt 0.7.0 carries the per-flavour floor fix
+  (klayout-tools#2436), so since issue #123 they are drawn at the
+  schematic's 0.35um, at its lengths; the LVS request compares resistor L/W
+  explicitly.  The drawn width is recorded in extract-device-count.json.
 
 * **Placement and every wire** come from this script's floorplan + greedy
   channel router, emitted as a ``klt draw`` shape document and merged with
@@ -152,7 +154,7 @@ DBU = 1000
 # --- PDK pin (mirrors sim/pdk.json) ------------------------------------------
 PDK_VARIANT = "sky130A"
 PDK_ROOT_DEFAULT = "~/.volare"  # default_pdk_root in sim/pdk.json
-KLT_PIN = "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10"
+KLT_PIN = "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12"
 
 # --- T1 item 4 (LVS) request -------------------------------------------------
 # The reference side is the schematic's own derivation product -- what
@@ -184,7 +186,8 @@ LVS_TOP = "gen_compose_0"
 # secondary L/W.  A reference carrying a deliberately absurd resistor width
 # still grades ``match``.
 LVS_RESISTOR_WRAPPER = "sky130_fd_pr__res_high_po_0p35"
-LVS_GEOMETRY_NOT_ON_CARD = "__geometry_not_on_card__"
+#: The width the wrapper name bakes in (``..._0p35``), um.
+LVS_RESISTOR_WRAPPER_WIDTH_UM = 0.35
 
 LVS_REQUEST = {
     "engine": "klayout",
@@ -197,12 +200,16 @@ LVS_REQUEST = {
         "netlist": LVS_REFERENCE,
         "form": "subckt-call",
         "deck": "sky130",
+        # klt 0.7.0 (klayout-tools#2459): a fixed-geometry wrapper states its
+        # name-baked dimension through ``width_um``; ``l`` stays a real
+        # call-site parameter (the schematic's L=22 / L=1.75), so the
+        # reference side now carries BOTH L and W and the geometry can be
+        # compared rather than discarded.
         "device_map": {
             LVS_RESISTOR_WRAPPER: {
                 "kind": "resistor",
                 "class": "res_high_po",
-                "length_param": LVS_GEOMETRY_NOT_ON_CARD,
-                "width_param": LVS_GEOMETRY_NOT_ON_CARD,
+                "width_um": LVS_RESISTOR_WRAPPER_WIDTH_UM,
             },
         },
     },
@@ -210,7 +217,14 @@ LVS_REQUEST = {
     # common-centroid cross-quad); the schematic states one W=13um device.
     # combine_devices is what reconciles the two -- the same fold
     # extract-device-count.json's "merged_counts" already records.
-    "options": {"combine_devices": True},
+    #
+    # compare_parameters forces the resistor class's L and W into the compare.
+    # KLayout's default scope compares only a resistor's primary parameter R,
+    # which the reference form excludes as a placeholder, so without this a
+    # drawn width/length that disagrees with the schematic still grades
+    # ``match`` (measured in layout/lvs-coverage-probe.json).
+    "options": {"combine_devices": True,
+                "compare_parameters": {"res_high_po": ["L", "W"]}},
 }
 
 # --- T1 item 11 (ERC, power delivery *structural*) supply spec ----------------
@@ -430,7 +444,7 @@ BLOCKS = [
         "add_guard_ring": False, "gate_contact": True,
     }),
     ("rload", "res_array", "RLOAD", {
-        "length_um": 22.0, "width_um": 0.42, "num": 2, "dummy": 0,
+        "length_um": 22.0, "width_um": 0.35, "num": 2, "dummy": 0,
         "flavor": "high", "rows": 2,
     }),
     ("stn", "diff_pair", "STN", {
@@ -458,7 +472,7 @@ BLOCKS = [
         "dummy": 0, "flavor": "nfet", "gate_contact": True,
     }),
     ("rclks", "res_array", "RCLKS", {
-        "length_um": 1.75, "width_um": 0.42, "num": 1, "dummy": 0,
+        "length_um": 1.75, "width_um": 0.35, "num": 1, "dummy": 0,
         "flavor": "high",
     }),
 ]
@@ -1266,80 +1280,80 @@ def _run_lvs(klt: str, request: dict, repo_root: Path) -> tuple[dict, int]:
 #: stage-4 discipline, applied to a signoff artifact), so ``mos_*`` and
 #: ``connectivity`` establish that this one bites.  The ``res_*`` rows go
 #: further and measure the compare's *reach*, which is the half that decides
-#: whether the verdict may be cited: at klt's default parameter scope the
-#: block's known drawn-versus-schematic resistor width delta is invisible,
-#: and the two ``res_width_forced_*`` rows show the same tool reports it as a
-#: ``device.property`` error as soon as the geometry is asked for.  That pair
-#: is why T1 item 4 is NOT claimed from this run -- see layout/README.md.
+#: whether the verdict may be cited: the signoff request forces the resistor
+#: class's L and W into the compare (``options.compare_parameters``) and the
+#: ``res_*`` rows show a width or length disagreement is then reported as a
+#: ``device.property`` error, while ``res_width_10x_default_scope`` shows the
+#: same disagreement is invisible at klt's default parameter scope -- which is
+#: why a default-scope match alone would not support T1 item 4.
 #:
-#: ``rewrite_resistors`` restates the three ``XR_`` cards as the generic
-#: parent device at an explicit width -- exactly the expansion the PDK's own
-#: fixed-width wrapper model file performs -- so a probe can vary a width the
-#: signoff request structurally cannot express.  ``compare_parameters`` is
-#: ``klt lvs``'s own ``options.compare_parameters``.
+#: ``reference_width_um`` overrides the wrapper's ``device_map`` ``width_um``
+#: (klt 0.7.0), varying the reference width through the real mapping path.
 LVS_PROBES = (
     {
-        "id": "res_width_as_schematic",
-        "perturbation": "reference resistors restated at the fixed-width "
-                        "wrapper's own w=0.35um against the drawn 0.42um",
-        "rewrite_resistors": 0.35,
+        "id": "res_geometry_as_schematic",
+        "perturbation": "none -- the signoff request unchanged: wrapper "
+                        "width_um 0.35 (the schematic) against the drawn "
+                        "0.35um resistors, L and W forced into the compare",
+        "rewrite_resistors": None,
         "substitutions": (),
         "expected_status": "match",
-        "covers": False,
-        "reads": "at the default parameter scope the drawn-versus-schematic "
-                 "width delta is NOT detected by this compare",
+        "covers": True,
+        "reads": "positive control: with resistor L/W compared and the "
+                 "drawn geometry equal to the schematic, the compare matches",
+    },
+    {
+        "id": "res_width_ref_0p42",
+        "perturbation": "reference wrapper width_um stated as 0.42um (the "
+                        "OLD drawn width) against the drawn 0.35um",
+        "rewrite_resistors": None,
+        "reference_width_um": 0.42,
+        "substitutions": (),
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "attribution control: a 0.07um resistor width disagreement "
+                 "is detected as device.property 'w_um' (layout 0.35 vs "
+                 "reference 0.42) on the resistors, so the match above rests "
+                 "on the geometry agreeing, not on W being unasked",
     },
     {
         "id": "res_width_10x",
-        "perturbation": "reference resistors restated at w=3.5um, 10x the "
-                        "schematic device and 8.3x the drawn geometry",
-        "rewrite_resistors": 3.5,
+        "perturbation": "reference wrapper width_um stated as 3.5um, 10x the "
+                        "schematic device",
+        "rewrite_resistors": None,
+        "reference_width_um": 3.5,
         "substitutions": (),
-        "expected_status": "match",
-        "covers": False,
-        "reads": "resistor width takes no part in the default compare at "
-                 "all -- the 0.35/0.42 delta is not merely inside a tolerance",
+        "expected_status": "mismatch",
+        "covers": True,
+        "reads": "a gross resistor width disagreement is detected "
+                 "(device.property 'w_um', layout 0.35 vs reference 3.5)",
     },
     {
         "id": "res_length_2x",
         "perturbation": "R_LP length doubled, 22um -> 44um",
-        "rewrite_resistors": 0.35,
-        "substitutions": (("XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po L=22",
-                           "XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po L=44"),),
-        "expected_status": "match",
-        "covers": False,
-        "reads": "resistor length is not compared either -- a drawn "
-                 "resistor's whole geometry dimension is unverified here",
-    },
-    {
-        "id": "res_width_forced_schematic",
-        "perturbation": "as res_width_as_schematic, plus the resistor class's "
-                        "geometry forced into the compare via "
-                        "options.compare_parameters {res_high_po: [L, W]}",
-        "rewrite_resistors": 0.35,
-        "compare_parameters": {"res_high_po": ["L", "W"]},
-        "substitutions": (),
+        "rewrite_resistors": None,
+        "substitutions": (("XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po_0p35 L=22",
+                           "XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po_0p35 L=44"),),
         "expected_status": "mismatch",
         "covers": True,
-        "reads": "asked for, the compare DOES report the drawn-versus-"
-                 "schematic width delta -- device.property 'w_um', layout "
-                 "0.42 vs reference 0.35, on all three resistors. The delta "
-                 "is real and LVS-detectable; the signoff run's match rests "
-                 "on the default parameter scope not asking",
+        "reads": "resistor length IS compared (device.property 'l_um', "
+                 "layout 22 vs reference 44)",
     },
     {
-        "id": "res_width_forced_drawn",
-        "perturbation": "the same forced compare, with the reference "
-                        "resistors restated at the DRAWN w=0.42um",
-        "rewrite_resistors": 0.42,
-        "compare_parameters": {"res_high_po": ["L", "W"]},
+        "id": "res_width_10x_default_scope",
+        "perturbation": "as res_width_10x (wrapper width_um 3.5um), but "
+                        "options.compare_parameters removed -- the default "
+                        "parameter scope",
+        "rewrite_resistors": None,
+        "reference_width_um": 3.5,
+        "default_scope": True,
         "substitutions": (),
         "expected_status": "match",
-        "covers": True,
-        "reads": "attribution control for the row above: the same forced "
-                 "compare matches once the reference carries the drawn "
-                 "width, so that mismatch is the 0.35/0.42 delta itself and "
-                 "not an artifact of forcing parameters into the compare",
+        "covers": False,
+        "reads": "why the explicit compare_parameters request is required: "
+                 "at the default parameter scope even a 10x resistor width "
+                 "disagreement still grades match, so a default-scope match "
+                 "alone would not establish geometry agreement",
     },
     {
         "id": "mos_width",
@@ -1446,7 +1460,7 @@ def _supply_pairing(envelope: dict) -> dict:
     perturbation is a transistor width and has nothing to do with the rails.
     Item 11's LVS half therefore carries no information beyond "item 4's
     envelope reports match", which is the measurement behind
-    layout/README.md -> "Why item 11 is left uncited".
+    layout/README.md -> "Why item 11 is cited".
     """
     paired = {
         str(row.get("layout")).upper()
@@ -1492,7 +1506,12 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
                 # The cards now name the curated generic device, so the
                 # fixed-width wrapper mapping no longer applies.
                 request["reference"]["device_map"] = {}
-            if probe.get("compare_parameters") is not None:
+            if probe.get("reference_width_um") is not None:
+                request["reference"]["device_map"][LVS_RESISTOR_WRAPPER][
+                    "width_um"] = probe["reference_width_um"]
+            if probe.get("default_scope"):
+                request["options"].pop("compare_parameters", None)
+            elif probe.get("compare_parameters") is not None:
                 request["options"]["compare_parameters"] = \
                     probe["compare_parameters"]
             envelope, _rc = _run_lvs(klt, request, repo_root)
@@ -1500,7 +1519,7 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
             rows.append({
                 "id": probe["id"],
                 "perturbation": probe["perturbation"],
-                "compare_parameters": probe.get("compare_parameters"),
+                "compare_parameters": request["options"].get("compare_parameters"),
                 "compare_covers_this": probe["covers"],
                 "reads_as": probe["reads"],
                 "expected_status": probe["expected_status"],
@@ -1530,7 +1549,7 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
             "holes layout/README.md's LVS section discloses. Each row also "
             "records supply_pairing, the measurement T1 item 11's LVS half is "
             "graded on (klt signoff's _lvs_reference_carries_supplies): see "
-            "layout/README.md -> 'Why item 11 is left uncited'."),
+            "layout/README.md -> 'Why item 11 is cited'."),
         "signoff_report": "layout/lvs-report.json",
         "signoff_status": signoff.get("status"),
         "signoff_layout_sha256": (signoff.get("environment") or {})
@@ -1566,12 +1585,12 @@ def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
     mapping the compare was reached through.  ``layout/lvs-report.json`` is
     the envelope.
 
-    **The envelope is committed but NOT cited for T1 item 4.**  Its verdict
-    is real for connectivity and MOSFET geometry, and silent on drawn
-    resistor geometry -- where this block's known 0.42um-drawn versus
-    0.35um-schematic width delta sits.  :func:`emit_lvs_coverage_probe`
-    measures both halves of that statement; layout/README.md's "Why item 4 is
-    left uncited" carries the reasoning.
+    **The envelope is cited for T1 item 4** (issue #123).  The request forces
+    the resistor class's L and W into the compare, the layout draws the
+    resistors at the schematic's 0.35um, and
+    :func:`emit_lvs_coverage_probe` measures that a width or length
+    disagreement is detected while the default parameter scope would miss it;
+    layout/README.md's "Why item 4 is cited" carries the reasoning.
 
     The verdict guard fires after the envelope is on disk, so a failing run
     leaves the evidence to read rather than nothing: the result must be the
@@ -1667,10 +1686,11 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
     ``layout/comparator.gds`` for the same path/hash reason
     :func:`emit_drc_evidence` and :func:`emit_lvs_evidence` do.
 
-    **The envelope is committed but NOT cited for T1 item 11**, for a reason
-    that is about the item's *LVS* half rather than this run -- see
+    **The envelope is cited for T1 item 11 together with
+    ``layout/lvs-report.json``** (issue #123), the item's LVS half, which is
+    only an independent statement now that item 4 is itself supported -- see
     layout/README.md -> "ERC: supply-spec run, committed -- and why T1 item 11
-    is still not claimed".
+    is claimed".
 
     Four guards, each refusing to commit a run that would not support the claim
     the README makes:
@@ -1968,11 +1988,11 @@ ERC_PROBES = (
 )
 
 
-#: The compound item-11 manifest entry this repo *could* add, and deliberately
-#: does not (layout/README.md -> "Why item 11 is left uncited").  Probed rather
-#: than asserted: :func:`_erc_grade_if_cited` writes it into a scratch manifest
-#: and records what ``klt signoff`` makes of it, so the prose claim "the grader
-#: would render met; we decline anyway" is a measurement a reader can re-run.
+#: The compound item-11 manifest entry (layout/README.md -> "Why item 11 is
+#: cited").  Probed rather than asserted: :func:`_erc_grade_if_cited` writes it
+#: into a scratch manifest and records what ``klt signoff`` makes of it, so
+#: the prose claim "the grader renders met" is a measurement a reader can
+#: re-run.
 ERC_ITEM_11_PARTS = (ERC_REPORT_PATH, "layout/lvs-report.json")
 
 TIERS_DOC = "manifests/design-evidence-tiers.md"
@@ -1985,8 +2005,8 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
     ERC + LVS envelopes -- graded against a **scratch** manifest, so
     ``manifests/sky130-comparator.json`` is not touched.
 
-    This exists because "we decline to cite" is only meaningful if the citation
-    would otherwise have been accepted.  It also rots loudly in the useful
+    This exists because "the citation grades met" is a measurement, not an
+    assertion.  It also rots loudly in the useful
     direction: if a future klt changes item 11's rules so this set no longer
     grades ``met``, the generator fails here and whoever bumps the pin has to
     revisit the README's reasoning instead of leaving stale prose behind.
@@ -2013,9 +2033,10 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
             f"{MANIFEST} with an item-11 citation of "
             f"{' + '.join(ERC_ITEM_11_PARTS)}> --tiers-doc {TIERS_DOC}. The "
             "committed manifest is NOT modified: this row records what the "
-            "grader would say, so 'left uncited' is a disclosed choice rather "
-            "than an ungradeable envelope. Why the choice went that way is in "
-            "layout/README.md -> 'Why item 11 is left uncited'."),
+            "grader says for the citation the committed manifest carries (or "
+            "would carry), so the item-11 verdict is a re-runnable "
+            "measurement. The reasoning is in layout/README.md -> 'Why item "
+            "11 is cited'."),
         "cited_parts": list(ERC_ITEM_11_PARTS),
         "item_11_status": row.get("status"),
         "item_11_reason": row.get("reason"),
@@ -2030,16 +2051,12 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
     }
     if result["item_11_status"] != "met":
         raise RuntimeError(
-            "the item-11 citation this repo declines to make no longer grades "
+            "the item-11 citation no longer grades "
             f"'met' (got {result['item_11_status']!r}, reason "
             f"{result['item_11_reason']!r}) -- layout/README.md's 'Why item 11 "
-            "is left uncited' argues from the premise that it would, so that "
-            "reasoning must be revisited rather than silently outlived")
-    if result["committed_manifest_cites_item_11"]:
-        raise RuntimeError(
-            f"{MANIFEST} now carries an item-11 citation, but "
-            "layout/README.md and manifests/README.md still describe it as "
-            "deliberately uncited -- reconcile the prose with the manifest")
+            "is cited' argues from the premise that it does, so that "
+            "reasoning and the manifest citation must be revisited rather "
+            "than silently outlived")
     return result
 
 
@@ -2104,9 +2121,9 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
             klt, repo_root, tmp,
             ((signoff.get("provenance") or {}).get("input") or {})
             .get("content_hash"))
-        print(f"    if cited: item 11 would grade {grade['item_11_status']} "
+        print(f"    item 11 citation grades {grade['item_11_status']} "
               f"({grade['t1_met_count_if_cited']}/{grade['t1_item_count']} T1 "
-              "items) -- deliberately not cited, see layout/README.md")
+              "items), see layout/README.md")
     ok = all(row["pass"] for row in rows)
     evidence = {
         "tool": {"klt_pin": KLT_PIN,
@@ -2186,11 +2203,11 @@ def main() -> int:
     print("[emit] signoff DRC over the emitted GDS (T1 item 3 evidence)")
     emit_drc_evidence(args.klt, ["--pdk", PDK_VARIANT, "--pdk-root", str(pdk_root)],
                       repo_root)
-    print("[emit] signoff LVS over the emitted GDS (item 4 evidence, uncited)")
+    print("[emit] signoff LVS over the emitted GDS (item 4 evidence, cited)")
     signoff_lvs = emit_lvs_evidence(args.klt, repo_root)
     print("[emit] LVS coverage probe (what that match does and does not cover)")
     emit_lvs_coverage_probe(args.klt, repo_root, signoff_lvs)
-    print("[emit] signoff ERC supply spec + run (item 11 evidence, uncited)")
+    print("[emit] signoff ERC supply spec + run (item 11 evidence, cited)")
     signoff_erc = emit_erc_evidence(args.klt, repo_root, bbox)
     print("[emit] ERC coverage probe (whether that supply check can fail)")
     emit_erc_coverage_probe(args.klt, repo_root, bbox, signoff_erc)

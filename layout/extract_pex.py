@@ -96,20 +96,23 @@ device parameter value is ever altered:
      measure. The physical substrate is at GND, so tying it is both correct
      and the conservative choice.
 
-KNOWN DELTA CARRIED THROUGH (do not "fix" it here): the three `res_high_po`
-resistors are drawn at w = 0.42 um and the schematic instantiates the
+HISTORICAL DELTA (resolved in issue #123): until 2026-10-09 the three
+`res_high_po` resistors were drawn at w = 0.42 um and the schematic instantiates the
 `_0p35` (w = 0.35 um) wrapper. This is the disclosed LVS blind spot from
 PR #55 / `layout/lvs-coverage-probe.json`, and it is a REAL electrical
 difference (weff 0.4009 vs 0.3262 um -> ~19 % lower load resistance, i.e.
 ~19 % less preamp gain). The post-layout numbers must show it rather than
-paper over it: normalising the extracted width to 0.35 um would make this
-script's output stop being a measurement of the committed layout.
+paper over it: normalising the extracted width would make this script's
+output stop being a measurement of the committed layout. Since #123 the layout
+is drawn at 0.35 um, so the extraction now carries w=0.35 and the delta is gone;
+the committed `sim/comparator-decision/records/` post-layout records predate
+that and are historical (see layout/README.md).
 
 THE TOOLCHAIN PIN IS PART OF THE MEASUREMENT (issue #57, PR #67 review)
 -----------------------------------------------------------------------
 The parasitic R values this script commits are NOT stable across klt/klayout
-builds. Measured on this repo's own GDS: klt `0.6.0` on klayout `0.30.10`
-(the pin) and klt `0.6.0+g1828313bdf02` on klayout `0.30.12` (an unreleased
+builds. Measured (historically, at the 0.6.0 pin) on this repo's own GDS: klt `0.6.0` on klayout `0.30.10`
+ and klt `0.6.0+g1828313bdf02` on klayout `0.30.12` (an unreleased
 dev build) produce BIT-IDENTICAL capacitances but total series resistance
 17.52 kohm vs 14.70 kohm -- 1.19x overall and up to 2.30x on an individual
 net (CLKT), 1.55-1.86x on OUTP1/OUTN1/VINP/VINN. Those are exactly the nets
@@ -131,7 +134,7 @@ script against a THROWAWAY environment instead:
 
     uv venv /tmp/pex-pin-env
     uv pip install --python /tmp/pex-pin-env/bin/python \
-        "klayout-tools==0.6.0" "klayout==0.30.10"
+        "klayout-tools==0.7.0" "klayout==0.30.12"
     PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
 
 Usage:
@@ -176,8 +179,8 @@ PDK_VARIANT = "sky130A"
 # because the extracted resistances are not stable across builds (see the
 # module docstring). Bump these only together with the doc and both CI
 # installs, in the same change that re-commits the regenerated artifacts.
-PINNED_KLT_VERSION = "0.6.0"
-PINNED_KLAYOUT_VERSION = "0.30.10"
+PINNED_KLT_VERSION = "0.7.0"
+PINNED_KLAYOUT_VERSION = "0.30.12"
 
 PIN_HINT = (
     "Run against a throwaway environment rather than changing host tooling:\n"

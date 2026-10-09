@@ -1,8 +1,8 @@
 {
   "tool": {
-    "klt_pin": "klayout-tools 0.6.0 (klt 0.6.0), klayout 0.30.10",
-    "klt_version": "0.6.0",
-    "klayout_version": "0.30.10",
+    "klt_pin": "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12",
+    "klt_version": "0.7.0",
+    "klayout_version": "0.30.12",
     "antenna_pdk": "sky130",
     "deck": "sky130"
   },
@@ -11,7 +11,7 @@
   "signoff_spec": "layout/erc-spec.json",
   "signoff_erc_status": "clean",
   "signoff_skipped_reasons": [],
-  "signoff_layout_content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4",
+  "signoff_layout_content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
   "signoff_spec_content_hash": "sha256:21e14abfe732686acf311dac33f8ce7f10257eee3db12ecbedf0f9ac0946fd33",
   "probes": [
     {
@@ -236,14 +236,14 @@
     }
   ],
   "signoff_if_cited": {
-    "method": "klt signoff --manifest <scratch copy of manifests/sky130-comparator.json with an item-11 citation of layout/erc-report.json + layout/lvs-report.json> --tiers-doc manifests/design-evidence-tiers.md. The committed manifest is NOT modified: this row records what the grader would say, so 'left uncited' is a disclosed choice rather than an ungradeable envelope. Why the choice went that way is in layout/README.md -> 'Why item 11 is left uncited'.",
+    "method": "klt signoff --manifest <scratch copy of manifests/sky130-comparator.json with an item-11 citation of layout/erc-report.json + layout/lvs-report.json> --tiers-doc manifests/design-evidence-tiers.md. The committed manifest is NOT modified: this row records what the grader says for the citation the committed manifest carries (or would carry), so the item-11 verdict is a re-runnable measurement. The reasoning is in layout/README.md -> 'Why item 11 is cited'.",
     "cited_parts": [
       "layout/erc-report.json",
       "layout/lvs-report.json"
     ],
     "item_11_status": "met",
     "item_11_reason": null,
-    "t1_met_count_if_cited": 2,
+    "t1_met_count_if_cited": 4,
     "t1_item_count": 11,
     "supply_nets_graded": [
       "VDD",
@@ -253,7 +253,7 @@
     "ties_checked_by_well_assertion": [
       "erc.missing_tie:[\"psub_gnd\"]"
     ],
-    "committed_manifest_cites_item_11": false
+    "committed_manifest_cites_item_11": true
   },
   "pass": true
 }

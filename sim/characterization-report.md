@@ -50,7 +50,7 @@ records themselves record:
 | Simulator | ngspice-46 ([`sim/toolchain.json`](toolchain.json)) |
 | Harness | `sim/harness` 0.1.0 |
 | Schematic DUT | `design/comparator.sch` → `./design/netlist.sh` → `sim/comparator-decision/testbench/comparator_core.spice` |
-| Post-layout DUT | `layout/comparator.gds` → `klt extract --parasitics` → `layout/comparator.pex.spice`, extracted under **`klayout-tools==0.6.0` on `klayout==0.30.10`** (asserted by `layout/extract_pex.py`; extracted per-net series R is **not** stable across klt/klayout builds — up to 2.30× apart on this block) |
+| Post-layout DUT | `layout/comparator.gds` → `klt extract --parasitics` → `layout/comparator.pex.spice`, extracted under **`klayout-tools==0.6.0` on `klayout==0.30.10`** for the records below (the repo pin is now `0.7.0` / `0.30.12` and the layout now draws 0.35 µm resistors — issue #123 — so these post-layout rows are **historical, measured on the earlier 0.42 µm layout, and not yet re-measured**; `layout/extract_pex.py` asserts the current pin; extracted per-net series R is **not** stable across klt/klayout builds — up to 2.30× apart on this block) |
 | Topology | DR-004 static preamplifier + StrongARM latch, with DR-003's soft-clock shaper on the clock port |
 
 **Graded PVT corner set** (the seven `--dut extracted` rows below use it):
