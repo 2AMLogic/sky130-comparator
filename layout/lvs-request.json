@@ -13,12 +13,17 @@
       "sky130_fd_pr__res_high_po_0p35": {
         "kind": "resistor",
         "class": "res_high_po",
-        "length_param": "__geometry_not_on_card__",
-        "width_param": "__geometry_not_on_card__"
+        "width_um": 0.35
       }
     }
   },
   "options": {
-    "combine_devices": true
+    "combine_devices": true,
+    "compare_parameters": {
+      "res_high_po": [
+        "L",
+        "W"
+      ]
+    }
   }
 }

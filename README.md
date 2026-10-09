@@ -102,8 +102,10 @@ five `_mm` corners of `offset`, and a post-layout deck form for `reset` and
 systematic offset term above is now known to be essentially
 process-independent (0.6350–0.6874 mV across all five `_mm` corners, #80),
 so it is a property of the layout rather than of the `tt_mm` corner. The extraction is pinned to
-`klayout-tools==0.6.0` / `klayout==0.30.10` (the pin every other committed
-layout envelope carries, asserted by `layout/extract_pex.py` and gated in CI),
+`klayout-tools==0.7.0` / `klayout==0.30.12` (the pin every other committed
+layout envelope carries; this paragraph's figures were measured under
+0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and are historical, see
+`layout/README.md`), asserted by `layout/extract_pex.py` and gated in CI),
 because extracted per-net series resistances are **not** stable across
 klt/klayout builds — up to 2.30× apart on this block.
 

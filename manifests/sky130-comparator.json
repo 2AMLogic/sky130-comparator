@@ -4,10 +4,27 @@
   "evidence": {
     "3": {
       "file": "layout/drc-report.json",
-      "content_hash": "sha256:cad5ad552c22b5e87dd450fd4239cc1228a405cc5f4e7fe42d871fff915c9af4"
+      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
+    },
+    "4": {
+      "file": "layout/lvs-report.json",
+      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
     },
     "8": {
-      "command": ["python3", "scripts/characterization-envelope.py"]
-    }
+      "command": [
+        "python3",
+        "scripts/characterization-envelope.py"
+      ]
+    },
+    "11": [
+      {
+        "file": "layout/erc-report.json",
+        "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
+      },
+      {
+        "file": "layout/lvs-report.json",
+        "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
+      }
+    ]
   }
 }

@@ -165,7 +165,7 @@ SIM_NGSPICE_TIMEOUT_S=900 \
   python3 sim/comparator-decision/run.py regen --dut extracted --record
 ```
 
-**The extraction is pinned to `klayout-tools==0.6.0` on `klayout==0.30.10`**
+**The extraction is pinned to `klayout-tools==0.7.0` on `klayout==0.30.12`** (issue #123; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and are historical -- not re-measured at the current geometry)
 -- the same pin `docs/environment-setup.md` records and both
 `.github/workflows/t1-signoff.yml` jobs install -- and `extract_pex.py`
 *asserts* it rather than merely recording it. That is not provenance hygiene:

@@ -17,8 +17,9 @@ move.
 
 ## The current verdict, honestly
 
-**2 of 11 T1 items are `met`: item 3, "DRC clean" and item 8,
-"Characterization report."**
+**4 of 11 T1 items are `met`: item 3 "DRC clean", item 4 "LVS clean", item 8
+"Characterization report" and item 11 "Power delivery (structural)". T1 is not
+awarded and no catalog tier is claimed.**
 
 **Item 3, "DRC clean"** (issue #46), cited from
 `layout/drc-report.json` — a committed `klt drc` envelope over
@@ -39,40 +40,26 @@ disclosed — read them against the claim.
 establish has its own section below** — read it before citing the row; this is
 the one T1 item whose verdict is a claimant assertion rather than a tool's.
 
-**Item 4 ("LVS clean") is the one `unmet` row that has a passing envelope
-behind it, deliberately uncited** (issue #49). `klt lvs` is run over
-`layout/comparator.gds` against the item-1 netlist
+**Item 4 ("LVS clean")** (issue #49 withheld it; issue #123 cites it). `klt lvs`
+is run over `layout/comparator.gds` against the item-1 netlist
 (`sim/comparator-decision/testbench/comparator_core.spice`, what
 `design/netlist.sh` writes out of `design/comparator.sch`, hand-edited
-nowhere), the envelope is committed at
-[`layout/lvs-report.json`](../layout/lvs-report.json), and it reports
-`engine: "klayout"` (0.30.10), `status: "match"`, 0 errors, 16/16 devices and
-12/12 nets paired, `power_connectivity.status: "unchecked"`.
-
-It is not cited, because this block has a known layout-versus-schematic
-device difference — the three poly resistors are drawn 20 % wider than the
-`res_high_po_0p35` device `design/comparator.sch` specifies (`res_array`'s
-0.42 µm width floor, klayout-tools#2407) — and that `match` holds only at
-klt's **default parameter scope**, which compares no resistor geometry at
-all. The committed
-[`layout/lvs-coverage-probe.json`](../layout/lvs-coverage-probe.json)
-measures both halves: three rows prove the compare can fail (connectivity and
-MOSFET geometry really are verified, so the `match` is not vacuous), and a
-forced-scope row reports the delta as a `device.property` error — `w_um`,
-layout 0.42 vs reference 0.35, on all three resistors — with an attribution
-control that flips back to `match` once the reference carries the drawn
-width. Citing `met` from the configuration that happens not to look would
-tell a fleet integrator this layout matches its schematic, which is not true.
-
-That is a stricter reading than item 3's precedent, deliberately: there, a
-*disclosed coverage hole* sits behind a `clean` verdict with nothing known to
-be wrong inside it; here a **known defect** sits inside the hole. The full
-reasoning, the warnings-only mismatches, and what
-`power_connectivity: "unchecked"` does and does not mean are in
-[`layout/README.md`](../layout/README.md) → "LVS: run, committed — and why T1
-item 4 is still not claimed". The row becomes honestly citable once
-klayout-tools#2436 reaches a released `klt` pin and the resistors are
-re-drawn at 0.35 µm, removing the delta instead of disclosing it.
+nowhere); the envelope is committed at
+[`layout/lvs-report.json`](../layout/lvs-report.json) and reports
+`engine: "klayout"` (0.30.12), `status: "match"`, 0 errors, 16/16 devices and
+12/12 nets paired, `power_connectivity.status: "unchecked"`. The citation was
+withheld while the three poly resistors were drawn at 0.42 µm against the
+schematic's `res_high_po_0p35` (0.35 µm) and the match held only at klt's
+default parameter scope, which compares no resistor geometry. The published
+klt 0.7.0 carries the upstream width-floor fix (klayout-tools#2436), the
+resistors are now drawn at 0.35 µm, and the request forces resistor `L`/`W`
+into the compare. `layout/lvs-coverage-probe.json` shows a width or length
+disagreement is reported as a `device.property` mismatch under the committed
+request while the default scope misses even a 10× width error — so a
+default-scope match alone is not what is cited. Standing disclosures: resistor
+`R` (value) is excluded, so only drawn L/W are verified; the verdict is one
+engine's (KLayout), not a cross-check. Full reasoning in
+[`layout/README.md`](../layout/README.md) → "Why item 4 is cited".
 
 **Item 7 ("Post-layout verification") is the second row with real evidence
 that cannot be cited — and here the blocker is the grader's own input
@@ -97,46 +84,29 @@ item 7 wants cannot be produced here at all. Filed generically per
 the row stays `unmet`/`no_evidence` rather than being decorated with a
 citation of the wrong kind.
 
-**Item 11 ("Power delivery (structural)") is the third row with real evidence
-that is deliberately not cited — and its blocker is item 4's defect, reached
-through the grader's own compound rule** (issue #68). The ERC half is done and
-clean: `layout/erc-spec.json` declares `VDD`/`GND` as `"kind": "supply"` over
-the four conductor roles they route on plus a `ties[]` entry for each of the
-p-substrate and n-well taps, and `layout/erc-report.json` is a committed
-`klt erc` envelope over `layout/comparator.gds` reporting `erc_status:
-"clean"`, 0 findings, and — the field that matters as much as the verdict —
-`erc_coverage.skipped: []`, i.e. both ties were actually *checked* rather than
-rejected as unfalsifiable. `layout/erc-coverage-probe.json` is the
-negative-control matrix behind it: nine runs against perturbed scratch copies
-of the spec (and one of the stream), each asserting the exact findings and the
-exact `erc_coverage.skipped` reasons its perturbation must produce, including
-the two rows that show klt's own degeneracy rejections firing against this very
-spec once its narrowing is removed.
+**Item 11 ("Power delivery (structural)")** is cited as the compound entry
+`layout/erc-report.json` + `layout/lvs-report.json`. The ERC half is clean:
+`layout/erc-spec.json` declares `VDD`/`GND` as `"kind": "supply"` over the
+four conductor roles they route on plus a `ties[]` entry for each of the
+p-substrate and n-well taps, and `layout/erc-report.json` reports
+`erc_status: "clean"`, 0 findings, `erc_coverage.skipped: []` (both ties
+actually checked); `layout/erc-coverage-probe.json` is the negative-control
+matrix behind it. The LVS half is `layout/lvs-report.json`, which `klt signoff`
+requires to pass and to pair each declared supply to a reference-side net.
+That half carries **no information beyond "item 4's envelope reports `match`"**
+(`net_correspondence` lists only matched nets; measured per probe row in
+`layout/lvs-coverage-probe.json` → `supply_pairing`;
+[klayout-tools#2495](https://github.com/2AMLogic/klayout-tools/issues/2495)),
+which is why the citation was withheld while item 4 was. With item 4 now
+supported by explicit resistor geometry, inheriting it is no longer
+over-claiming; the limit is stated, not removed. Item 11 is the structural
+supply question only (IR drop/EM are `klt power`, outside it). See
+[`layout/README.md`](../layout/README.md) → "Why item 11 is cited".
 
-For an `analog` block with no P&R run, `klt signoff` grades item 11 on that ERC
-run **plus `layout/lvs-report.json`, which must itself pass** — the envelope
-item 4 withholds. The grader does not require item 4 to be cited, so the
-citation *would* grade `met` and move this count 1 → 2; that is measured, not
-assumed (`layout/erc-coverage-probe.json` → `signoff_if_cited`). It is left
-uncited because the item's LVS half turns out to carry **no information beyond
-"item 4's envelope reports `match`"**: `net_correspondence` lists only matched
-nets, so the supply-pairing predicate is satisfied by every `match` and failed
-by every `mismatch` — including one whose perturbation is a single MOSFET width
-and touches no rail. Each probe row now records that measurement
-(`layout/lvs-coverage-probe.json` → `supply_pairing`). So a `met` item 11 would
-rest on exactly the verdict this file already says must not be cited. The full
-reasoning, the measurement table, and what the ERC evidence *does* establish are
-in [`layout/README.md`](../layout/README.md) → "ERC: supply-spec run, committed
-— and why T1 item 11 is still not claimed". The grader-side weakness is filed
-generically as
-[2AMLogic/klayout-tools#2495](https://github.com/2AMLogic/klayout-tools/issues/2495);
-the row itself becomes a one-line manifest change the moment item 4 is honestly
-citable, which is the same klayout-tools#2436 + re-draw step item 4 is waiting
-on.
-
-The other nine items render `unmet` with `reason: no_evidence`: apart from
-item 4's uncited envelope, item 7's ungradeable one and item 11's uncited
-ERC evidence above, no LVS/PEX citation exists, and this repo's
+The other seven items render `unmet` with `reason: no_evidence`: apart from
+item 7's ungradeable post-layout envelope above (re-citation is the next
+separate increment, not done here; the post-layout records predate the
+0.35 µm re-draw and are stale until re-measured), no PEX citation exists, and this repo's
 `sim/` harness records evidence as append-only Markdown records, not
 `klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
 honestly for them yet. Item 8 is the one exception to that last clause, and
@@ -351,7 +321,7 @@ see "The current verdict, honestly" above, and read them against
 [`layout/README.md`](../layout/README.md)'s claim.
 
 CI (`.github/workflows/t1-signoff.yml`) installs klt **pinned to
-`klayout-tools==0.6.0`** on the **`klayout==0.30.10`** engine — the build
+`klayout-tools==0.7.0`** on the **`klayout==0.30.12`** engine — the build
 that graded the committed record — then runs the gate's hermetic selftest
 and the live gate. Bump the pin deliberately, regenerate the record in the
 same change (see above), and note that a klt whose own checklist differs

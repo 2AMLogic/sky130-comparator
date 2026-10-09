@@ -136,13 +136,15 @@ class TestNameLevelOnly(unittest.TestCase):
         self.assertEqual(values(RAW), values(self.dut))
 
     def test_drawn_resistor_width_is_not_normalised_to_the_schematic(self):
-        # The disclosed PR #55 delta: drawn w=0.42um vs the schematic's
-        # _0p35 wrapper. A post-layout netlist that "fixed" this would stop
-        # describing the layout.
+        # The extracted netlist must carry the DRAWN width, whatever it is.
+        # Since issue #123 the layout is drawn at the schematic's 0.35um (it
+        # was 0.42um, the PR #55 delta, until then); a rewrite that
+        # normalised the width instead of carrying it would stop describing
+        # the layout.
         loads = [t for n, t in _instances(self.dut).items() if n.startswith("XR_L")]
         self.assertEqual(len(loads), 2)
         for tokens in loads:
-            self.assertIn("w=0.42", tokens)
+            self.assertIn("w=0.35", tokens)
             self.assertIn("l=22", tokens)
 
 

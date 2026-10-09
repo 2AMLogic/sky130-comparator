@@ -39,7 +39,7 @@
     },
     "rclks": {
       "x": 38.0,
-      "y": 44.79
+      "y": 44.825
     }
   },
   "trunk_x_um": {
@@ -94,9 +94,9 @@
   },
   "nets": {
     "CLK": {
-      "met1_area_um2": 1.107,
+      "met1_area_um2": 0.9675,
       "met2_area_um2": 0.09,
-      "wire_area_um2": 1.197,
+      "wire_area_um2": 1.0575,
       "via_count": 1,
       "mcon_count": 1
     },
@@ -136,9 +136,9 @@
       "mcon_count": 4
     },
     "OUTP1": {
-      "met1_area_um2": 9.093,
+      "met1_area_um2": 9.099,
       "met2_area_um2": 13.38,
-      "wire_area_um2": 22.473,
+      "wire_area_um2": 22.479,
       "via_count": 7,
       "mcon_count": 5
     },
@@ -157,9 +157,9 @@
       "mcon_count": 5
     },
     "VDD": {
-      "met1_area_um2": 9.975,
+      "met1_area_um2": 9.981,
       "met2_area_um2": 40.26,
-      "wire_area_um2": 50.235,
+      "wire_area_um2": 50.241,
       "via_count": 14,
       "mcon_count": 8
     },
@@ -197,11 +197,11 @@
         "OUTN1"
       ],
       "wire_area_um2": [
-        22.473,
+        22.479,
         24.303
       ],
-      "delta_um2": 1.83,
-      "delta_percent": 7.82
+      "delta_um2": 1.824,
+      "delta_percent": 7.8
     },
     {
       "pair": [

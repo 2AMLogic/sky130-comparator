@@ -51,22 +51,22 @@ The T1 signoff manifest (issue #31) is graded by
 
 | Tool | Version | Install path |
 | --- | --- | --- |
-| klt (klayout-tools) | `0.6.0` | `uv tool install "klayout-tools==0.6.0" --with klayout==0.30.10`, or a venv: `pip install "klayout-tools==0.6.0" "klayout==0.30.10"` |
-| klayout (engine under klt) | `0.30.10` | same install; `klayout_tools.build_identity.klayout_version_expected()` |
+| klt (klayout-tools) | `0.7.0` | `uv tool install "klayout-tools==0.7.0" --with klayout==0.30.12`, or a venv: `pip install "klayout-tools==0.7.0" "klayout==0.30.12"` |
+| klayout (engine under klt) | `0.30.12` | same install; `klayout_tools.build_identity.klayout_version_expected()` |
 
 ```sh
-klt --version       # -> klt 0.6.0
-python -c "import klayout; print(klayout.__version__)"   # -> 0.30.10
+klt --version       # -> klt 0.7.0
+python -c "import klayout; print(klayout.__version__)"   # -> 0.30.12
 ```
 
-The install is pinned the same way in CI (`klayout-tools==0.6.0`,
-`klayout==0.30.10`) so the committed evidence record
+The install is pinned the same way in CI (`klayout-tools==0.7.0`,
+`klayout==0.30.12`) so the committed evidence record
 (`manifests/t1-signoff-report.json`) and every re-grade are produced by the
 same grader build.
 
 **Why the engine is pinned too.** klt declares `klayout>=0.30`, so an
-unpinned install resolves whatever klayout is newest that day; klt 0.6.0
-build-tests against `klayout==0.30.10` and stamps
+unpinned install resolves whatever klayout is newest that day; klt 0.7.0
+build-tests against `klayout==0.30.12` and stamps
 `provenance.klayout_version_mismatch: true` (plus a stderr warning that
 "DRC/LVS report counts … may differ") on any other engine. Measured on this
 repo's own layout, klayout 0.30.10 and 0.30.12 produce a `klt drc` envelope
@@ -75,7 +75,11 @@ boolean — but the committed envelope should not carry a self-declared
 reproducibility warning, so the pin names the engine klt expects.
 
 **For `klt extract --parasitics` the pin is load-bearing, not cosmetic**
-(issue #57). Measured on this repo's own `layout/comparator.gds`, klt `0.6.0`
+(issue #57). *Historical measurement at the 0.6.0 pin* (issue #123 re-measured
+the current pin: the released klt 0.7.0 on this repo's *previous* GDS gave
+14.696 kΩ, i.e. the "off-pin" 14.70 kΩ below is what the released 0.7.0
+reproduces on that layout, and klt 0.7.0 gives identical totals under klayout
+0.30.10 and 0.30.12 on the current layout). Measured on this repo's own `layout/comparator.gds`, klt `0.6.0`
 on klayout `0.30.10` and an unreleased klt `0.6.0+g1828313bdf02` on klayout
 `0.30.12` produce **bit-identical capacitances** but total series resistance
 **17.52 kΩ vs 14.70 kΩ** — 1.19× overall and up to **2.30×** on an individual
@@ -90,7 +94,7 @@ use a **throwaway** environment rather than changing host tooling:
 ```sh
 uv venv /tmp/pex-pin-env
 uv pip install --python /tmp/pex-pin-env/bin/python \
-    "klayout-tools==0.6.0" "klayout==0.30.10"
+    "klayout-tools==0.7.0" "klayout==0.30.12"
 PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
 ```
 
