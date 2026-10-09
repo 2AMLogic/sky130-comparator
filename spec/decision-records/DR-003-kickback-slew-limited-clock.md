@@ -1,9 +1,12 @@
 # DR-003: Kickback mitigation pass 1 — soft-clocked evaluate onset, chosen over measured alternatives
 
-- **Status**: **proposed** — a recommendation for two-key ratification via
+- **Status**: **ratified** — originally filed as a recommendation for two-key ratification via
   this PR (Judge review + Champion/operator merge), per the 2026-08-19
-  ratification-via-PR ruling DR-002 was filed under. Nothing here is
-  binding until this PR merges. Upon merge, the Decision below takes effect
+  ratification-via-PR ruling DR-002 was filed under. Ratified by that
+  mechanism: Judge approval comment on PR #35, merged 2026-09-21T19:40:10Z
+  (no formal GitHub review objects). Status corrected from `proposed` by
+  issue #124's audit; the original text below is kept as filed. On that
+  merge, the Decision below takes effect
   exactly as stated: this is a **partial-improvement** record by design —
   it lands a measured mitigation that does **not** reach the ratified
   Kickback bound, documents why the 17× remaining gap is not closable

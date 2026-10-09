@@ -1,13 +1,16 @@
 # DR-002: Target-spec table ratification pass 1 — three rows ratified, two left explicitly open
 
-- **Status**: **proposed** — a recommendation for two-key ratification via
+- **Status**: **ratified** — originally filed as a recommendation for two-key ratification via
   this PR (Judge review + Champion/operator merge), per the 2026-08-19
   ratification-via-PR ruling cited on issue #3 (operator comment,
   2026-09-15: "The item-5 spec-ratification gate is also agent work under
   the 2026-08-19 ratification-via-PR ruling... a Builder drafts the
   decision record as a PR recommending one option, and the two-key
-  mechanism evaluates it"). Nothing here is binding until this PR merges.
-  Upon merge, the per-row dispositions in "Decision" below take effect
+  mechanism evaluates it"). Ratified by that mechanism: Judge approval
+  comment on PR #29, merged 2026-09-16T14:47:49Z (commit `36a7373`); the
+  PR carries no formal GitHub review objects, so the evidence is the Judge
+  comment plus the merge. Status corrected from `proposed` by issue #124's
+  audit; the original text below is kept as filed. On that merge, the per-row dispositions in "Decision" below take effect
   exactly as stated — this is a **partial** ratification by design: three
   rows (Offset sigma, Input-referred noise, Kickback) move from DRAFT to
   RATIFIED, two rows (Decision time vs. overdrive, Supply/power) stay

@@ -1,9 +1,12 @@
 # DR-004: Comparator topology supersession — static preamplifier ahead of the StrongARM latch, closing the kickback gap
 
-- **Status**: **proposed** — a recommendation for two-key ratification via
-  PR merge, exactly as DR-001 and DR-003 before it. Nothing here is binding
-  until this PR merges; the README target-spec rows it touches keep their
-  DR-002 dispositions until then.
+- **Status**: **ratified** — originally filed as a recommendation for two-key ratification via
+  PR merge, exactly as DR-001 and DR-003 before it. Ratified by that
+  mechanism: Judge approval comment on PR #40, merged 2026-09-22T07:36:36Z
+  (no formal GitHub review objects). Status corrected from `proposed` by
+  issue #124's audit; the original text below is kept as filed, including
+  that the README target-spec rows it touches kept their DR-002
+  dispositions until that merge.
 - **Date**: 2026-09-22
 - **Decided by**: Builder agent, issue #34
 - **Supersedes**: **two clauses of
