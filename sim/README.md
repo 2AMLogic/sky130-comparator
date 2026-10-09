@@ -280,6 +280,19 @@ a record in place defeats it. Note that `.gitignore` carves `*.log` exceptions
 for `sim/*/corners/**` and `sim/*/mc-draws/**` precisely so this raw evidence
 is committed rather than swept up by the generic log-ignore rule.
 
+**Enforced in CI (issue #138).** `scripts/check-sim-append-only.py` compares
+Git history, not file contents on disk, so re-pinning the envelope cannot hide
+an edit. Protected scope: `sim/<slug>/{records,corners,mc-draws,netlist-snapshots}/**`.
+A protected path present at the base that is modified, removed, renamed
+(rename detection is off, so the old path counts as removed) or changed in
+file type/mode fails and is named; new paths pass. Baselines: pull request =
+head vs merge-base with the target branch; push to `main` = the event's
+`before` vs `after`; manual dispatch has no base and fails unless the
+`base_sha` input is given; branch creation (all-zero `before`) or an
+unavailable base also fails explicitly. To correct a result, mint a new record
+and cite the old one in `Supersedes`. Self-test:
+`python3 scripts/check-sim-append-only.py selftest`.
+
 ### The one derived artifact, and why the rule does not apply to it
 
 `sim/characterization-report.md` (issue #86) is the aggregated,
