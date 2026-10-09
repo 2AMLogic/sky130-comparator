@@ -23,6 +23,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      base_sha:
+        description: "Base commit for the sim/ append-only check (required; a manual run has no event base)"
+        required: false
 
 permissions:
   contents: read
@@ -31,11 +35,38 @@ jobs:
   signoff:
     runs-on: ubuntu-latest
     steps:
+      # Full history: the sim/ append-only gate below needs the PR merge-base
+      # and the push event's `before` commit (issue #138).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # sim/ evidence is append-only (issue #138, sim/README.md "Append-only
+      # rule"). The characterization-envelope freshness guard below cannot
+      # enforce that -- `--update` re-pins whatever is on disk -- so this
+      # compares protected paths against Git history. PR: head vs merge-base
+      # with the target branch. main push: event.before vs the pushed head.
+      # Manual dispatch has no event base: it needs the `base_sha` input and
+      # FAILS without it rather than claim verification. An unavailable base
+      # (branch creation, force-push) is likewise an explicit failure.
+      - name: sim/ append-only gate selftest (hermetic)
+        run: python3 scripts/check-sim-append-only.py selftest
+
+      - name: sim/ evidence is append-only against the Git base
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: origin/${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+          DISPATCH_BASE: ${{ github.event.inputs.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 scripts/check-sim-append-only.py gate --event "$EVENT" \
+              --base-ref "$BASE_REF" --before "$BEFORE" \
+              --base "$DISPATCH_BASE" --head "$HEAD_SHA"
 
       - name: Install klt (pinned; see manifests/README.md)
         run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12"
