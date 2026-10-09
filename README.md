@@ -7,8 +7,16 @@ open-source xschem + ngspice flow.
 
 ![fleet burndown](https://raw.githubusercontent.com/2AMLogic/2am/main/fleet-metrics/charts/sky130-comparator.svg)
 
-**Status: just opened.** Nothing is designed yet. The first work is
-the offset methodology at 1.8 V — sky130's Monte-Carlo mismatch support decides whether the strong or fallback statistical story applies.
+**Status:** designed (`design/comparator.sch`), laid out
+(`layout/comparator.gds`) with DRC/LVS evidence, and four of the five spec rows
+are ratified; Supply / power remains DRAFT / OPEN. The current frontier is the
+post-layout re-measurement campaign
+[#125](https://github.com/2AMLogic/sky130-comparator/issues/125), blocked on
+the execution route [#127](https://github.com/2AMLogic/sky130-comparator/issues/127).
+See the [decision records](spec/decision-records/) (latest ratified:
+[DR-006](spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)),
+[`manifests/design-evidence-tiers.md`](manifests/design-evidence-tiers.md), and
+[`WORK_PLAN.md`](WORK_PLAN.md); figures live there, not here.
 
 **Built agent-native.** Every specification, decision record, testbench, and
 line of documentation here is produced by AI agents working from a ratified
@@ -29,18 +37,14 @@ and the regeneration-speed vs offset trade lands differently than at
 3.3 V — which is the comparative result the twins exist to surface.
 
 The statistical story depends on what sky130's models actually ship for
-mismatch; establishing that (and committing the answer) is the first
+mismatch; establishing that (and committing the answer) was the first
 result, same as on SG13G2.
 
 ## Target specification
 
-No sibling has a ratified comparator spec to port yet — sg13g2-comparator
-and gf180-comparator are simultaneous wave-5 standups at the identical
-bootstrap stage as this repo (each carries its own open "bootstrap the
-block" issue, neither has a target-spec table). These bounds are therefore
-original engineering judgment for the sky130 1.8 V core flavor, not a
-ported number; each row states its basis rather than asserting a bare
-figure. See [`spec/porting-plan.md`](spec/porting-plan.md) for what *does*
+The bounds below are original engineering judgment for the sky130 1.8 V
+core flavor, not ported numbers; each row states its basis rather than
+asserting a bare figure. See [`spec/porting-plan.md`](spec/porting-plan.md) for what *does*
 transfer (testbench structure and methodology, not spec numbers) from
 [`sky130-sar-adc`](https://github.com/2AMLogic/sky130-sar-adc)'s embedded
 comparator work.
