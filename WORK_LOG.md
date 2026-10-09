@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-09
+
+- **PR #126**: feat: pin klt 0.7.0 and restore strict LVS evidence for T1 items 4/11
+- **Issue #123** (closed): Upgrade klt to 0.7.0 and restore strict LVS evidence for T1 item 4
+
 ### 2026-10-04
 
 - **PR #121**: docs: add erratum for kickback records' hardcoded tt/27C corner prose
