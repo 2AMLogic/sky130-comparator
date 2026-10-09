@@ -4,6 +4,14 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-09
 
+- **PR #139**: ci: enforce append-only sim/ evidence against Git base
+- **Issue #138** (closed): Enforce append-only simulation evidence against Git history in CI
+- **PR #136**: fix: validate nested pins structure in characterization-envelope (#135)
+- **Issue #135** (closed): Validate malformed characterization pin structures before dereferencing fields
+- **PR #131**: docs: refresh stale README status (#130)
+- **Issue #130** (closed): README status line is stale: says 'just opened, nothing designed yet'
+- **PR #129**: feat: install ratification reviewer trees; correct DR-002/003/004 status (#124)
+- **Issue #124** (closed): Install ratification/ee-key and ratification/market-key reviewer trees (product#151)
 - **PR #126**: feat: pin klt 0.7.0 and restore strict LVS evidence for T1 items 4/11
 - **Issue #123** (closed): Upgrade klt to 0.7.0 and restore strict LVS evidence for T1 item 4
 
@@ -166,5 +174,3 @@ Chronological record of merged pull requests and closed issues, maintained by th
 ### 2026-09-07
 
 - **Issue #1** (closed): Champion: Merge-Risk Hold Digest
-
-
