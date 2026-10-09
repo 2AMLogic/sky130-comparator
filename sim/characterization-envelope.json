@@ -272,15 +272,15 @@
       },
       {
         "path": "spec/decision-records/DR-002-target-spec-ratification.md",
-        "content_hash": "sha256:2c6a5f7197ea0be9d47a06062c5c8152aa6038a13759fffcef58aa163d7b28a4"
+        "content_hash": "sha256:8f949b86659b46904b5939c032de182e9d64485943fcbef11f54676e878d6e5c"
       },
       {
         "path": "spec/decision-records/DR-004-comparator-preamp-supersession.md",
-        "content_hash": "sha256:3b2d00fae883fd060d6940030b14085d6b615cf384105db5d767ca5350be5b49"
+        "content_hash": "sha256:721f15e1fd867b5f040d602263dd7a81fd9cc7ad51b2ab22ef2bc76d1a4da736"
       },
       {
         "path": "spec/decision-records/DR-003-kickback-slew-limited-clock.md",
-        "content_hash": "sha256:49884667bae78d539896604e4e483aa30319c38aa65f1a472f5c73086290e7bf"
+        "content_hash": "sha256:58322d261ac01dd34176a6694f3258637d88681a5118366dc326c012e6baaa2c"
       },
       {
         "path": "spec/decision-records/DR-005-full-corner-campaign.md",
