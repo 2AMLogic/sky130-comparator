@@ -260,14 +260,21 @@ def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Pa
     experiment_dir = manifest.experiment_dir
     names = list(manifest.measure.keys())
 
-    draws_dir = experiment_dir / "mc-draws" / result.record_id
-    draws_dir.mkdir(parents=True, exist_ok=True)
+    # Reserve the namespace atomically first (issue #144).
+    resv = evidence.reserve_record(
+        experiment_dir, ("mc-draws",), record_id=result.record_id
+    )
+    if resv.record_id != result.record_id:
+        print(f"  record id {result.record_id} was taken; using {resv.record_id}")
+        result.record_id = resv.record_id
+    draws_dir = resv.log_dirs["mc-draws"]
     for i, d in enumerate(result.draws):
-        (draws_dir / f"draw_{i}_seed{d.seed}.log").write_text(d.log_text)
+        evidence.write_new_text(draws_dir / f"draw_{i}_seed{d.seed}.log", d.log_text)
     for i, d in enumerate(result.negative_control_draws):
-        (draws_dir / f"negctrl_{i}_seed{d.seed}.log").write_text(d.log_text)
+        evidence.write_new_text(draws_dir / f"negctrl_{i}_seed{d.seed}.log", d.log_text)
 
-    record_path = evidence.write_netlist_snapshot(
+    record_path = resv.record_path
+    evidence.write_netlist_snapshot(
         experiment_dir, result.record_id, manifest.netlist_fragment
     )
 
@@ -331,5 +338,5 @@ def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Pa
     a("")
     lines.extend(evidence.footer_lines("sim/monte_carlo.py", supersedes))
 
-    record_path.write_text("\n".join(lines))
+    evidence.publish_record(record_path, "\n".join(lines))
     return record_path

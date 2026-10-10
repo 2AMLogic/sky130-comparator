@@ -280,6 +280,20 @@ a record in place defeats it. Note that `.gitignore` carves `*.log` exceptions
 for `sim/*/corners/**` and `sim/*/mc-draws/**` precisely so this raw evidence
 is committed rather than swept up by the generic log-ignore rule.
 
+**Enforced at creation time (issue #144).** Writers never pick a record-id
+and then write over it. `harness/evidence.py:reserve_record()` claims
+`records/<record-id>.md` with an exclusive create (a stub marked
+`evidence-reservation`), then requires the netlist snapshot and every
+`corners/` / `mc-draws/<record-id>/` directory to be unused (log directories
+use a non-idempotent `mkdir`). On a collision (same second and commit, a
+concurrent process, or a partially populated namespace) it advances the
+timestamp one second -- same `<YYYYMMDD>-<HHMMSS>-<sha>` format -- up to a
+bounded number of attempts, then fails with `RecordCollisionError`. Snapshots
+and logs are written exclusive-create, and the final record replaces only its
+own stub. A leftover stub means an incomplete run: its id stays reserved.
+Noise-tran scratch checkpoints (issue #100) are working state and keep their
+resume semantics; only final published evidence is covered.
+
 **Enforced in CI (issue #138).** `scripts/check-sim-append-only.py` compares
 Git history, not file contents on disk, so re-pinning the envelope cannot hide
 an edit. Protected scope: `sim/<slug>/{records,corners,mc-draws,netlist-snapshots}/**`.

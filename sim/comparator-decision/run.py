@@ -814,11 +814,14 @@ def _begin_dut_record(subdir: str) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
     one thing that varies across callers today (`"corners"` for the
     deterministic sweeps, `"mc-draws"` for the Monte Carlo runner)."""
     info = pdk.resolve()
-    record_id = evidence.new_record_id()
+    # Atomic, exclusive reservation of the whole namespace (issue #144):
+    # never reuses an existing record id / log directory / snapshot.
+    resv = evidence.reserve_record(EXPERIMENT_DIR, (subdir,))
+    record_id = resv.record_id
     netlist_sha = evidence.sha256_file(_dut_fragment())
-    record_path = evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
-    logs_dir = EXPERIMENT_DIR / subdir / record_id
-    logs_dir.mkdir(parents=True, exist_ok=True)
+    evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    record_path = resv.record_path
+    logs_dir = resv.log_dirs[subdir]
     return info, record_id, netlist_sha, record_path, logs_dir
 
 
@@ -843,8 +846,7 @@ def _finalize_record(
     ))
     lines.append("")
     lines.extend(evidence.footer_lines(f"sim/comparator-decision/run.py {cmd}", supersedes))
-    record_path.write_text("\n".join(lines))
-    return record_path
+    return evidence.publish_record(record_path, "\n".join(lines))
 
 
 # ---------------------------------------------------------------------------
@@ -984,7 +986,7 @@ def write_regen_evidence(
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
         safe = f"{p.vindiff_mv}mV".replace("-", "neg").replace(".", "p")
-        (corners_dir / f"vindiff_{safe}.log").write_text(p.log_text)
+        evidence.write_new_text(corners_dir / f"vindiff_{safe}.log", p.log_text)
 
     lines: list[str] = []
     a = lines.append
@@ -1216,7 +1218,7 @@ def write_offset_evidence(
 ) -> Path:
     info, record_id, netlist_sha, record_path, draws_dir = _begin_dut_record("mc-draws")
     for name, text in result.logs.items():
-        (draws_dir / f"{name}.log").write_text(text)
+        evidence.write_new_text(draws_dir / f"{name}.log", text)
 
     negctrl_stdev = statistics.pstdev(result.negctrl_offset_v) if len(result.negctrl_offset_v) > 1 else 0.0
     negctrl_ok = negctrl_stdev == 0.0
@@ -1631,7 +1633,7 @@ def write_offset_bisect_evidence(
 ) -> Path:
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for name, log_text in result.logs.items():
-        (corners_dir / f"{name}.log").write_text(log_text)
+        evidence.write_new_text(corners_dir / f"{name}.log", log_text)
 
     lines: list[str] = []
     a = lines.append
@@ -1903,12 +1905,13 @@ def run_noise(corner: str = "tt", temp_c: float = 27.0, quiet: bool = False) -> 
 def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = "") -> Path:
     info = pdk.resolve()
     netlist_text = _noise_deck(info, result.corner, result.temp_c)
-    record_id = evidence.new_record_id()
+    resv = evidence.reserve_record(EXPERIMENT_DIR, ("corners",))
+    record_id = resv.record_id
     netlist_sha = evidence.sha256_text(netlist_text)
-    record_path = evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
-    runs_dir = EXPERIMENT_DIR / "corners" / record_id
-    runs_dir.mkdir(parents=True, exist_ok=True)
-    (runs_dir / "noise.log").write_text(result.log_text)
+    evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
+    record_path = resv.record_path
+    runs_dir = resv.log_dirs["corners"]
+    evidence.write_new_text(runs_dir / "noise.log", result.log_text)
 
     lines: list[str] = []
     a = lines.append
@@ -3161,14 +3164,15 @@ def write_noise_tran_evidence(
         info, result.corner, result.temp_c, 0.0, 10000,
         result.na_input, result.na_gate, "noise_tran_pickoff",
     )
-    record_id = evidence.new_record_id()
+    resv = evidence.reserve_record(EXPERIMENT_DIR, ("corners",))
+    record_id = resv.record_id
     netlist_sha = evidence.sha256_text(netlist_text)
-    record_path = evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
-    runs_dir = EXPERIMENT_DIR / "corners" / record_id
-    runs_dir.mkdir(parents=True, exist_ok=True)
+    evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
+    record_path = resv.record_path
+    runs_dir = resv.log_dirs["corners"]
     for name in ("latch_noise", "injcal_input", "injcal_gate"):
         if name in result.logs:
-            (runs_dir / f"{name}.log").write_text(result.logs[name])
+            evidence.write_new_text(runs_dir / f"{name}.log", result.logs[name])
 
     lines: list[str] = []
     a = lines.append
@@ -3604,7 +3608,7 @@ def write_reset_evidence(
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
         safe = f"{p.variant.replace('-', '_')}_{p.corner}_{str(p.temp_c).replace('-', 'neg').replace('.', 'p')}c"
-        (corners_dir / f"reset_{safe}.log").write_text(p.log_text)
+        evidence.write_new_text(corners_dir / f"reset_{safe}.log", p.log_text)
 
     as_drawn = [p for p in points if p.variant == "as-drawn"]
     control = [p for p in points if p.variant == "gnd-tied"]
@@ -4025,7 +4029,7 @@ def write_kickback_evidence(
 ) -> Path:
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for p in points:
-        (corners_dir / f"kickback_{p.variant}.log").write_text(p.log_text)
+        evidence.write_new_text(corners_dir / f"kickback_{p.variant}.log", p.log_text)
 
     loaded = next(p for p in points if p.variant == "loaded")
     ideal = next(p for p in points if p.variant == "ideal")
