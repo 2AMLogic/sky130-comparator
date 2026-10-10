@@ -49,11 +49,12 @@ transfer (testbench structure and methodology, not spec numbers) from
 [`sky130-sar-adc`](https://github.com/2AMLogic/sky130-sar-adc)'s embedded
 comparator work.
 
-As of
-[DR-002](spec/decision-records/DR-002-target-spec-ratification.md)
-(2026-09-16), three of the five rows below are **RATIFIED** against a real
-measurement of this repo's own `design/comparator.sch`; two remain
-**DRAFT / OPEN**, explicitly, pending further evidence. No row's numeric
+History: [DR-002](spec/decision-records/DR-002-target-spec-ratification.md)
+(2026-09-16) ratified three of the five rows below (Offset sigma,
+Input-referred noise, Kickback) against a real measurement of this repo's
+own `design/comparator.sch`, leaving two **DRAFT / OPEN** at that date; that
+count is superseded by the DR-003/004/005 chronology below, and the
+current per-row status is the table. No row's numeric
 value changed from the original DRAFT figures — DR-002 disposes each row's
 *status*, not its bound. See DR-002 for the full per-row reasoning,
 including why the Kickback row is ratified as a bound the current design
@@ -128,19 +129,18 @@ global-process-only fallback) — the "strong" statistical story named in
 and is now exercised (not merely planned) against this repo's own design,
 per the ratified Offset sigma row above.
 
-**Ratification status.** As of
-[DR-002](spec/decision-records/DR-002-target-spec-ratification.md)
-(2026-09-16, status: proposed pending PR merge), the Offset sigma,
-Input-referred noise, and Kickback rows are **RATIFIED**; Decision time vs.
-overdrive and Supply/power stay **DRAFT / OPEN**, explicitly, pending
-further evidence (see DR-002's per-row disposition and Open items). No
-row's numeric bound changed from the original DRAFT figures. `spec/README.md`
-documents when a DR is required (whenever this table is set, changed, or
-scoped) and how to write one. See issue #3 for the honest gap-to-T1
-checklist this table's ratification status feeds (item 5, full PVT corner
-sim vs. a *ratified* spec, remains open for the two DRAFT/OPEN rows and for
-full-corner coverage on the ratified ones too — DR-002 is a first pass, not
-a campaign-complete characterization).
+**Ratification status.** Per-row status lives in the table above and is not
+restated here. The rows were ratified by decision record:
+[DR-002](spec/decision-records/DR-002-target-spec-ratification.md) (Offset
+sigma, Input-referred noise, Kickback) and
+[DR-005](spec/decision-records/DR-005-full-corner-campaign.md) (Decision time
+vs. overdrive); Supply / power is the only row still **DRAFT / OPEN**
+(tracked by [#134](https://github.com/2AMLogic/sky130-comparator/issues/134)).
+No row's numeric bound changed from the original DRAFT figures.
+`spec/README.md` documents when a DR is required (whenever this table is set,
+changed, or scoped) and how to write one. See issue
+[#3](https://github.com/2AMLogic/sky130-comparator/issues/3) for the honest
+gap-to-T1 checklist this table's ratification status feeds.
 
 ## License
 
