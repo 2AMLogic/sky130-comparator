@@ -180,3 +180,84 @@ jobs:
       # version string. Exit 3 on drift.
       - name: Re-extract the parasitics and diff against the committed netlists
         run: PDK_ROOT="$HOME/.volare" python3 layout/extract_pex.py --check
+
+  # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
+  # (--sabotage-corners) is the only check that the corner runner really
+  # switches process corners in ngspice; stages 1-3 can pass while every
+  # point is simulated typical. Needs ngspice >= sim/toolchain.json's floor
+  # (apt ships 42, conda-forge 41: both refused), so ngspice 46 is built from
+  # the pinned upstream tarball and the install prefix is cached.
+  #
+  # Trigger: push to main + manual dispatch ONLY, deliberately not
+  # pull_request (17 ngspice invocations, ~5 min on the reference host; a PR
+  # gate on that is a cost call -- widening is a follow-up once the hosted
+  # wall-clock is known). Deliberately NOT path-filtered: a regression can
+  # come from sim/harness/* or sim/toolchain.json. No --full, and never
+  # --allow-toolchain-drift.
+  harness-selftest:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      NGSPICE_VERSION: "46"
+      NGSPICE_URL: https://sourceforge.net/projects/ngspice/files/ng-spice-rework/old-releases/46/ngspice-46.tar.gz/download
+      NGSPICE_SHA256: a0d1699af1940b06649276dcd6ff5a566c8c0cad01b2f7b5e99dedbb4d64c19b
+      NGSPICE_PREFIX: ${{ github.workspace }}/.ngspice-prefix
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore cached ngspice 46 install prefix
+        id: ngspice-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NGSPICE_PREFIX }}
+          # Key = version + tarball sha256 + configure contract, so changing
+          # any of them rebuilds. ubuntu-latest's image drift is covered by
+          # the --version assertion below.
+          key: ngspice-46-a0d1699af1940b06649276dcd6ff5a566c8c0cad01b2f7b5e99dedbb4d64c19b-nox-readline-nodebug-v1
+
+      - name: Build ngspice 46 from the pinned upstream tarball (cache miss)
+        if: steps.ngspice-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              build-essential bison flex libreadline-dev
+          mkdir -p "$RUNNER_TEMP/ngspice-src"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/ngspice-src/ngspice-46.tar.gz" "$NGSPICE_URL"
+          echo "$NGSPICE_SHA256  $RUNNER_TEMP/ngspice-src/ngspice-46.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/ngspice-src/ngspice-46.tar.gz" -C "$RUNNER_TEMP/ngspice-src"
+          mkdir "$RUNNER_TEMP/ngspice-src/build"
+          cd "$RUNNER_TEMP/ngspice-src/build"
+          # KLU is bundled and on by default: do not pass --disable-klu.
+          ../ngspice-46/configure --prefix="$NGSPICE_PREFIX" \
+              --without-x --with-readline=yes --disable-debug
+          make -j2
+          make install
+
+      # Runtime shared-library dependency of a cache-restored binary.
+      - name: Install ngspice runtime dependencies
+        run: sudo apt-get install -y --no-install-recommends libreadline8t64 || sudo apt-get install -y --no-install-recommends libreadline8
+
+      - name: Put ngspice 46 on PATH and assert the version
+        run: |
+          set -euo pipefail
+          echo "$NGSPICE_PREFIX/bin" >> "$GITHUB_PATH"
+          out="$("$NGSPICE_PREFIX/bin/ngspice" --version)"
+          echo "$out"
+          echo "$out" | grep -q 'ngspice-46' || { echo "::error::ngspice 46 required"; exit 1; }
+
+      - name: Install volare (pinned PDK manager; see docs/environment-setup.md)
+        run: python -m pip install volare
+
+      - name: Enable the pinned sky130A PDK (sim/pdk.json)
+        run: volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+
+      # Reduced default mode (the "check:ci" mode); --require-pdk turns a
+      # missing ngspice/PDK into a failure instead of a skip. Stage 4's
+      # sabotage negative control is part of this run.
+      - name: Harness acceptance test (sim/selftest.sh --require-pdk)
+        run: PDK_ROOT="$HOME/.volare" bash sim/selftest.sh --require-pdk

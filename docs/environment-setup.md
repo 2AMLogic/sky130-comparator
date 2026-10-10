@@ -42,6 +42,23 @@ volare --version    # -> Volare v0.20.6 ...
 python3 --version   # -> Python 3.12.3
 ```
 
+### CI ngspice-46 provenance (issue #149)
+
+The from-scratch build mentioned above stays out of scope for a developer
+machine, but CI has no ngspice to start from: `ubuntu-latest` apt ships 42
+and conda-forge 41, both below `sim/toolchain.json`'s `ngspice_min_major: 46`.
+The `harness-selftest` job in `.github/workflows/t1-signoff.yml` therefore
+builds ngspice 46 from the upstream release tarball
+(`https://sourceforge.net/projects/ngspice/files/ng-spice-rework/old-releases/46/ngspice-46.tar.gz/download`,
+SHA-256 `a0d1699af1940b06649276dcd6ff5a566c8c0cad01b2f7b5e99dedbb4d64c19b`,
+verified before extraction), with `build-essential bison flex libreadline-dev`
+and `./configure --without-x --with-readline=yes --disable-debug` (bundled
+KLU left enabled). The install prefix is cached with `actions/cache`, and the
+job asserts `ngspice --version` reports `ngspice-46` before running
+`sim/selftest.sh --require-pdk` (reduced mode, no `--full`). It runs on push
+to `main` and `workflow_dispatch` only. If the pin changes, update the
+workflow's URL, digest and cache key together with `sim/toolchain.json`.
+
 ## Signoff tooling (klt, recorded 2026-09-24)
 
 The T1 signoff manifest (issue #31) is graded by
