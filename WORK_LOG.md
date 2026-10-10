@@ -2,6 +2,12 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-10
+
+- **Issue #145** (closed): Guard telemetry: review unresolved worktree write target
+- **Issue #144** (closed): Prevent evidence record collisions from overwriting unpublished simulation runs
+- **PR #147**: feat(sim): atomic exclusive-create evidence record reservation (#144)
+
 ### 2026-10-09
 
 - **Issue #137** (closed): Guard telemetry: retain scoped stash creation protection
