@@ -4,6 +4,9 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-09
 
+- **Issue #137** (closed): Guard telemetry: retain scoped stash creation protection
+- **Issue #133** (closed): Guard telemetry: PR prose triggers installed-file-write denial
+- **Issue #132** (closed): Guard telemetry: retain destructive clean protection
 - **PR #139**: ci: enforce append-only sim/ evidence against Git base
 - **Issue #138** (closed): Enforce append-only simulation evidence against Git history in CI
 - **PR #136**: fix: validate nested pins structure in characterization-envelope (#135)
