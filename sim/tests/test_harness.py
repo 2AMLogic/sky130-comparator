@@ -143,6 +143,142 @@ class TestEvidence(unittest.TestCase):
         self.assertEqual(len(parts[1]), 6)
 
 
+def _race_worker(args):
+    exp, rid = args
+    r = evidence.reserve_record(Path(exp), ("corners",), record_id=rid)
+    return r.record_id
+
+
+class TestReservation(unittest.TestCase):
+    """Issue #144: atomic exclusive-create reservation of evidence IDs."""
+
+    RID = "20260101-000000-abc1234"
+
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+        self.addCleanup(self._td.cleanup)
+        self.exp = Path(self._td.name)
+
+    def test_frozen_time_and_commit_never_share_an_id(self):
+        import datetime as dt
+        frozen = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        with mock.patch.object(evidence, "_utcnow", return_value=frozen), \
+                mock.patch.object(evidence, "_short_sha", return_value="abc1234"):
+            self.assertEqual(evidence.new_record_id(), self.RID)
+            a = evidence.reserve_record(self.exp, ("corners",))
+            b = evidence.reserve_record(self.exp, ("corners",))
+        self.assertEqual(a.record_id, self.RID)
+        self.assertEqual(b.record_id, "20260101-000001-abc1234")
+        self.assertNotEqual(a.record_path, b.record_path)
+
+    def test_prepopulated_namespace_left_byte_identical(self):
+        (self.exp / "records").mkdir()
+        (self.exp / "netlist-snapshots").mkdir()
+        (self.exp / "corners" / self.RID).mkdir(parents=True)
+        files = {
+            self.exp / "records" / f"{self.RID}.md": b"summary\n",
+            self.exp / "netlist-snapshots" / f"{self.RID}.spice": b"* snap\n",
+            self.exp / "corners" / self.RID / "tt.log": b"raw log\n",
+        }
+        for path, data in files.items():
+            path.write_bytes(data)
+        r = evidence.reserve_record(self.exp, ("corners",), record_id=self.RID)
+        self.assertEqual(r.record_id, "20260101-000001-abc1234")
+        for path, data in files.items():
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_populated_snapshot_or_logs_without_record_are_skipped(self):
+        (self.exp / "netlist-snapshots").mkdir()
+        snap = self.exp / "netlist-snapshots" / f"{self.RID}.spice"
+        snap.write_bytes(b"orphan\n")
+        r = evidence.reserve_record(self.exp, ("corners",), record_id=self.RID)
+        self.assertEqual(r.record_id, "20260101-000001-abc1234")
+        self.assertEqual(snap.read_bytes(), b"orphan\n")
+        # our backed-out stub for the skipped ID must not linger
+        self.assertFalse((self.exp / "records" / f"{self.RID}.md").exists())
+        (self.exp / "corners" / "20260101-000002-abc1234").mkdir(parents=True)
+        r2 = evidence.reserve_record(self.exp, ("corners",), record_id=r.record_id)
+        self.assertEqual(r2.record_id, "20260101-000003-abc1234")
+
+    def test_exhausted_attempts_fail_clearly(self):
+        with mock.patch.object(evidence, "MAX_RESERVE_ATTEMPTS", 2):
+            evidence.reserve_record(self.exp, record_id=self.RID)
+            evidence.reserve_record(self.exp, record_id=self.RID)
+            with self.assertRaises(evidence.RecordCollisionError):
+                evidence.reserve_record(self.exp, record_id=self.RID)
+
+    def test_exclusive_writes_refuse_to_truncate(self):
+        p = self.exp / "x.log"
+        p.write_bytes(b"keep")
+        with self.assertRaises(FileExistsError):
+            evidence.write_new_text(p, "new")
+        self.assertEqual(p.read_bytes(), b"keep")
+        (self.exp / "netlist-snapshots").mkdir()
+        (self.exp / "netlist-snapshots" / f"{self.RID}.spice").write_bytes(b"keep")
+        with self.assertRaises(FileExistsError):
+            evidence.write_netlist_snapshot_text(self.exp, self.RID, "new")
+
+    def test_publish_replaces_only_reservation_stub(self):
+        r = evidence.reserve_record(self.exp, record_id=self.RID)
+        self.assertIn(evidence.RESERVATION_MARKER, r.record_path.read_text())
+        evidence.publish_record(r.record_path, "# final\n")
+        self.assertEqual(r.record_path.read_text(), "# final\n")
+        with self.assertRaises(evidence.RecordCollisionError):
+            evidence.publish_record(r.record_path, "# other\n")
+        self.assertEqual(r.record_path.read_text(), "# final\n")
+
+    def test_concurrent_processes_get_distinct_namespaces(self):
+        import multiprocessing as mp
+        n = 6
+        with mp.get_context("spawn").Pool(2) as pool:
+            ids = pool.map(_race_worker, [(str(self.exp), self.RID)] * n)
+        self.assertEqual(len(set(ids)), n)
+        stubs = sorted(p.name for p in (self.exp / "records").iterdir())
+        self.assertEqual(stubs, sorted(f"{i}.md" for i in ids))
+        for i in ids:
+            self.assertTrue((self.exp / "corners" / i).is_dir())
+
+    def test_normal_runner_evidence_links_and_collision_does_not_overwrite(self):
+        manifest = mock.MagicMock()
+        manifest.experiment_dir = self.exp
+        frag = self.exp / "frag.spice"
+        frag.write_text("* dut\n")
+        manifest.netlist_fragment = frag
+        manifest.measure = {}
+        manifest.checks = {}
+        pt = runner.CornerPointResult(
+            process_corner="tt", temp_c=27, supply_v=1.8, corner_id="tt_27_1p80",
+            measures={}, log_path=self.exp / "corners" / self.RID / "tt_27_1p80.log",
+            log_text="LOG\n", ok=True,
+        )
+        res = runner.RunResult(manifest=manifest, points=[pt], record_id=self.RID,
+                               netlist_sha256="0" * 64, overall_ok=True)
+        # prior published record under the proposed ID must survive
+        (self.exp / "records").mkdir()
+        prior = self.exp / "records" / f"{self.RID}.md"
+        prior.write_bytes(b"prior\n")
+        info = mock.MagicMock(found=True, variant="v")
+        with mock.patch.object(runner.pdk, "resolve", return_value=info), \
+                mock.patch.object(runner.pdk, "resolved_commit", return_value="c"), \
+                mock.patch.object(evidence, "environment_block", return_value=["env"]), \
+                mock.patch.object(evidence, "REPO_ROOT", self.exp), \
+                mock.patch.object(runner.corners_mod, "corner_matrix_summary_line",
+                                  return_value="line", create=True), \
+                contextlib.redirect_stdout(io.StringIO()):
+            try:
+                out = runner.write_evidence(res, {}, supersedes="prev-id")
+            except Exception as e:  # pragma: no cover - surface unexpected shape
+                self.fail(f"write_evidence raised {e!r}")
+        self.assertEqual(prior.read_bytes(), b"prior\n")
+        self.assertEqual(res.record_id, "20260101-000001-abc1234")
+        text = out.read_text()
+        self.assertNotIn(evidence.RESERVATION_MARKER, text)
+        self.assertIn("prev-id", text)
+        self.assertEqual(
+            (self.exp / "corners" / res.record_id / "tt_27_1p80.log").read_text(), "LOG\n")
+        self.assertTrue((self.exp / "netlist-snapshots" / f"{res.record_id}.spice").exists())
+
+
 class TestRunKltYield(unittest.TestCase):
     """evidence.run_klt_yield() -- shared plumbing extracted (issue #131)
     from the two byte-identical `_run_klt_yield` private helpers PR #130

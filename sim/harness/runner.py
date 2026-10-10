@@ -195,13 +195,24 @@ def write_evidence(
     # ngspice a second time (each sky130-library invocation costs ~15-20s on
     # this toolchain; doubling it here for a --record run would be wasteful
     # and could theoretically diverge from what was just evaluated).
-    corners_dir = experiment_dir / "corners" / result.record_id
-    corners_dir.mkdir(parents=True, exist_ok=True)
+    # Reserve the namespace atomically first (issue #144): if the proposed
+    # ID is taken the next valid ID is used, and nothing existing is touched.
+    resv = evidence.reserve_record(
+        experiment_dir, ("corners",), record_id=result.record_id
+    )
+    if resv.record_id != result.record_id:
+        old = result.record_id
+        result.record_id = resv.record_id
+        for p in result.points:
+            p.log_path = resv.log_dirs["corners"] / p.log_path.name
+        print(f"  record id {old} was taken; using {resv.record_id}")
+    corners_dir = resv.log_dirs["corners"]
     info = pdk.resolve()
     for p in result.points:
-        (corners_dir / f"{p.corner_id}.log").write_text(p.log_text)
+        evidence.write_new_text(corners_dir / f"{p.corner_id}.log", p.log_text)
 
-    record_path = evidence.write_netlist_snapshot(
+    record_path = resv.record_path
+    evidence.write_netlist_snapshot(
         experiment_dir, result.record_id, manifest.netlist_fragment
     )
 
@@ -252,5 +263,5 @@ def write_evidence(
     a("")
     lines.extend(evidence.footer_lines("sim/run_corners.py", supersedes))
 
-    record_path.write_text("\n".join(lines))
+    evidence.publish_record(record_path, "\n".join(lines))
     return record_path

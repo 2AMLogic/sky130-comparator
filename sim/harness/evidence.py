@@ -19,6 +19,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -57,20 +58,129 @@ def sha256_file(path: Path) -> str:
     return sha256_text(path.read_text())
 
 
-def new_record_id() -> str:
-    """<YYYYMMDD>-<HHMMSS>-<short-git-sha> -- gf180-sar-adc's sim/README.md
-    <record-id> scheme, unchanged (see sim/README.md "Provenance")."""
-    ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+def _utcnow() -> _dt.datetime:
+    return _dt.datetime.now(_dt.timezone.utc)
+
+
+def _short_sha() -> str:
     try:
-        sha = subprocess.run(
+        return subprocess.run(
             ["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],
             check=True,
             capture_output=True,
             text=True,
         ).stdout.strip()
     except subprocess.CalledProcessError:
-        sha = "nogit"
-    return f"{ts}-{sha}"
+        return "nogit"
+
+
+def new_record_id() -> str:
+    """<YYYYMMDD>-<HHMMSS>-<short-git-sha> -- gf180-sar-adc's sim/README.md
+    <record-id> scheme, unchanged (see sim/README.md "Provenance").
+
+    This only *proposes* an ID; it reserves nothing. Writers must claim it
+    with reserve_record() before writing any artifact."""
+    return f"{_utcnow().strftime('%Y%m%d-%H%M%S')}-{_short_sha()}"
+
+
+def _next_record_id(record_id: str) -> str:
+    """The next valid ID: same shape, timestamp advanced one second."""
+    date, time, rest = record_id.split("-", 2)
+    ts = _dt.datetime.strptime(f"{date}-{time}", "%Y%m%d-%H%M%S") + _dt.timedelta(seconds=1)
+    return f"{ts.strftime('%Y%m%d-%H%M%S')}-{rest}"
+
+
+RESERVATION_MARKER = "<!-- evidence-reservation: incomplete run, record not yet published -->"
+MAX_RESERVE_ATTEMPTS = 120
+
+
+class RecordCollisionError(RuntimeError):
+    """No free record-id namespace could be reserved."""
+
+
+@dataclass
+class Reservation:
+    record_id: str
+    record_path: Path
+    log_dirs: dict[str, Path]
+
+
+def write_new_text(path: Path, text: str) -> None:
+    """Exclusive-create write: raises FileExistsError rather than ever
+    truncating existing evidence."""
+    with open(path, "x") as f:
+        f.write(text)
+
+
+def reserve_record(
+    experiment_dir: Path,
+    log_subdirs: tuple[str, ...] = (),
+    record_id: str | None = None,
+) -> Reservation:
+    """Atomically claim a record-id namespace under <experiment_dir>.
+
+    The claim is an O_EXCL-created records/<id>.md stub (so concurrent
+    processes cannot both own an ID), after which the netlist snapshot path
+    and every <experiment_dir>/<subdir>/<id>/ log directory must be unused;
+    log directories are created with a non-idempotent mkdir. If the ID is
+    taken or its namespace is already populated (even partially), the next
+    valid ID (timestamp + 1 s, same format) is tried, up to
+    MAX_RESERVE_ATTEMPTS. Existing files are never modified; a stub left by
+    a crashed run keeps its ID reserved and is identifiable by
+    RESERVATION_MARKER."""
+    records_dir = experiment_dir / "records"
+    records_dir.mkdir(parents=True, exist_ok=True)
+    candidate = record_id or new_record_id()
+    first = candidate
+    for _ in range(MAX_RESERVE_ATTEMPTS):
+        record_path = records_dir / f"{candidate}.md"
+        try:
+            write_new_text(record_path, f"{RESERVATION_MARKER}\n")
+        except FileExistsError:
+            candidate = _next_record_id(candidate)
+            continue
+        snapshot = experiment_dir / "netlist-snapshots" / f"{candidate}.spice"
+        dirs = {sub: experiment_dir / sub / candidate for sub in log_subdirs}
+        made: list[Path] = []
+        try:
+            if snapshot.exists():
+                raise FileExistsError(snapshot)
+            for d in dirs.values():
+                d.parent.mkdir(parents=True, exist_ok=True)
+                d.mkdir()  # exclusive: FileExistsError if populated
+                made.append(d)
+        except FileExistsError:
+            # Namespace partially used by someone else: back out only what
+            # this attempt created (empty dirs + our own stub).
+            for d in made:
+                d.rmdir()
+            record_path.unlink()
+            candidate = _next_record_id(candidate)
+            continue
+        return Reservation(candidate, record_path, dirs)
+    raise RecordCollisionError(
+        f"could not reserve a free record id under {experiment_dir} after "
+        f"{MAX_RESERVE_ATTEMPTS} attempts starting from {first}; "
+        "existing evidence was left untouched -- inspect records/, "
+        "netlist-snapshots/ and the log directories for incomplete runs."
+    )
+
+
+def publish_record(record_path: Path, text: str) -> Path:
+    """Replace our reservation stub with the final record. Refuses to touch
+    a file that is not an unpublished reservation stub."""
+    try:
+        current = record_path.read_text()
+    except FileNotFoundError:
+        raise RecordCollisionError(f"{record_path} was not reserved") from None
+    if not current.startswith(RESERVATION_MARKER):
+        raise RecordCollisionError(
+            f"{record_path} is already a published record; refusing to overwrite"
+        )
+    tmp = record_path.with_name(record_path.name + f".tmp{os.getpid()}")
+    write_new_text(tmp, text)
+    os.replace(tmp, record_path)
+    return record_path
 
 
 def environment_block(
@@ -109,7 +219,7 @@ def write_netlist_snapshot_text(experiment_dir: Path, record_id: str, netlist_te
     returning the path the caller's evidence record should be written to."""
     snapshots_dir = experiment_dir / "netlist-snapshots"
     snapshots_dir.mkdir(parents=True, exist_ok=True)
-    (snapshots_dir / f"{record_id}.spice").write_text(netlist_text)
+    write_new_text(snapshots_dir / f"{record_id}.spice", netlist_text)
 
     records_dir = experiment_dir / "records"
     records_dir.mkdir(parents=True, exist_ok=True)
