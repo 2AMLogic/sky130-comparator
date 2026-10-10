@@ -18,6 +18,13 @@ See the [decision records](spec/decision-records/) (latest ratified:
 [`manifests/design-evidence-tiers.md`](manifests/design-evidence-tiers.md), and
 [`WORK_PLAN.md`](WORK_PLAN.md); figures live there, not here.
 
+**For integrators:** [`spec/consumers.md`](spec/consumers.md) is the dated
+consumer-compatibility record (last refreshed 2026-10-10 against the
+DR-004 static-preamp topology and DR-005 ratifications). It distinguishes
+ratified bounds, schematic results, and historical post-layout results; no
+compatibility claim there covers the current layout geometry, whose
+re-measurement is #125.
+
 **Built agent-native.** Every specification, decision record, testbench, and
 line of documentation here is produced by AI agents working from a ratified
 spec and an append-only evidence trail — not human-authored work that agents
