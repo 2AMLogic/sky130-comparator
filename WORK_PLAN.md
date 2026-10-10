@@ -25,7 +25,7 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-_None._
+- **#127**: Establish a verified execution route for comparator campaign #125
 
 ## PRs Awaiting Review
 
@@ -45,6 +45,7 @@ Issues carrying `loom:curated`.
 
 - **#3**: Track the gap to T1 sim-validated / bronze (klayout-tools design-evidence ladder) *(curated)*
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)*
+- **#127**: Establish a verified execution route for comparator campaign #125 *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -62,10 +63,10 @@ _None._
 | Operator merge-risk holds | 0 |
 | Operator priority | 0 |
 | Ready (`loom:issue`) | 0 |
-| In Progress (`loom:building`) | 0 |
+| In Progress (`loom:building`) | 1 |
 | PRs awaiting review | 0 |
 | Approved PRs awaiting merge | 0 |
-| Curated | 2 |
+| Curated | 3 |
 | Architect / Hermit proposals | 2 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
