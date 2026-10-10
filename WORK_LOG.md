@@ -4,6 +4,12 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-10
 
+- **PR #155**: docs: refresh consumer compatibility record after DR-004/DR-005 (#153)
+- **Issue #153** (closed): Refresh consumer compatibility record after preamp topology and spec ratification
+- **PR #152**: docs: fix stale DR-002-era ratification prose in README
+- **Issue #148** (closed): README ratification-status prose is stale (frozen at DR-002); contradicts the spec table
+- **PR #151**: ci: run sim/selftest.sh in CI with a cached ngspice 46 build
+- **Issue #149** (closed): CI never runs sim/selftest.sh: the harness's corner-sabotage guard is unexercised
 - **Issue #145** (closed): Guard telemetry: review unresolved worktree write target
 - **Issue #144** (closed): Prevent evidence record collisions from overwriting unpublished simulation runs
 - **PR #147**: feat(sim): atomic exclusive-create evidence record reservation (#144)
