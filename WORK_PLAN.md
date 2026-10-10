@@ -26,7 +26,6 @@ _None._
 Issues currently being built (`loom:building`).
 
 - **#127**: Establish a verified execution route for comparator campaign #125
-- **#148**: README ratification-status prose is stale (frozen at DR-002); contradicts the spec table
 
 ## PRs Awaiting Review
 
@@ -47,13 +46,12 @@ Issues carrying `loom:curated`.
 - **#3**: Track the gap to T1 sim-validated / bronze (klayout-tools design-evidence ladder) *(curated)*
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)*
 - **#127**: Establish a verified execution route for comparator campaign #125 *(curated)*
-- **#149**: CI never runs sim/selftest.sh: the harness's corner-sabotage guard is unexercised *(curated)*
 
 ## Proposed (Architect / Hermit)
 
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(architect)*
 - **#134**: Measure comparator supply energy and average power at stated clock conditions *(architect)*
-- **#149**: CI never runs sim/selftest.sh: the harness's corner-sabotage guard is unexercised *(architect)*
+- **#154**: Measure larger-sample post-layout offset with resumable serial campaigns *(architect)*
 
 ## Epics
 
@@ -66,10 +64,10 @@ _None._
 | Operator merge-risk holds | 0 |
 | Operator priority | 0 |
 | Ready (`loom:issue`) | 0 |
-| In Progress (`loom:building`) | 2 |
+| In Progress (`loom:building`) | 1 |
 | PRs awaiting review | 0 |
 | Approved PRs awaiting merge | 0 |
-| Curated | 4 |
+| Curated | 3 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
