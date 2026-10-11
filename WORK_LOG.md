@@ -2,6 +2,12 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-11
+
+- **Issue #159** (closed): Simulation cleanup denial: investigate resolved target and preserve worktree confinement
+- **Issue #158** (closed): Unresolved scratch deletion: preserve fail-closed guard pending resolver review
+- **Issue #157** (closed): Guard telemetry: retain raw-field literal body protection
+
 ### 2026-10-10
 
 - **PR #155**: docs: refresh consumer compatibility record after DR-004/DR-005 (#153)
