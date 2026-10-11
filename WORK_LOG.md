@@ -4,6 +4,7 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-11
 
+- **Issue #161** (closed): Auditor guard telemetry: destructive cleanup protection
 - **Issue #159** (closed): Simulation cleanup denial: investigate resolved target and preserve worktree confinement
 - **Issue #158** (closed): Unresolved scratch deletion: preserve fail-closed guard pending resolver review
 - **Issue #157** (closed): Guard telemetry: retain raw-field literal body protection
