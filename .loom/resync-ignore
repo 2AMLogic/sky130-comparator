@@ -1,0 +1,17 @@
+# Intentional per-repo customizations pinned from Loom's resync walk.
+# See .loom/docs/repo-owned-files.md and resync-installed.sh's is_ignored().
+#
+# hooks/guard-destructive-generic.sh carries a local defect fix (issue #164:
+# empty split-artifact token in is_interpreter_opener() classified an
+# assignment-prefixed heredoc opener line as interpreter-fed, unmasking a
+# quoted-delimiter heredoc body whose prose (">=46,") was then tokenized as a
+# live redirect into the main checkout -- a false worktree-write-confinement
+# DENY), plus the resolved-target decision-log field from the same issue.
+# Vendored-copy header: canonical home is rjwalters/repo guard-destructive.sh,
+# re-vendored by Loom at release time. Retire this pin when the upstream fix
+# (rjwalters/loom defaults/hooks/guard-destructive-generic.sh, to be filed
+# from issue #164) lands here via a resync commit.
+hooks/guard-destructive-generic.sh
+# Hermetic regression suite for the fix above (new file, issue #164); travels
+# with the pinned guard fix. Retire together with the pin above.
+hooks/tests/test-guard-scratch-report-confinement.sh
