@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-12
+
+- **PR #166**: fix: drop empty split-artifact tokens in guard heredoc opener scan; close scratch-symlink bypass
+- **Issue #164** (closed): Guard telemetry: scratch report write triggers worktree confinement
+
 ### 2026-10-11
 
 - **Issue #161** (closed): Auditor guard telemetry: destructive cleanup protection
