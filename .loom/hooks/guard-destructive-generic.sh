@@ -106,7 +106,8 @@ log_hook_error() {
 # NOT rename fields without considering that dependency), one JSON object per
 # line:
 #   {"ts":"<UTC>","decision":"deny"|"ask","pattern":"<tag>",
-#    "tier":"catastrophic"|"ask","command":"<redacted>"}
+#    "tier":"catastrophic"|"ask","command":"<redacted>",
+#    "target":"<resolved absolute path>" (OPTIONAL, absent when not applicable)}
 #     ts       — UTC timestamp, same format as log_hook_error's date -u call.
 #     decision — "deny" or "ask".
 #     pattern  — a short, stable rule tag (NOT the full free-text reason). For
@@ -115,6 +116,14 @@ log_hook_error() {
 #     tier     — "catastrophic" for deny, "ask" for ask.
 #     command  — the command string, REDACTED via strip_literal_text() so no raw
 #                --body/-m/--title/--notes/--comment secret value is persisted.
+#     target   — OPTIONAL (#164): the resolved absolute write target, set only
+#                by deny sites that actually computed one (today: the
+#                worktree-write-confinement deny). A path assembled from the
+#                already-logged command text; adds no exposure beyond it. Its
+#                absence in the historical log is exactly why issue #164's
+#                audit could not decide false-positive vs correct denial from
+#                telemetry alone -- future audits should not need a hermetic
+#                reproduction to recover it.
 #
 # Best-effort like log_hook_error: gated by the lazy decision_log_enabled()
 # toggle, and a log-write failure (permission denied, disk full, missing dir)
@@ -131,6 +140,13 @@ log_guard_decision() {
     decision_log_enabled || return 0
     local decision="$1" tier="$2" tag="${3:-$1}"
     local ts redacted line
+    # Optional resolved-target field (#164): a deny site that computed a
+    # concrete write/read target sets _DECISION_LOG_TARGET right before
+    # calling deny()/ask(); consumed here once so a stale value can never
+    # bleed into a later record (each hook process logs at most one decision
+    # anyway -- deny/ask always exit).
+    local target="${_DECISION_LOG_TARGET:-}"
+    _DECISION_LOG_TARGET=""
     ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) || ts=""
     # Redact quoted --body/-m/--title/--notes/--comment values (same redactor the
     # pattern-matching tiers use) so no raw secret text is persisted to a log that
@@ -147,7 +163,8 @@ log_guard_decision() {
         --arg pattern "$tag" \
         --arg tier "$tier" \
         --arg command "$redacted" \
-        '{ts:$ts, decision:$decision, pattern:$pattern, tier:$tier, command:$command}' \
+        --arg target "$target" \
+        '{ts:$ts, decision:$decision, pattern:$pattern, tier:$tier, command:$command} + (if $target == "" then {} else {target:$target} end)' \
         2>/dev/null) || return 0
     [[ -n "$line" ]] || return 0
     mkdir -p "$(dirname "$DECISION_LOG")" 2>/dev/null || true
@@ -3354,7 +3371,7 @@ function _interp_basename(tok,   base, SQ, DQ) {
     sub(/^.*\//, "", base)
     return base
 }
-function is_interpreter_opener(line, shell_only,   n, segs, i, seg, m, toks, j, base) {
+function is_interpreter_opener(line, shell_only,   n, segs, i, seg, m, toks, j, base, t, k) {
     # Split into command segments on ; & | (covers && and || too) so a piped
     # or chained interpreter is caught in ANY position, e.g. `cat <<EOF | bash`
     # and `cat <<EOF | sudo bash`.
@@ -3378,6 +3395,26 @@ function is_interpreter_opener(line, shell_only,   n, segs, i, seg, m, toks, j, 
         seg = segs[i]
         sub(/^[ \t]+/, "", seg)
         m = split(seg, toks, /[ \t]+/)
+        # Drop TRUE empty-string tokens before any command-word reasoning
+        # (#164). Whitespace splitting of unquoted shell text can never
+        # produce a real empty word -- an empty token here is always an
+        # artifact of THIS tokenizer: a trailing separator run (the space
+        # before the `&&` in `N=127 && cat <<'"'"'EOF'"'"'`) or an interior
+        # double space. Left in, the artifact becomes the "command word" once
+        # the assignment-prefix skipper consumes the only real token, the
+        # `j > m` guard below no longer fires, and the fail-closed tail
+        # (base == "") classifies the whole line interpreter-fed -- which
+        # unmasks a quoted-delimiter heredoc BODY whose prose (`>=46,`) is
+        # then tokenized by the write-idiom scan as a live `>=` redirect,
+        # cwd-joined into the main checkout: the #164 false
+        # worktree-write-confinement DENY. ONLY the exact empty string is
+        # dropped: a quoted empty word (`'' <<'"'"'EOF'"'"'`) is the
+        # two-character token `''`, survives this filter, reduces to an empty
+        # basename in _interp_basename(), and STILL fails closed below --
+        # as do `$CMD`/backtick command words, untouched here.
+        k = 0
+        for (t = 1; t <= m; t++) if (toks[t] != "") toks[++k] = toks[t]
+        m = k
         if (m == 0) continue
         j = 1
         # (1) Strip a BARE `VAR=value` assignment prefix. This is ordinary
@@ -10006,8 +10043,43 @@ if worktree_isolation_guard_enabled && \
                 # treats as "inside the main checkout"; never narrows the
                 # existing lexical match above.
                 _wabs_phys=$(physical_abs_path "$_wabs")
+                # FINAL-COMPONENT symlinks (#164): physical_abs_path() walks
+                # up only to the deepest existing ANCESTOR DIRECTORY, so a
+                # scratch symlink whose target sits inside the main checkout
+                # (`ln -s <main>/f /tmp/link; ... > /tmp/link`) reached this
+                # branch with its last component still unresolved, matched
+                # neither spelling, and the write was silently ALLOWED — a
+                # #4178 confinement bypass through Bash redirection, found by
+                # issue #164's required control. Resolve trailing symlink
+                # components (bounded chain, readlink unavailable => keep
+                # today's verdict), then judge the RESOLVED path below.
+                _wt_link="$_wabs"
+                _wt_links=0
+                while [[ -L "$_wt_link" && "$_wt_links" -lt 8 ]]; do
+                    _wt_dest=$(readlink "$_wt_link" 2>/dev/null) || break
+                    [[ -n "$_wt_dest" ]] || break
+                    case "$_wt_dest" in
+                        /*) _wt_link="$_wt_dest" ;;
+                        *) _wt_link="${_wt_link%/*}/$_wt_dest" ;;
+                    esac
+                    _wt_link=$(normalize_abs_path "$_wt_link")
+                    _wt_links=$((_wt_links + 1))
+                done
+                [[ "$_wt_link" == "$_wabs" ]] || _wabs_phys=$(physical_abs_path "$_wt_link")
                 case "$_wabs_phys" in
-                    "$_WT_MAIN_ROOT"|"$_WT_MAIN_ROOT"/*) : ;;
+                    "$_WT_MAIN_ROOT"|"$_WT_MAIN_ROOT"/*)
+                        # Resolved INTO the main checkout (e.g. through a
+                        # scratch symlink). Re-run the managed-worktree and
+                        # registered-worktree allow checks on the RESOLVED
+                        # path — a link into a worktree still allows; only a
+                        # link that truly lands in the checkout walks on to
+                        # the deny. $_wabs is updated so the deny message and
+                        # the decision-log target name where the write really
+                        # lands, not the symlink spelling.
+                        if _in_any_managed_worktree "$_wabs_phys"; then continue; fi
+                        if _wt_in_registered_worktree "$_wabs_phys"; then continue; fi
+                        _wabs="$_wabs_phys"
+                        ;;
                     *) continue ;;
                 esac
                 ;;
@@ -10045,6 +10117,13 @@ if worktree_isolation_guard_enabled && \
         # base is resolved off the same main-checkout root so the "a managed
         # worktree exists" gate stays consistent with the containment test.
         if _wt_isolation_in_play; then
+            # Record the resolved target for the decision log (#164): the
+            # 2026-10-12 audit of this deny had only pattern+command to work
+            # from and could not tell a scratch false positive from a correct
+            # denial without a hermetic reproduction. _wabs is a normalized
+            # path built from the (already-logged) command text -- no new
+            # exposure; log_guard_decision() adds the field only when set.
+            _DECISION_LOG_TARGET="$_wabs"
             deny "BLOCKED: Bash-tool write to '${_wabs}' resolves to the main repository checkout ('${_WT_MAIN_ROOT}'), but a Loom-managed worktree exists elsewhere in this repository (this check cannot verify it belongs to the acting session — see #4245). This is a worktree-isolation bypass via Bash redirection/tee/sed -i/cp/mv/mkdir — do NOT retry the write through Bash. cd into your issue worktree ($(_wt_worktree_hint)) and write there instead. Not a Builder and need to write here directly? Set guards.worktreeIsolation:false in .loom/config.json for the session -- an inline 'LOOM_GUARD_WORKTREE_ISOLATION=0 <command>' prefix does NOT work (this hook runs as a separate process). (#4178)" "worktree-write-confinement"  # scan-reads: COMMAND_ASK_SCAN,COMMAND_WT_MKTEMP_SCAN
         fi
     done <<< "$WRITE_TARGETS"
