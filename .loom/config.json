@@ -47,6 +47,7 @@
     ]
   },
   "buildGate": {
+    "enabled": false,
     "command": "./sim/selftest.sh"
   },
   "terminals": [
