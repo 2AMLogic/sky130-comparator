@@ -2,6 +2,15 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-14
+
+- **PR #172**: feat(sim): forward regeneration ladder with gf180 measure names (#171)
+- **Issue #171** (closed): Port gf180's forward regeneration ladder bench structure (prerequisite for #170)
+
+### 2026-10-13
+
+- **PR #169**: chore(loom): disable buildGate for now (pre-PR preflight off)
+
 ### 2026-10-12
 
 - **PR #166**: fix: drop empty split-artifact tokens in guard heredoc opener scan; close scratch-symlink bypass
