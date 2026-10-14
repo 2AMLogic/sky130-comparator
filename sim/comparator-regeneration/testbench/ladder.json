@@ -1,0 +1,142 @@
+{
+  "name": "comparator-regeneration",
+  "description": "Forward overdrive ladder (issue #171): decision time at 50 mV / 1 mV / 0.1 mV differential overdrive over PVT, the regeneration time constant tau from the two small rungs, the polarity proof (each instance decides both ways in one run), static current and switching energy per decision. Twin of gf180-comparator's sim/comparator-regeneration forward ladder: identical measure and check names, sky130 numbers.",
+  "claim": "REFERENCE, NOT VERDICT. Measurement-sanity checks and corner-sensitivity anchors for the forward ladder of this repo's own comparator (sim/comparator-decision/testbench/comparator_core.spice). A check passing here is not a verdict against any ratified row; the Decision-time row is scored separately from sim/comparator-decision `regen` records (DR-002). Reverse-polarity rungs are issue #170 and are not in this manifest.",
+  "netlist": "tb_regeneration.spice",
+  "nominal_supply_v": 1.8,
+  "supply_tolerance": 0.1,
+  "temperatures_c": [
+    -40,
+    27,
+    125
+  ],
+  "process_corners": [
+    "tt",
+    "ss",
+    "ff",
+    "sf",
+    "fs"
+  ],
+  "graded_corners": [
+    [
+      "tt",
+      27
+    ],
+    [
+      "ss",
+      -40
+    ],
+    [
+      "ff",
+      125
+    ],
+    [
+      "sf",
+      -40
+    ],
+    [
+      "sf",
+      125
+    ],
+    [
+      "fs",
+      -40
+    ],
+    [
+      "fs",
+      125
+    ]
+  ],
+  "options": [
+    "reltol=1e-4",
+    "vntol=1e-9",
+    "abstol=1e-13"
+  ],
+  "analysis": {
+    "kind": "tran",
+    "args": "5p 60n"
+  },
+  "decision_threshold_note": "dout_* are the DIFFERENTIAL output normalised to its own supply: 0.5 + (v(outp)-v(outn))/(2*vdd), so 0.5 is the reset state, >0.9 is a settled POSITIVE decision, <0.1 a settled NEGATIVE one. Delays cross 0.75, i.e. |v(outp)-v(outn)| = 0.5*VDD, the same DECIDE_THRESHOLD_V sim/comparator-decision/run.py `regen` uses.",
+  "analyses": [
+    ".meas tran vsup_v find v(vdd) at=25n",
+    ".meas tran td_a trig v(clkn) val=0.5 rise=2 targ v(dan) val=0.75 rise=1 td=35n",
+    ".meas tran td_b trig v(clkn) val=0.5 rise=2 targ v(dbn) val=0.75 rise=1 td=35n",
+    ".meas tran td_c trig v(clkn) val=0.5 rise=2 targ v(dcn) val=0.75 rise=1 td=35n",
+    ".meas tran da_first find v(dan) at=18n",
+    ".meas tran db_first find v(dbn) at=18n",
+    ".meas tran dc_first find v(dcn) at=18n",
+    ".meas tran da_end find v(dan) at=48n",
+    ".meas tran db_end find v(dbn) at=48n",
+    ".meas tran dc_end find v(dcn) at=48n",
+    ".meas tran i_stat avg i(vsupa) from=25n to=29n",
+    ".meas tran q_dec integ i(vsupa) from=39.9n to=48n"
+  ],
+  "measure": {
+    "td_od50_ns": "td_a*1e9",
+    "td_od1_ns": "td_b*1e9",
+    "td_od01_ns": "td_c*1e9",
+    "tau_ps": "(td_c-td_b)/ln(10)*1e12",
+    "td_od1_over_tau": "td_b/((td_c-td_b)/ln(10))",
+    "resolve_decades": "td_b/((td_c-td_b)/ln(10))",
+    "dout_od50_end": "da_end",
+    "dout_od1_end": "db_end",
+    "dout_od01_end": "dc_end",
+    "dout_od50_first": "da_first",
+    "dout_od1_first": "db_first",
+    "dout_od01_first": "dc_first",
+    "i_static_ua": "abs(i_stat)*1e6",
+    "e_dec_fj": "abs(q_dec - i_stat*8.1e-9)*vsup_v*1e15"
+  },
+  "checks": {
+    "td_od50_ns": {
+      "min": 0.001,
+      "max": 25.0,
+      "min_spread_pct_by_axis": {
+        "process": 3.9,
+        "temperature": 17.0
+      },
+      "description": "PRIMARY CORNER-SENSITIVITY ANCHOR. min/max is a sanity envelope (1 ps = numerical artefact; 25 ns = the decision did not complete in the evaluate window). Per-axis floors calibrated from the first committed record (records/): observed weakest slices process 7.12 %, temperature 31.18 %, floors set at ~55 % of observed (~45 % margin). Supply is unfloored: the delay is measured on a supply-normalised threshold."
+    },
+    "tau_ps": {
+      "min": 0.1,
+      "max": 20000.0,
+      "description": "Regeneration time constant from the (1 mV, 0.1 mV) pair; negative or sub-0.1 ps means the two delays came out in the wrong order."
+    },
+    "td_od1_over_tau": {
+      "min": 1.0,
+      "description": "Full 1 mV delay over tau in e-folds; report-only diagnostic with a plumbing floor."
+    },
+    "resolve_decades": {
+      "min": 1.0,
+      "description": "DEPRECATED ALIAS of td_od1_over_tau, kept for gf180 name parity."
+    },
+    "dout_od50_end": {
+      "min": 0.75,
+      "description": "Second strobe holds the POSITIVE answer. Threshold 0.75 = the decision threshold (|diff| >= 0.5 VDD); gf180's 0.9 is not reachable here because the losing output does not reach the rail at the small rungs (DR-008)."
+    },
+    "dout_od1_end": {
+      "min": 0.75,
+      "description": "the same at 1 mV. Threshold 0.75 = the decision threshold (|diff| >= 0.5 VDD); gf180's 0.9 is not reachable here because the losing output does not reach the rail at the small rungs (DR-008)."
+    },
+    "dout_od01_end": {
+      "min": 0.75,
+      "description": "the same at 0.1 mV: the near-metastable rung still resolves correctly. Threshold 0.75 = the decision threshold (|diff| >= 0.5 VDD); gf180's 0.9 is not reachable here because the losing output does not reach the rail at the small rungs (DR-008)."
+    },
+    "dout_od50_first": {
+      "max": 0.25,
+      "description": "First strobe (input negative) holds the NEGATIVE answer; with *_end proves one instance decided both ways."
+    },
+    "dout_od1_first": {
+      "max": 0.25,
+      "description": "the same at 1 mV."
+    },
+    "dout_od01_first": {
+      "max": 0.25,
+      "description": "the same at 0.1 mV."
+    },
+    "i_static_ua": {
+      "min": 0.1,
+      "description": "Static supply current with the strobe low; a floor only (dead-bias detector)."
+    }
+  }
+}
