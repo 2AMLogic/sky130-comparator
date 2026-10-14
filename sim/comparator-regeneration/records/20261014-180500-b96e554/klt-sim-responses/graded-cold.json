@@ -1,0 +1,2533 @@
+{
+ "schema_version": 3,
+ "netlist": {
+  "path": null,
+  "scope": "external"
+ },
+ "status": "error",
+ "corner_count": 3,
+ "passed": 2,
+ "failed": 0,
+ "errored": 1,
+ "inconclusive": 0,
+ "diagnostic_counts": {
+  "by_code": {
+   "measurement": 15
+  },
+  "by_severity": {
+   "error": 15
+  },
+  "corners_with_diagnostics": 1
+ },
+ "metrics": {
+  "sim__corner__count": 3,
+  "sim__corner__passed_count": 2,
+  "sim__corner__failed_count": 0,
+  "sim__corner__errored_count": 1,
+  "sim__corner__inconclusive_count": 0
+ },
+ "environment": {
+  "engine": "ngspice",
+  "engine_version": "46",
+  "ngspice_binary": "/usr/bin/ngspice",
+  "models_lib": {
+   "path": null,
+   "scope": "external"
+  },
+  "models_lib_sha256": "48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+  "netlist_sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+  "netlist_closure": [
+   {
+    "path": null,
+    "scope": "external",
+    "sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897"
+   }
+  ],
+  "remote": {
+   "provider": "aws-batch-fleet",
+   "job_id": "klt-sim-f3801e1dee3a",
+   "bucket": "2am-batch-jobs-221082181346",
+   "region": "us-east-1",
+   "instance_id": "i-042bca887dc9b6d02",
+   "instance_type": "c7i.8xlarge",
+   "availability_zone": "us-east-1b",
+   "ami_id": "ami-0e0bec04ad8e81877",
+   "lifecycle": "spot",
+   "spot": true,
+   "state": "failed",
+   "exit_code": "4",
+   "concurrency": "2",
+   "physical_cores": "16",
+   "elapsed_seconds": 36,
+   "runner_klt_version": "0.7.0",
+   "client_klt_version": "0.7.1.dev410+ge992cfa5a699",
+   "runner_compatibility": "match",
+   "worker_environment": {
+    "capture": "ok",
+    "simulator": {
+     "requested_binary": "ngspice",
+     "binary_source": "PATH",
+     "selected_path": "/usr/local/bin/ngspice",
+     "version_banner": "******\n** ngspice-46 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Thu Oct  1 23:51:59 UTC 2026\n******\n",
+     "version_probe": "ok"
+    },
+    "pdk": {
+     "variant": "sky130A",
+     "root": "/opt/pdk",
+     "stamp_scheme": "sources-sha256",
+     "stamp_sha256": "d5ac52956829da3fee35d0b307d4e6cb83ae0e6535b56dba2eefed61cdffaf9b",
+     "stamp_text": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b",
+     "models_staged": false
+    },
+    "cpu_model": "Intel(R) Xeon(R) Platinum 8488C",
+    "omp_num_threads": null,
+    "image_manifest": null,
+    "diagnostics": [],
+    "pdk_stamp_comparison": {
+     "status": "not_comparable"
+    }
+   },
+   "job_ceiling": {
+    "basis": "conservative_serial_bound",
+    "unit_count": 3,
+    "per_unit_timeout_s": 120,
+    "overhead_s": 120.0,
+    "job_bound_s": 480.0,
+    "max_job_seconds": 3600.0,
+    "max_job_seconds_source": "fleet_config",
+    "exceeds_ceiling": false,
+    "check": "warn",
+    "max_units_per_job": 29,
+    "recommended_hosts": 1
+   }
+  },
+  "timeout_preflight_warning": "options.timeout_s (120s) looks implausible for a tran analysis with ~1.2e+04 timepoints (5p step, 60n window) -- even 50 timepoints/s (a generous floor, not a real engine-rate estimate) would need 240s per corner. This is only a coarse, advisory pre-grid heuristic -- it does not block the sweep, and a plausible-looking budget can still turn out to be too short in practice."
+ },
+ "coverage": {
+  "corners_simulated": 3,
+  "measurements_declared": 49,
+  "measurements_with_limits": 11,
+  "unrecognized_limit_keys": [],
+  "schema_version": 1,
+  "known": true,
+  "checked": [
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_end\",\"min\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_first\",\"max\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_end\",\"min\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_first\",\"max\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_end\",\"min\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_first\",\"max\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"i_static_ua\",\"min\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"max\"]",
+   "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"i_static_ua\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"resolve_decades\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"i_static_ua\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"resolve_decades\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_ns\",\"min\"]",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/observation",
+   "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/observation"
+  ],
+  "skipped": [
+   {
+    "id": "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"resolve_decades\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"max\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"tau_ps\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_over_tau\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/observation",
+    "reason": "unavailable_measurement"
+   }
+  ],
+  "inapplicable": [
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ss/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/-40C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   }
+  ],
+  "unknown": [],
+  "nothing_checked": false,
+  "nothing_checked_reasons": []
+ },
+ "provenance": {
+  "klt_version": "0.7.1.dev410+ge992cfa5a699",
+  "klayout_version": "0.30.12",
+  "pdk": {
+   "name": "sky130A",
+   "source": "search root: ~/.volare",
+   "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+  },
+  "deck": {
+   "name": "sky130.lib.spice",
+   "content_hash": "sha256:48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+   "released": false
+  },
+  "input": {
+   "content_hash": "sha256:5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+   "role": "netlist"
+  }
+ },
+ "measurements": [
+  {
+   "name": "vsup_v",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 1.8,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_a",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 3.955236727396e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_b",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_c",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.04956600279912,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3507921489641,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.4988249575448,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.9499528359397,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.6395142407762,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.5010606908948,
+    "margin": null
+   }
+  },
+  {
+   "name": "i_stat",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": -5.047999358602e-05,
+    "margin": null
+   }
+  },
+  {
+   "name": "q_dec",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": -1.831720409144e-12,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_ns",
+   "unit": null,
+   "limits": {
+    "min": 0.001,
+    "max": 25.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "sf/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3881710006221,
+    "margin": 0.3871710006221
+   }
+  },
+  {
+   "name": "td_od1_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_ps",
+   "unit": null,
+   "limits": {
+    "min": 0.1,
+    "max": 20000.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od1_over_tau",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "resolve_decades",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.9499528359397,
+    "margin": 0.19995283593970004
+   }
+  },
+  {
+   "name": "dout_od1_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.6395142407762,
+    "margin": -0.1104857592238
+   }
+  },
+  {
+   "name": "dout_od01_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.5010606908948,
+    "margin": -0.2489393091052
+   }
+  },
+  {
+   "name": "dout_od50_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.04956600279912,
+    "margin": 0.20043399720088
+   }
+  },
+  {
+   "name": "dout_od1_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3507921489641,
+    "margin": -0.10079214896409999
+   }
+  },
+  {
+   "name": "dout_od01_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.4988249575448,
+    "margin": -0.2488249575448
+   }
+  },
+  {
+   "name": "i_static_ua",
+   "unit": null,
+   "limits": {
+    "min": 0.1
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 49.57273062221,
+    "margin": 49.47273062221
+   }
+  },
+  {
+   "name": "e_dec_fj",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 2561.098429975,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_ra",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 3.955236727366e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rb",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rc",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.9504339972628,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.6492078507107,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.5011750424717,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.05004716406036,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3604857592229,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.4989393091053,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3955236727366,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od1_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.9504339972628,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.6492078507107,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.5011750424717,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.05004716406036,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.3604857592229,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": 0.4989393091053,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od50_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": -2.984467650091e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od1_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od01_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+    "value": null,
+    "margin": null
+   }
+  }
+ ],
+ "corners": [
+  {
+   "corner_id": "ss/vsup=1.800_vsupa=1.800V/-40C",
+   "process": "ss",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": -40,
+   "status": "error",
+   "runtime_s": 16.868,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 3.955236727396e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.04956600279912,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.3507921489641,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.4988249575448,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9499528359397,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.6395142407762,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.5010606908948,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -5.047999358602e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.831720409144e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.3955236727396,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.3945236727396
+    },
+    {
+     "name": "td_od1_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "resolve_decades",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9499528359397,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.19995283593970004
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.6395142407762,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.1104857592238
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.5010606908948,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.2489393091052
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.04956600279912,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.20043399720088
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.3507921489641,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.10079214896409999
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.4988249575448,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.2488249575448
+    },
+    {
+     "name": "i_static_ua",
+     "value": 50.47999358602,
+     "unit": null,
+     "status": "pass",
+     "margin": 50.37999358602
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 2561.098429975,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 3.955236727366e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9504339972628,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.6492078507107,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.5011750424717,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.05004716406036,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.3604857592229,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.4989393091053,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.3955236727366,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9504339972628,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.6492078507107,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.5011750424717,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.05004716406036,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.3604857592229,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.4989393091053,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -2.984467650091e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    }
+   ],
+   "diagnostics": [
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_b' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_c' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od01_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'tau_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_over_tau' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'resolve_decades' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_rb' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_rc' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_rev_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od01_rev_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'tau_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtd_od1_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtd_od01_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtau_rev_ps' produced no value"
+    }
+   ],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "sf/vsup=1.800_vsupa=1.800V/-40C",
+   "process": "sf",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": -40,
+   "status": "pass",
+   "runtime_s": 16.675,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 3.881710006221e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.003941322589e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.298158312263e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.006304677725654,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.085000419923,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.08787361541137,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9935593544843,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.9145675288931,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.9116763675471,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -6.767940168135e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -8.006585495966e-13,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.3881710006221,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.3871710006221
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.003941322589,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.298158312263,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 127.7768150979,
+     "unit": null,
+     "status": "pass",
+     "margin": 127.6768150979
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 7.856991284523,
+     "unit": null,
+     "status": "pass",
+     "margin": 6.856991284523
+    },
+    {
+     "name": "resolve_decades",
+     "value": 7.856991284523,
+     "unit": null,
+     "status": "pass",
+     "margin": 6.856991284523
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9935593544843,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.2435593544843
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.9145675288931,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1645675288931
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.9116763675471,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.16167636754710002
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.006304677725654,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.243695322274346
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.085000419923,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.164999580077
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.08787361541137,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.16212638458863
+    },
+    {
+     "name": "i_static_ua",
+     "value": 67.67940168135,
+     "unit": null,
+     "status": "pass",
+     "margin": 67.57940168135
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 454.4197127599,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 3.881710006211e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.003941322591e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.298158312303e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9936953222763,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.9149995800289,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.9121263846056,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.006440645515706,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.08543247110697,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.08832363245302,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.3881710006211,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.003941322591,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.298158312303,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 127.776815114,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9936953222763,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.9149995800289,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.9121263846056,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.006440645515706,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.08543247110697,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.08832363245302,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -9.661469554619e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": 2.64697796017e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": 3.973113918215e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": 1.610544658472e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "fs/vsup=1.800_vsupa=1.800V/-40C",
+   "process": "fs",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": -40,
+   "status": "pass",
+   "runtime_s": 17.12,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 4.106253630108e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.0430782023e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.485350838381e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.03866082546935,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.1385648642424,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.142352384017,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9608662282307,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.8606875121082,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.8568359765438,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -4.957273062221e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.656253844055e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.4106253630108,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.4096253630108
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.0430782023,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.485350838381,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 192.076565347,
+     "unit": null,
+     "status": "pass",
+     "margin": 191.97656534700002
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 5.430533393886,
+     "unit": null,
+     "status": "pass",
+     "margin": 4.430533393886
+    },
+    {
+     "name": "resolve_decades",
+     "value": 5.430533393886,
+     "unit": null,
+     "status": "pass",
+     "margin": 4.430533393886
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9608662282307,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.2108662282307
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.8606875121082,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.11068751210820005
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.8568359765438,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.10683597654379995
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.03866082546935,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.21133917453065
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.1385648642424,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1114351357576
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.142352384017,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.10764761598299999
+    },
+    {
+     "name": "i_static_ua",
+     "value": 49.57273062221,
+     "unit": null,
+     "status": "pass",
+     "margin": 49.47273062221
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 2258.486506827,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 4.106253630088e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.043078202306e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.485350838416e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9613391745578,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.8614351356307,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.8576476159128,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.03913377176932,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.1393124878919,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.1431640234562,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.4106253630088,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.043078202306,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.485350838416,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 192.0765653593,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9613391745578,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.8614351356307,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.8576476159128,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.03913377176932,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.1393124878919,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.1431640234562,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -2.02493813953e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": 5.955700410382e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": 3.419895524539e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": 1.226588972583e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  }
+ ]
+}

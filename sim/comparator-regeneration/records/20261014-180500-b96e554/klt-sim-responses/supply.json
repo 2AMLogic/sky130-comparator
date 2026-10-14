@@ -1,0 +1,2533 @@
+{
+ "schema_version": 3,
+ "netlist": {
+  "path": null,
+  "scope": "external"
+ },
+ "status": "error",
+ "corner_count": 3,
+ "passed": 2,
+ "failed": 0,
+ "errored": 1,
+ "inconclusive": 0,
+ "diagnostic_counts": {
+  "by_code": {
+   "measurement": 15
+  },
+  "by_severity": {
+   "error": 15
+  },
+  "corners_with_diagnostics": 1
+ },
+ "metrics": {
+  "sim__corner__count": 3,
+  "sim__corner__passed_count": 2,
+  "sim__corner__failed_count": 0,
+  "sim__corner__errored_count": 1,
+  "sim__corner__inconclusive_count": 0
+ },
+ "environment": {
+  "engine": "ngspice",
+  "engine_version": "46",
+  "ngspice_binary": "/usr/bin/ngspice",
+  "models_lib": {
+   "path": null,
+   "scope": "external"
+  },
+  "models_lib_sha256": "48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+  "netlist_sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+  "netlist_closure": [
+   {
+    "path": null,
+    "scope": "external",
+    "sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897"
+   }
+  ],
+  "remote": {
+   "provider": "aws-batch-fleet",
+   "job_id": "klt-sim-45ccefff8517",
+   "bucket": "2am-batch-jobs-221082181346",
+   "region": "us-east-1",
+   "instance_id": "i-0ba1c91f215b3f949",
+   "instance_type": "c7i.8xlarge",
+   "availability_zone": "us-east-1f",
+   "ami_id": "ami-0e0bec04ad8e81877",
+   "lifecycle": "spot",
+   "spot": true,
+   "state": "failed",
+   "exit_code": "4",
+   "concurrency": "2",
+   "physical_cores": "16",
+   "elapsed_seconds": 52,
+   "runner_klt_version": "0.7.0",
+   "client_klt_version": "0.7.1.dev410+ge992cfa5a699",
+   "runner_compatibility": "match",
+   "worker_environment": {
+    "capture": "ok",
+    "simulator": {
+     "requested_binary": "ngspice",
+     "binary_source": "PATH",
+     "selected_path": "/usr/local/bin/ngspice",
+     "version_banner": "******\n** ngspice-46 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Thu Oct  1 23:51:59 UTC 2026\n******\n",
+     "version_probe": "ok"
+    },
+    "pdk": {
+     "variant": "sky130A",
+     "root": "/opt/pdk",
+     "stamp_scheme": "sources-sha256",
+     "stamp_sha256": "d5ac52956829da3fee35d0b307d4e6cb83ae0e6535b56dba2eefed61cdffaf9b",
+     "stamp_text": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b",
+     "models_staged": false
+    },
+    "cpu_model": "Intel(R) Xeon(R) Platinum 8488C",
+    "omp_num_threads": null,
+    "image_manifest": null,
+    "diagnostics": [],
+    "pdk_stamp_comparison": {
+     "status": "not_comparable"
+    }
+   },
+   "job_ceiling": {
+    "basis": "conservative_serial_bound",
+    "unit_count": 3,
+    "per_unit_timeout_s": 120,
+    "overhead_s": 120.0,
+    "job_bound_s": 480.0,
+    "max_job_seconds": 3600.0,
+    "max_job_seconds_source": "fleet_config",
+    "exceeds_ceiling": false,
+    "check": "warn",
+    "max_units_per_job": 29,
+    "recommended_hosts": 1
+   }
+  },
+  "timeout_preflight_warning": "options.timeout_s (120s) looks implausible for a tran analysis with ~1.2e+04 timepoints (5p step, 60n window) -- even 50 timepoints/s (a generous floor, not a real engine-rate estimate) would need 240s per corner. This is only a coarse, advisory pre-grid heuristic -- it does not block the sweep, and a plausible-looking budget can still turn out to be too short in practice."
+ },
+ "coverage": {
+  "corners_simulated": 3,
+  "measurements_declared": 49,
+  "measurements_with_limits": 11,
+  "unrecognized_limit_keys": [],
+  "schema_version": 1,
+  "known": true,
+  "checked": [
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_end\",\"min\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_first\",\"max\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_end\",\"min\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_first\",\"max\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_end\",\"min\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_first\",\"max\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"i_static_ua\",\"min\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od50_ns\",\"max\"]",
+   "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od50_ns\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_end\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_first\",\"max\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_end\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_first\",\"max\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_end\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_first\",\"max\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"i_static_ua\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"resolve_decades\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"tau_ps\",\"max\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"tau_ps\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od50_ns\",\"max\"]",
+   "limit:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od50_ns\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_end\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_first\",\"max\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_end\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_first\",\"max\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_end\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_first\",\"max\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"i_static_ua\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"resolve_decades\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"tau_ps\",\"max\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"tau_ps\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od50_ns\",\"max\"]",
+   "limit:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od50_ns\",\"min\"]",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"da_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"da_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"db_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"db_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dc_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dc_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dra_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dra_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drb_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drb_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drc_end\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drc_first\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"e_dec_fj\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"i_stat\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"q_dec\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_a\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_ra\"]/observation",
+   "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"vsup_v\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"da_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"da_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"db_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"db_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dc_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dc_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dra_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dra_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drb_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drb_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drc_end\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drc_first\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"e_dec_fj\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"i_stat\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"q_dec\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"tau_rev_ps\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_a\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_b\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_c\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od01_ns\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od1_ns\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_ra\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_rb\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_rc\"]/observation",
+   "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"vsup_v\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"da_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"da_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"db_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"db_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dc_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dc_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dra_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dra_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drb_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drb_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drc_end\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drc_first\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"e_dec_fj\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"i_stat\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"q_dec\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"tau_rev_ps\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_a\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_b\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_c\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od01_ns\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od1_ns\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_ra\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_rb\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_rc\"]/observation",
+   "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"vsup_v\"]/observation"
+  ],
+  "skipped": [
+   {
+    "id": "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"resolve_decades\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"tau_ps\",\"max\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"tau_ps\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "limit:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od1_over_tau\",\"min\"]",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtau_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od01_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od1_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"tau_rev_ps\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_b\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_c\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od01_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od01_rev_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od1_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od1_rev_ns\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_rb\"]/observation",
+    "reason": "unavailable_measurement"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_rc\"]/observation",
+    "reason": "unavailable_measurement"
+   }
+  ],
+  "inapplicable": [
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"tt/vsup=1.620_vsupa=1.620V/27C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"tt/vsup=1.800_vsupa=1.800V/27C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"tt/vsup=1.980_vsupa=1.980V/27C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   }
+  ],
+  "unknown": [],
+  "nothing_checked": false,
+  "nothing_checked_reasons": []
+ },
+ "provenance": {
+  "klt_version": "0.7.1.dev410+ge992cfa5a699",
+  "klayout_version": "0.30.12",
+  "pdk": {
+   "name": "sky130A",
+   "source": "search root: ~/.volare",
+   "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+  },
+  "deck": {
+   "name": "sky130.lib.spice",
+   "content_hash": "sha256:48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+   "released": false
+  },
+  "input": {
+   "content_hash": "sha256:5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+   "role": "netlist"
+  }
+ },
+ "measurements": [
+  {
+   "name": "vsup_v",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 1.62,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_a",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 4.715117821152e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_b",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_c",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.1011250216655,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4970969270748,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4997099970887,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.8977242887967,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5028224630902,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5002819752073,
+    "margin": null
+   }
+  },
+  {
+   "name": "i_stat",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": -3.387618812533e-05,
+    "margin": null
+   }
+  },
+  {
+   "name": "q_dec",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": -1.935533872083e-12,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_ns",
+   "unit": null,
+   "limits": {
+    "min": 0.001,
+    "max": 25.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.980_vsupa=1.980V/27C",
+    "value": 0.4289949705086,
+    "margin": 0.4279949705086
+   }
+  },
+  {
+   "name": "td_od1_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_ps",
+   "unit": null,
+   "limits": {
+    "min": 0.1,
+    "max": 20000.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od1_over_tau",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "resolve_decades",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.8977242887967,
+    "margin": 0.14772428879669997
+   }
+  },
+  {
+   "name": "dout_od1_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5028224630902,
+    "margin": -0.24717753690980004
+   }
+  },
+  {
+   "name": "dout_od01_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5002819752073,
+    "margin": -0.2497180247927
+   }
+  },
+  {
+   "name": "dout_od50_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.1011250216655,
+    "margin": 0.1488749783345
+   }
+  },
+  {
+   "name": "dout_od1_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4970969270748,
+    "margin": -0.24709692707480002
+   }
+  },
+  {
+   "name": "dout_od01_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "fail",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4997099970887,
+    "margin": -0.2497099970887
+   }
+  },
+  {
+   "name": "i_static_ua",
+   "unit": null,
+   "limits": {
+    "min": 0.1
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 33.87618812533,
+    "margin": 33.77618812533
+   }
+  },
+  {
+   "name": "e_dec_fj",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 2691.041532194,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_ra",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 4.715117821164e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rb",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rc",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.8988749782352,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5029030729364,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5002900029105,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.1022757112034,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4971775369097,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4997180247926,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4715117821164,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od1_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.8988749782352,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5029030729364,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.5002900029105,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.1022757112034,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4971775369097,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 0.4997180247926,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od50_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": 1.263931975981e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od1_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od01_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "error",
+   "worst_case": {
+    "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+    "value": null,
+    "margin": null
+   }
+  }
+ ],
+ "corners": [
+  {
+   "corner_id": "tt/vsup=1.620_vsupa=1.620V/27C",
+   "process": "tt",
+   "supply_v": {
+    "vsup": 1.62,
+    "vsupa": 1.62
+   },
+   "temperature_c": 27,
+   "status": "error",
+   "runtime_s": 13.709,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.62,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 4.715117821152e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.1011250216655,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.4970969270748,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.4997099970887,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.8977242887967,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.5028224630902,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.5002819752073,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -3.387618812533e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.935533872083e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.4715117821152,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.4705117821152
+    },
+    {
+     "name": "td_od1_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "resolve_decades",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.8977242887967,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.14772428879669997
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.5028224630902,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.24717753690980004
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.5002819752073,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.2497180247927
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.1011250216655,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1488749783345
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.4970969270748,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.24709692707480002
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.4997099970887,
+     "unit": null,
+     "status": "fail",
+     "margin": -0.2497099970887
+    },
+    {
+     "name": "i_static_ua",
+     "value": 33.87618812533,
+     "unit": null,
+     "status": "pass",
+     "margin": 33.77618812533
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 2691.041532194,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 4.715117821164e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.8988749782352,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.5029030729364,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.5002900029105,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.1022757112034,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.4971775369097,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.4997180247926,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.4715117821164,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.8988749782352,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.5029030729364,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.5002900029105,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.1022757112034,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.4971775369097,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.4997180247926,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": 1.263931975981e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": null,
+     "unit": null,
+     "status": "error",
+     "margin": null
+    }
+   ],
+   "diagnostics": [
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_b' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_c' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od01_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'tau_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_over_tau' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'resolve_decades' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_rb' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_rc' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od1_rev_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'td_od01_rev_ns' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'tau_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtd_od1_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtd_od01_rev_ps' produced no value"
+    },
+    {
+     "severity": "error",
+     "code": "measurement",
+     "message": "measurement 'dtau_rev_ps' produced no value"
+    }
+   ],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "tt/vsup=1.800_vsupa=1.800V/27C",
+   "process": "tt",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": 27,
+   "status": "pass",
+   "runtime_s": 13.809,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 4.411397032566e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.087779091067e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.463301015726e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.04027207483981,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.1167457093878,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.1189063666381,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9592486146281,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.882683440354,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.8805068767413,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -5.337577190641e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.537699905284e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.4411397032566,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.4401397032566
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.087779091067,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.463301015726,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 163.0870997131,
+     "unit": null,
+     "status": "pass",
+     "margin": 162.9870997131
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 6.66992725348,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.66992725348
+    },
+    {
+     "name": "resolve_decades",
+     "value": 6.66992725348,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.66992725348
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9592486146281,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.20924861462809996
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.882683440354,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.13268344035400004
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.8805068767413,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.13050687674130002
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.04027207483981,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.20972792516019
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.1167457093878,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1332542906122
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.1189063666381,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1310936333619
+    },
+    {
+     "name": "i_static_ua",
+     "value": 53.37577190641,
+     "unit": null,
+     "status": "pass",
+     "margin": 53.27577190641
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 1989.641075116,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 4.411397032554e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.087779091073e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.463301015774e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9597279251573,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.8832542905213,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.881093633357,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.04075138537188,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.1173165596461,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.1194931232588,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.4411397032554,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.087779091073,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.463301015774,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 163.0870997313,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9597279251573,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.8832542905213,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.881093633357,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.04075138537188,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.1173165596461,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.1194931232588,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -1.204374971877e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": 6.273337765602e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": 4.83999920017e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": 1.829537347578e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "tt/vsup=1.980_vsupa=1.980V/27C",
+   "process": "tt",
+   "supply_v": {
+    "vsup": 1.98,
+    "vsupa": 1.98
+   },
+   "temperature_c": 27,
+   "status": "pass",
+   "runtime_s": 13.506,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.98,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 4.289949705086e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 9.590054685699e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.214812453805e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.01271299284947,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.06597477502769,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.06734006648181,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.987077984043,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.9337421775292,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.9323751943452,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -7.553868899267e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.109677414813e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.4289949705086,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.4279949705086
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 0.9590054685699,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.214812453805,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 111.0955621198,
+     "unit": null,
+     "status": "pass",
+     "margin": 110.9955621198
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 8.632257223165,
+     "unit": null,
+     "status": "pass",
+     "margin": 7.632257223165
+    },
+    {
+     "name": "resolve_decades",
+     "value": 8.632257223165,
+     "unit": null,
+     "status": "pass",
+     "margin": 7.632257223165
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.987077984043,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.23707798404299996
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.9337421775292,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.18374217752919997
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.9323751943452,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1823751943452
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.01271299284947,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.23728700715053
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.06597477502769,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.18402522497231
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.06734006648181,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.18265993351819
+    },
+    {
+     "name": "i_static_ua",
+     "value": 75.53868899267,
+     "unit": null,
+     "status": "pass",
+     "margin": 75.43868899267001
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 985.6717872654,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 4.289949705043e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 9.590054685697e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.214812453811e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9872870071892,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.9340252249661,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.9326599335302,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.01292201595703,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.06625782247083,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.0676248056548,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.4289949705043,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 0.9590054685697,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.214812453811,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 111.0955621226,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9872870071892,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.9340252249661,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.9326599335302,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.01292201595703,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.06625782247083,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.0676248056548,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -4.314574075077e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": -1.654361225106e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": 6.365981994208e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": 2.836558847094e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  }
+ ]
+}

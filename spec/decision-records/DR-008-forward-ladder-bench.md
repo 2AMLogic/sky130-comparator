@@ -69,4 +69,25 @@ not a verdict against the ratified Decision-time row (DR-002).
   because the outputs reset at 50 ns.
 - `klt sim` cannot evaluate spread floors; `ladder.py grade` does, so a
   response must be graded offline as well as by `klt sim`.
-- #170 adds mirrored rungs by extending `build_netlist`/`ladder.json`.
+- #170 adds mirrored rungs: see the addendum below.
+
+## Addendum (issue #170): supplemental reverse-polarity ladder
+
+Date: 2026-10-14. Status: accepted.
+
+Mirrored instances `Xr<rung>` (input positive at strobe 1, negative at
+strobe 2, so the timed decision is HIGH->LOW; delay crosses 0.25 falling,
+`td=35n`, same rungs and strobes) are appended after the forward netlist by
+`build_netlist(reverse=True)` and declared under a separate `reverse_ladder`
+key in `ladder.json`. The upstream "separate fragment + manifest key" is
+translated to this repo's generated netlist: the forward netlist text and the
+forward `analyses`/`measure`/`checks` are byte-identical (hashes pinned in
+`sim/tests/test_comparator_regeneration.py`), so committed forward evidence
+re-grades identically.
+
+**The reverse rungs are reference-only: reported, never scored.** They map to
+no ratified spec row (DR-002's Decision-time row is untouched), carry no
+klt-sim limits, and `ladder.py grade` exits on forward checks only; reverse
+checks are enforced only by `grade --reverse`, used for the negative control
+(`build --suppress-reverse-flip`, `grade --reverse --expect-fail`). No spec
+line is relaxed.
