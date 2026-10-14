@@ -1,0 +1,2404 @@
+{
+ "schema_version": 3,
+ "netlist": {
+  "path": null,
+  "scope": "external"
+ },
+ "status": "pass",
+ "corner_count": 3,
+ "passed": 3,
+ "failed": 0,
+ "errored": 0,
+ "inconclusive": 0,
+ "diagnostic_counts": {
+  "by_code": {},
+  "by_severity": {},
+  "corners_with_diagnostics": 0
+ },
+ "metrics": {
+  "sim__corner__count": 3,
+  "sim__corner__passed_count": 3,
+  "sim__corner__failed_count": 0,
+  "sim__corner__errored_count": 0,
+  "sim__corner__inconclusive_count": 0
+ },
+ "environment": {
+  "engine": "ngspice",
+  "engine_version": "46",
+  "ngspice_binary": "/usr/bin/ngspice",
+  "models_lib": {
+   "path": null,
+   "scope": "external"
+  },
+  "models_lib_sha256": "48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+  "netlist_sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+  "netlist_closure": [
+   {
+    "path": null,
+    "scope": "external",
+    "sha256": "5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897"
+   }
+  ],
+  "remote": {
+   "provider": "aws-batch-fleet",
+   "job_id": "klt-sim-c6076ad4b640",
+   "bucket": "2am-batch-jobs-221082181346",
+   "region": "us-east-1",
+   "instance_id": "i-0229fe6e513649de3",
+   "instance_type": "c7i.8xlarge",
+   "availability_zone": "us-east-1f",
+   "ami_id": "ami-0e0bec04ad8e81877",
+   "lifecycle": "spot",
+   "spot": true,
+   "state": "done",
+   "exit_code": "0",
+   "concurrency": "2",
+   "physical_cores": "16",
+   "elapsed_seconds": 23,
+   "runner_klt_version": "0.7.0",
+   "client_klt_version": "0.7.1.dev410+ge992cfa5a699",
+   "runner_compatibility": "match",
+   "worker_environment": {
+    "capture": "ok",
+    "simulator": {
+     "requested_binary": "ngspice",
+     "binary_source": "PATH",
+     "selected_path": "/usr/local/bin/ngspice",
+     "version_banner": "******\n** ngspice-46 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Thu Oct  1 23:51:59 UTC 2026\n******\n",
+     "version_probe": "ok"
+    },
+    "pdk": {
+     "variant": "sky130A",
+     "root": "/opt/pdk",
+     "stamp_scheme": "sources-sha256",
+     "stamp_sha256": "d5ac52956829da3fee35d0b307d4e6cb83ae0e6535b56dba2eefed61cdffaf9b",
+     "stamp_text": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b",
+     "models_staged": false
+    },
+    "cpu_model": "Intel(R) Xeon(R) Platinum 8488C",
+    "omp_num_threads": null,
+    "image_manifest": null,
+    "diagnostics": [],
+    "pdk_stamp_comparison": {
+     "status": "not_comparable"
+    }
+   },
+   "job_ceiling": {
+    "basis": "conservative_serial_bound",
+    "unit_count": 3,
+    "per_unit_timeout_s": 120,
+    "overhead_s": 120.0,
+    "job_bound_s": 480.0,
+    "max_job_seconds": 3600.0,
+    "max_job_seconds_source": "fleet_config",
+    "exceeds_ceiling": false,
+    "check": "warn",
+    "max_units_per_job": 29,
+    "recommended_hosts": 1
+   }
+  },
+  "timeout_preflight_warning": "options.timeout_s (120s) looks implausible for a tran analysis with ~1.2e+04 timepoints (5p step, 60n window) -- even 50 timepoints/s (a generous floor, not a real engine-rate estimate) would need 240s per corner. This is only a coarse, advisory pre-grid heuristic -- it does not block the sweep, and a plausible-looking budget can still turn out to be too short in practice."
+ },
+ "coverage": {
+  "corners_simulated": 3,
+  "measurements_declared": 49,
+  "measurements_with_limits": 11,
+  "unrecognized_limit_keys": [],
+  "schema_version": 1,
+  "known": true,
+  "checked": [
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_end\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_first\",\"max\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_end\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_first\",\"max\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_end\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_first\",\"max\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"i_static_ua\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"resolve_decades\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"max\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"max\"]",
+   "limit:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_end\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_first\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"i_static_ua\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"resolve_decades\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"max\"]",
+   "limit:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_end\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_first\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"i_static_ua\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"resolve_decades\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"tau_ps\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_over_tau\",\"min\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"max\"]",
+   "limit:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_ns\",\"min\"]",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/observation",
+   "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/observation",
+   "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/observation",
+   "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/observation"
+  ],
+  "skipped": [],
+  "inapplicable": [
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[0,\"ff/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[1,\"sf/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"da_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"da_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"db_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"db_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od01_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od1_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dout_od50_rev_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dra_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dra_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drb_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drb_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drc_end\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"drc_first\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od01_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od1_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"dtd_od50_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"e_dec_fj\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"i_stat\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"q_dec\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"tau_rev_ps\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_a\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_b\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_c\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od01_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od1_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_od50_rev_ns\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_ra\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_rb\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"td_rc\"]/limits",
+    "reason": "characterization_without_limits"
+   },
+   {
+    "id": "measurement:[2,\"fs/vsup=1.800_vsupa=1.800V/125C\",\"vsup_v\"]/limits",
+    "reason": "characterization_without_limits"
+   }
+  ],
+  "unknown": [],
+  "nothing_checked": false,
+  "nothing_checked_reasons": []
+ },
+ "provenance": {
+  "klt_version": "0.7.1.dev410+ge992cfa5a699",
+  "klayout_version": "0.30.12",
+  "pdk": {
+   "name": "sky130A",
+   "source": "search root: ~/.volare",
+   "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+  },
+  "deck": {
+   "name": "sky130.lib.spice",
+   "content_hash": "sha256:48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+   "released": false
+  },
+  "input": {
+   "content_hash": "sha256:5008654bb7749e886dfce3b6564022b695fb768e85633a38849c643adc743897",
+   "role": "netlist"
+  }
+ },
+ "measurements": [
+  {
+   "name": "vsup_v",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.8,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_a",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 5.380626450134e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_b",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.127791110174e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_c",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.467146986839e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.0405599125284,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.091850799218,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.09302178530094,
+    "margin": null
+   }
+  },
+  {
+   "name": "da_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.958907049859,
+    "margin": null
+   }
+  },
+  {
+   "name": "db_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9077687603797,
+    "margin": null
+   }
+  },
+  {
+   "name": "dc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9065989578473,
+    "margin": null
+   }
+  },
+  {
+   "name": "i_stat",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": -5.25858801087e-05,
+    "margin": null
+   }
+  },
+  {
+   "name": "q_dec",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": -1.424535589381e-12,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_ns",
+   "unit": null,
+   "limits": {
+    "min": 0.001,
+    "max": 25.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "sf/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.5124927005265,
+    "margin": 0.5114927005265
+   }
+  },
+  {
+   "name": "td_od1_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.127791110174,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.467146986839,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_ps",
+   "unit": null,
+   "limits": {
+    "min": 0.1,
+    "max": 20000.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 147.3803846371,
+    "margin": 147.2803846371
+   }
+  },
+  {
+   "name": "td_od1_over_tau",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "sf/vsup=1.800_vsupa=1.800V/125C",
+    "value": 6.725262091619,
+    "margin": 5.725262091619
+   }
+  },
+  {
+   "name": "resolve_decades",
+   "unit": null,
+   "limits": {
+    "min": 1.0
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "sf/vsup=1.800_vsupa=1.800V/125C",
+    "value": 6.725262091619,
+    "margin": 5.725262091619
+   }
+  },
+  {
+   "name": "dout_od50_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9269353095103,
+    "margin": 0.1769353095103
+   }
+  },
+  {
+   "name": "dout_od1_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.8769543378047,
+    "margin": 0.1269543378047
+   }
+  },
+  {
+   "name": "dout_od01_end",
+   "unit": null,
+   "limits": {
+    "min": 0.75
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.8758377359121,
+    "margin": 0.1258377359121
+   }
+  },
+  {
+   "name": "dout_od50_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.07243804850171,
+    "margin": 0.17756195149829002
+   }
+  },
+  {
+   "name": "dout_od1_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.1225954211887,
+    "margin": 0.12740457881130002
+   }
+  },
+  {
+   "name": "dout_od01_first",
+   "unit": null,
+   "limits": {
+    "max": 0.25
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.123710598693,
+    "margin": 0.126289401307
+   }
+  },
+  {
+   "name": "i_static_ua",
+   "unit": null,
+   "limits": {
+    "min": 0.1
+   },
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+    "value": 41.22589181636,
+    "margin": 41.125891816359996
+   }
+  },
+  {
+   "name": "e_dec_fj",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1797.461928901,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_ra",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 5.380626450134e-10,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rb",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.127791110174e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_rc",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.467146986834e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9594400874712,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9081492007814,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9069782146997,
+    "margin": null
+   }
+  },
+  {
+   "name": "dra_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.04109295014105,
+    "margin": null
+   }
+  },
+  {
+   "name": "drb_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.0922312396203,
+    "margin": null
+   }
+  },
+  {
+   "name": "drc_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.09340104215268,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od50_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.5380626450134,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od1_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.127791110174,
+    "margin": null
+   }
+  },
+  {
+   "name": "td_od01_rev_ns",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 1.467146986834,
+    "margin": null
+   }
+  },
+  {
+   "name": "tau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 147.3803846347,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9594400874712,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9081492007814,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_first",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.9069782146997,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od50_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.04109295014105,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od1_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.0922312396203,
+    "margin": null
+   }
+  },
+  {
+   "name": "dout_od01_rev_end",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 0.09340104215268,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od50_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 3.970466940255e-11,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od1_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": 5.293955920339e-11,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtd_od01_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": -5.512331602053e-09,
+    "margin": null
+   }
+  },
+  {
+   "name": "dtau_rev_ps",
+   "unit": null,
+   "limits": null,
+   "status": "pass",
+   "worst_case": {
+    "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+    "value": -2.416966555629e-09,
+    "margin": null
+   }
+  }
+ ],
+ "corners": [
+  {
+   "corner_id": "ff/vsup=1.800_vsupa=1.800V/125C",
+   "process": "ff",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": 125,
+   "status": "pass",
+   "runtime_s": 15.516,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 5.380626450134e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.127791110174e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.467146986839e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.0405599125284,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.091850799218,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.09302178530094,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.958907049859,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.9077687603797,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.9065989578473,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -5.25858801087e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.424535589381e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.5380626450134,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.5370626450134
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.127791110174,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.467146986839,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 147.3803846371,
+     "unit": null,
+     "status": "pass",
+     "margin": 147.2803846371
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 7.652247026978,
+     "unit": null,
+     "status": "pass",
+     "margin": 6.652247026978
+    },
+    {
+     "name": "resolve_decades",
+     "value": 7.652247026978,
+     "unit": null,
+     "status": "pass",
+     "margin": 6.652247026978
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.958907049859,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.208907049859
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.9077687603797,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1577687603797
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.9065989578473,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.15659895784730005
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.0405599125284,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.2094400874716
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.091850799218,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.158149200782
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.09302178530094,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.15697821469905998
+    },
+    {
+     "name": "i_static_ua",
+     "value": 52.5858801087,
+     "unit": null,
+     "status": "pass",
+     "margin": 52.4858801087
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 1797.461928901,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 5.380626450134e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.127791110174e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.467146986834e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9594400874712,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.9081492007814,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.9069782146997,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.04109295014105,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.0922312396203,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.09340104215268,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.5380626450134,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.127791110174,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.467146986834,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 147.3803846347,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9594400874712,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.9081492007814,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.9069782146997,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.04109295014105,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.0922312396203,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.09340104215268,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": 3.970466940255e-11,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": 5.293955920339e-11,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": -5.512331602053e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": -2.416966555629e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "sf/vsup=1.800_vsupa=1.800V/125C",
+   "process": "sf",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": 125,
+   "status": "pass",
+   "runtime_s": 15.666,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 5.124927005265e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.205387646381e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.618086450981e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.05410145334026,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.1140922560475,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.1155428638271,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9453600468302,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.8854702321264,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.8840150981785,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -5.203725608979e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.624104570681e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.5124927005265,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.5114927005265
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.205387646381,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.618086450981,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 179.232813526,
+     "unit": null,
+     "status": "pass",
+     "margin": 179.132813526
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 6.725262091619,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.725262091619
+    },
+    {
+     "name": "resolve_decades",
+     "value": 6.725262091619,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.725262091619
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9453600468302,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.19536004683020003
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.8854702321264,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.13547023212639997
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.8840150981785,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1340150981785
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.05410145334026,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.19589854665974
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.1140922560475,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1359077439525
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.1155428638271,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1344571361729
+    },
+    {
+     "name": "i_static_ua",
+     "value": 52.03725608979,
+     "unit": null,
+     "status": "pass",
+     "margin": 51.93725608979
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 2164.685033437,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 5.124927005264e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.205387646376e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.618086450904e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9458985466592,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.8859077439522,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.8844571361716,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.05463995316978,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.1145297678735,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.1159849018214,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.5124927005264,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.205387646376,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.618086450904,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 179.2328134945,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9458985466592,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.8859077439522,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.8844571361716,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.05463995316978,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.1145297678735,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.1159849018214,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -1.323488980085e-11,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": -4.566036981293e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": -7.709985053484e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": -3.150103497771e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  },
+  {
+   "corner_id": "fs/vsup=1.800_vsupa=1.800V/125C",
+   "process": "fs",
+   "supply_v": {
+    "vsup": 1.8,
+    "vsupa": 1.8
+   },
+   "temperature_c": 125,
+   "status": "pass",
+   "runtime_s": 15.164,
+   "measurements": [
+    {
+     "name": "vsup_v",
+     "value": 1.8,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_a",
+     "value": 5.790443106801e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_b",
+     "value": 1.180227945587e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_c",
+     "value": 1.577062766126e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_first",
+     "value": 0.07243804850171,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_first",
+     "value": 0.1225954211887,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_first",
+     "value": 0.123710598693,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "da_end",
+     "value": 0.9269353095103,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "db_end",
+     "value": 0.8769543378047,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dc_end",
+     "value": 0.8758377359121,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "i_stat",
+     "value": -4.122589181636e-05,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "q_dec",
+     "value": -1.959928003416e-12,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_ns",
+     "value": 0.5790443106801,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.5780443106801
+    },
+    {
+     "name": "td_od1_ns",
+     "value": 1.180227945587,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_ns",
+     "value": 1.577062766126,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_ps",
+     "value": 172.343172787,
+     "unit": null,
+     "status": "pass",
+     "margin": 172.243172787
+    },
+    {
+     "name": "td_od1_over_tau",
+     "value": 6.848127062423,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.848127062423
+    },
+    {
+     "name": "resolve_decades",
+     "value": 6.848127062423,
+     "unit": null,
+     "status": "pass",
+     "margin": 5.848127062423
+    },
+    {
+     "name": "dout_od50_end",
+     "value": 0.9269353095103,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1769353095103
+    },
+    {
+     "name": "dout_od1_end",
+     "value": 0.8769543378047,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1269543378047
+    },
+    {
+     "name": "dout_od01_end",
+     "value": 0.8758377359121,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.1258377359121
+    },
+    {
+     "name": "dout_od50_first",
+     "value": 0.07243804850171,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.17756195149829002
+    },
+    {
+     "name": "dout_od1_first",
+     "value": 0.1225954211887,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.12740457881130002
+    },
+    {
+     "name": "dout_od01_first",
+     "value": 0.123710598693,
+     "unit": null,
+     "status": "pass",
+     "margin": 0.126289401307
+    },
+    {
+     "name": "i_static_ua",
+     "value": 41.22589181636,
+     "unit": null,
+     "status": "pass",
+     "margin": 41.125891816359996
+    },
+    {
+     "name": "e_dec_fj",
+     "value": 2926.796903466,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_ra",
+     "value": 5.790443106799e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rb",
+     "value": 1.180227945581e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_rc",
+     "value": 1.57706276603e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_first",
+     "value": 0.9275619514993,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_first",
+     "value": 0.8774045788098,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_first",
+     "value": 0.8762894013059,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dra_end",
+     "value": 0.07306469048963,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drb_end",
+     "value": 0.1230456621952,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "drc_end",
+     "value": 0.1241622640878,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od50_rev_ns",
+     "value": 0.5790443106799,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od1_rev_ns",
+     "value": 1.180227945581,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "td_od01_rev_ns",
+     "value": 1.57706276603,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "tau_rev_ps",
+     "value": 172.3431727481,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_first",
+     "value": 0.9275619514993,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_first",
+     "value": 0.8774045788098,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_first",
+     "value": 0.8762894013059,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od50_rev_end",
+     "value": 0.07306469048963,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od1_rev_end",
+     "value": 0.1230456621952,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dout_od01_rev_end",
+     "value": 0.1241622640878,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od50_rev_ps",
+     "value": -2.117582368136e-10,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od1_rev_ps",
+     "value": -6.008639969585e-09,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtd_od01_rev_ps",
+     "value": -9.571472303974e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    },
+    {
+     "name": "dtau_rev_ps",
+     "value": -3.895885687052e-08,
+     "unit": null,
+     "status": "pass",
+     "margin": null
+    }
+   ],
+   "diagnostics": [],
+   "artifacts": {
+    "log": null,
+    "raw": null,
+    "waveform": null,
+    "deck": null
+   },
+   "monte_carlo": null
+  }
+ ]
+}

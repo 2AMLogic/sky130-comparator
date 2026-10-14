@@ -1,7 +1,7 @@
 {
   "name": "comparator-regeneration",
   "description": "Forward overdrive ladder (issue #171): decision time at 50 mV / 1 mV / 0.1 mV differential overdrive over PVT, the regeneration time constant tau from the two small rungs, the polarity proof (each instance decides both ways in one run), static current and switching energy per decision. Twin of gf180-comparator's sim/comparator-regeneration forward ladder: identical measure and check names, sky130 numbers.",
-  "claim": "REFERENCE, NOT VERDICT. Measurement-sanity checks and corner-sensitivity anchors for the forward ladder of this repo's own comparator (sim/comparator-decision/testbench/comparator_core.spice). A check passing here is not a verdict against any ratified row; the Decision-time row is scored separately from sim/comparator-decision `regen` records (DR-002). Reverse-polarity rungs are issue #170 and are not in this manifest.",
+  "claim": "REFERENCE, NOT VERDICT. Measurement-sanity checks and corner-sensitivity anchors for the forward ladder of this repo's own comparator (sim/comparator-decision/testbench/comparator_core.spice). A check passing here is not a verdict against any ratified row; the Decision-time row is scored separately from sim/comparator-decision `regen` records (DR-002). The supplemental reverse-polarity ladder (issue #170, HIGH->LOW decision) is declared under the separate `reverse_ladder` key: REPORTED, NEVER SCORED, mapped to no ratified row, and it does not change `analyses`/`measure`/`checks` above (DR-008 addendum).",
   "netlist": "tb_regeneration.spice",
   "nominal_supply_v": 1.8,
   "supply_tolerance": 0.1,
@@ -137,6 +137,84 @@
     "i_static_ua": {
       "min": 0.1,
       "description": "Static supply current with the strobe low; a floor only (dead-bias detector)."
+    }
+  },
+  "reverse_ladder": {
+    "description": "Supplemental reverse-polarity ladder (issue #170, DR-008 addendum): mirrored instances (input POSITIVE at strobe 1, NEGATIVE at strobe 2) so the timed decision is HIGH->LOW; same rungs, strobes and td=35n window as the forward ladder, delay crosses 0.25 falling. Appended to the same transient; forward fields are untouched. REPORTED, NEVER SCORED: not mapped to any ratified spec row, and `ladder.py grade` exits on forward checks only unless --reverse is given (used for the negative control).",
+    "analyses": [
+      ".meas tran td_ra trig v(clkn) val=0.5 rise=2 targ v(dran) val=0.25 fall=1 td=35n",
+      ".meas tran td_rb trig v(clkn) val=0.5 rise=2 targ v(drbn) val=0.25 fall=1 td=35n",
+      ".meas tran td_rc trig v(clkn) val=0.5 rise=2 targ v(drcn) val=0.25 fall=1 td=35n",
+      ".meas tran dra_first find v(dran) at=18n",
+      ".meas tran drb_first find v(drbn) at=18n",
+      ".meas tran drc_first find v(drcn) at=18n",
+      ".meas tran dra_end find v(dran) at=48n",
+      ".meas tran drb_end find v(drbn) at=48n",
+      ".meas tran drc_end find v(drcn) at=48n"
+    ],
+    "measure": {
+      "td_od50_rev_ns": "td_ra*1e9",
+      "td_od1_rev_ns": "td_rb*1e9",
+      "td_od01_rev_ns": "td_rc*1e9",
+      "tau_rev_ps": "(td_rc-td_rb)/ln(10)*1e12",
+      "dout_od50_rev_first": "dra_first",
+      "dout_od1_rev_first": "drb_first",
+      "dout_od01_rev_first": "drc_first",
+      "dout_od50_rev_end": "dra_end",
+      "dout_od1_rev_end": "drb_end",
+      "dout_od01_rev_end": "drc_end",
+      "dtd_od50_rev_ps": "(td_ra-td_a)*1e12",
+      "dtd_od1_rev_ps": "(td_rb-td_b)*1e12",
+      "dtd_od01_rev_ps": "(td_rc-td_c)*1e12",
+      "dtau_rev_ps": "((td_rc-td_rb)-(td_c-td_b))/ln(10)*1e12"
+    },
+    "checks": {
+      "td_od50_rev_ns": {
+        "min": 0.001,
+        "max": 25.0,
+        "description": "Sanity envelope only (reported): 1 ps = artefact, 25 ns = the HIGH->LOW decision did not complete."
+      },
+      "tau_rev_ps": {
+        "min": 0.1,
+        "max": 20000.0,
+        "description": "Reverse tau from the (1 mV, 0.1 mV) pair; reported."
+      },
+      "dout_od50_rev_first": {
+        "min": 0.75,
+        "description": "Reverse first strobe (input positive) holds the POSITIVE answer; mirror of dout_*_end, threshold 0.75 as DR-008."
+      },
+      "dout_od50_rev_end": {
+        "max": 0.25,
+        "description": "Reverse second strobe (input negative) holds the NEGATIVE answer after the HIGH->LOW flip; mirror of dout_*_first."
+      },
+      "dout_od1_rev_first": {
+        "min": 0.75,
+        "description": "Reverse first strobe (input positive) holds the POSITIVE answer; mirror of dout_*_end, threshold 0.75 as DR-008."
+      },
+      "dout_od1_rev_end": {
+        "max": 0.25,
+        "description": "Reverse second strobe (input negative) holds the NEGATIVE answer after the HIGH->LOW flip; mirror of dout_*_first."
+      },
+      "dout_od01_rev_first": {
+        "min": 0.75,
+        "description": "Reverse first strobe (input positive) holds the POSITIVE answer; mirror of dout_*_end, threshold 0.75 as DR-008."
+      },
+      "dout_od01_rev_end": {
+        "max": 0.25,
+        "description": "Reverse second strobe (input negative) holds the NEGATIVE answer after the HIGH->LOW flip; mirror of dout_*_first."
+      },
+      "dtd_od50_rev_ps": {
+        "description": "Reverse minus forward decision time, ps; report-only, no limit."
+      },
+      "dtd_od1_rev_ps": {
+        "description": "Reverse minus forward decision time, ps; report-only, no limit."
+      },
+      "dtd_od01_rev_ps": {
+        "description": "Reverse minus forward decision time, ps; report-only, no limit."
+      },
+      "dtau_rev_ps": {
+        "description": "Reverse minus forward tau, ps; report-only, no limit."
+      }
     }
   }
 }

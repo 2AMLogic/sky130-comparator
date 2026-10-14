@@ -17,5 +17,15 @@ check names; the file layout differs by design (DR-008:
 (batch fleet on a dispatch worker). `klt sim` cannot express per-axis spread
 floors, so `ladder.py grade` evaluates them. Why the grid is five small
 requests and not one 45-point request: the first record's "Fleet submit"
-section. `records/` is append-only. The reverse-polarity ladder is #170.
+section. `records/` is append-only.
+
+Supplemental reverse ladder (issue #170, DR-008 addendum): mirrored
+instances (HIGH->LOW decision, same rungs/strobes/window) appended after the
+forward netlist and declared under `ladder.json`'s separate `reverse_ladder`
+key; names `td_od*_rev_ns`, `tau_rev_ps`, `dout_*_rev_first/_end`,
+`dtd_*_rev_ps`, `dtau_rev_ps`. REPORTED, NEVER SCORED: no klt-sim limits, no
+ratified row, and `grade` exits on forward checks only (it prints reverse
+results as REVERSE lines). Forward netlist and fields are unchanged (pinned by
+a test); `build --no-reverse` regenerates the forward-only deck. Negative
+control: `build --suppress-reverse-flip`, then `grade --reverse --expect-fail`.
 Extracted-DUT trip-point centring (gf180 `dut_vos`) is not implemented.

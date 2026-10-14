@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Forward regeneration ladder (issue #171): a `klt sim` request builder and
+"""Forward (#171) and supplemental reverse (#170) regeneration ladder: a `klt sim` request builder and
 grader. Decision record: spec/decision-records/DR-008-forward-ladder-bench.md.
 
 Why a request builder and not run.py or the op-only harness: see DR-008. In
@@ -7,11 +7,13 @@ short, the ladder is a PVT grid of one transient with `.meas` cards, which is
 exactly what a `klt sim` request expresses, and `klt sim` is the path that
 fans a grid out to the batch fleet.
 
-    python3 sim/comparator-regeneration/ladder.py build  OUT_DIR [--sabotage-polarity]
+    python3 sim/comparator-regeneration/ladder.py build  OUT_DIR [--sabotage-polarity] [--no-reverse] [--suppress-reverse-flip]
         writes OUT_DIR/{tb_regeneration.spice,request-<axis>.json}
     python3 sim/comparator-regeneration/ladder.py grade  RESPONSE.json [--expect-fail]
         grades a `klt sim --format json` response against ladder.json's
-        checks plus the per-axis spread floors klt sim cannot express
+        checks plus the per-axis spread floors klt sim cannot express;
+        also REPORTS the reverse ladder (never scored). With --reverse it
+        grades the reverse checks only (the reverse negative control)
 
 Then, per request:  klt sim OUT_DIR/request-<axis>.json --format json -o OUT_DIR/out-<axis>
 (KLT_SIM_BACKEND=batch on a dispatch worker sends it to the fleet), and
@@ -45,7 +47,37 @@ def _fmt(x: float) -> str:
     return f"{x:.6g}"
 
 
-def build_netlist(dut_text: str | None = None, sabotage_polarity: bool = False) -> str:
+def build_netlist(dut_text: str | None = None, sabotage_polarity: bool = False,
+                  reverse: bool = True, suppress_reverse_flip: bool = False) -> str:
+    """Forward ladder (byte-identical to the issue #171 netlist) plus, when
+    `reverse`, the supplemental reverse block appended after it."""
+    text = build_forward_netlist(dut_text, sabotage_polarity)
+    if reverse:
+        text += build_reverse_block(suppress_reverse_flip)
+    return text
+
+
+def build_reverse_block(suppress_flip: bool = False) -> str:
+    """Supplemental reverse-polarity ladder (issue #170): mirrored instances
+    r<rung>, input POSITIVE at strobe 1 and NEGATIVE at strobe 2 (HIGH->LOW
+    decision), same rungs/strobes as the forward ladder. All three rungs sit
+    on the main vdd/clk (ideal sources, so the forward devices and the
+    vsupa-based energy measures are electrically independent of them).
+    `suppress_flip` is the negative control: the stimulus never flips, so the
+    second-strobe decision never happens and the reverse checks must fail."""
+    s1, s2 = (+1, +1) if suppress_flip else (+1, -1)
+    L: list[str] = ["", "* ---- supplemental reverse ladder (issue #170): reported, never scored"]
+    a = L.append
+    for r, dv in RUNGS:
+        a(f"vsr{r} sr{r} 0 pwl(0 {_fmt(s1 * dv)} {T_FLIP_NS}n {_fmt(s1 * dv)} {T_FLIP_NS + 1}n {_fmt(s2 * dv)})")
+        a(f"Epr{r} ipr{r} cm sr{r} 0 0.5")
+        a(f"Enr{r} inr{r} cm sr{r} 0 -0.5")
+        a(f"Xr{r} clk vdd 0 ipr{r} inr{r} opr{r} onr{r} comparator_dut")
+        a(f"Bdr{r}n dr{r}n 0 v='0.5+(v(opr{r})-v(onr{r}))/(2*v(vdd))'")
+    return "\n".join(L) + "\n"
+
+
+def build_forward_netlist(dut_text: str | None = None, sabotage_polarity: bool = False) -> str:
     """Circuit-body netlist (no .control/.end; klt sim owns those).
 
     Each rung's differential input is a PWL that is NEGATIVE for strobe 1 and
@@ -103,7 +135,7 @@ def _limits(check: dict) -> dict | None:
     return lim or None
 
 
-def build_requests(netlist_name: str = "tb_regeneration.spice") -> dict[str, dict]:
+def build_requests(netlist_name: str = "tb_regeneration.spice", reverse: bool = True) -> dict[str, dict]:
     """The grid as four small `klt sim` requests, keyed by name.
 
     A single 45-point request was submitted to the batch fleet four times
@@ -133,6 +165,13 @@ def build_requests(netlist_name: str = "tb_regeneration.spice") -> dict[str, dic
         if lim:
             entry["limits"] = lim
         meas.append(entry)
+    # reverse ladder: reported only, so NO klt-sim limits (never scored)
+    rev = m.get("reverse_ladder")
+    if reverse and rev:
+        for card in rev["analyses"]:
+            meas.append({"name": card.split()[2], "spice": card})
+        for name, expr in rev["measure"].items():
+            meas.append({"name": name, "spice": f".meas tran {name} param='{expr}'"})
 
     def req(process, temps, supplies, exclude=None):
         r = {
@@ -226,6 +265,27 @@ def grade(response: dict, manifest: dict | None = None) -> list[str]:
     return fails
 
 
+def grade_reverse(response: dict, manifest: dict | None = None) -> list[str]:
+    """Reverse-ladder checks (reported, never scored): per-point min/max from
+    `reverse_ladder.checks`; no spread floors. Report-only names without
+    limits are skipped."""
+    m = manifest or load_manifest()
+    fails: list[str] = []
+    for p in _points(response):
+        for name, chk in m["reverse_ladder"]["checks"].items():
+            if "min" not in chk and "max" not in chk:
+                continue
+            val = p["vals"].get(name)
+            if val is None or val != val:
+                fails.append(f"{p['id']}: {name}: no value")
+                continue
+            if "min" in chk and val < chk["min"]:
+                fails.append(f"{p['id']}: {name}={val:.6g} < min {chk['min']}")
+            if "max" in chk and val > chk["max"]:
+                fails.append(f"{p['id']}: {name}={val:.6g} > max {chk['max']}")
+    return fails
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -233,7 +293,13 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("out_dir")
     b.add_argument("--sabotage-polarity", action="store_true",
                    help="negative control: swap the stimulus signs")
+    b.add_argument("--no-reverse", action="store_true",
+                   help="omit the supplemental reverse ladder")
+    b.add_argument("--suppress-reverse-flip", action="store_true",
+                   help="reverse negative control: the reverse stimulus never flips")
     g = sub.add_parser("grade")
+    g.add_argument("--reverse", action="store_true",
+                   help="grade the reverse checks only (exit status and --expect-fail apply to them)")
     g.add_argument("response", nargs="+")
     g.add_argument("--expect-fail", action="store_true",
                    help="negative control: succeed only if grading FAILS")
@@ -241,15 +307,31 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "build":
         out = Path(args.out_dir)
         out.mkdir(parents=True, exist_ok=True)
-        (out / "tb_regeneration.spice").write_text(build_netlist(sabotage_polarity=args.sabotage_polarity))
-        for name, req in build_requests().items():
+        (out / "tb_regeneration.spice").write_text(build_netlist(
+            sabotage_polarity=args.sabotage_polarity, reverse=not args.no_reverse,
+            suppress_reverse_flip=args.suppress_reverse_flip))
+        for name, req in build_requests(reverse=not args.no_reverse).items():
             (out / f"request-{name}.json").write_text(json.dumps(req, indent=2) + "\n")
         print(f"wrote {out}/request-{{process,temperature,supply,graded-cold,graded-hot}}.json")
         return 0
-    fails = grade(merge_responses([json.loads(Path(x).read_text()) for x in args.response]))
+    merged = merge_responses([json.loads(Path(x).read_text()) for x in args.response])
+    if args.reverse:
+        fails = grade_reverse(merged)
+        for f in fails[:40]:
+            print("FAIL:", f)
+        print(f"{'FAIL' if fails else 'PASS'}: {len(fails)} reverse check failure(s)")
+        return (0 if fails else 1) if args.expect_fail else (1 if fails else 0)
+    has_rev = any(x["name"] == "td_od50_rev_ns"
+                  for x in merged["corners"][0]["measurements"])
+    rfails = grade_reverse(merged) if has_rev else None
+    fails = grade(merged)
     for f in fails[:40]:
         print("FAIL:", f)
     print(f"{'FAIL' if fails else 'PASS'}: {len(fails)} check failure(s)")
+    if rfails is not None:  # reported, never scored: no effect on the exit status
+        for f in rfails[:40]:
+            print("REVERSE (reported, not scored):", f)
+        print(f"REVERSE (reported, not scored): {len(rfails)} check failure(s)")
     return (0 if fails else 1) if args.expect_fail else (1 if fails else 0)
 
 
