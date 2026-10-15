@@ -685,7 +685,7 @@ class TestToolchainDriftVsWarning(unittest.TestCase):
             variant_dir = Path("/fake/sky130A")
             error = ""
             # summary() (and so report_env()) renders pdk.resolved_commit(),
-            # which falls back to this field for a non-volare path layout
+            # which falls back to this field for a SOURCES-less path layout
             # like the fake one above.
             open_pdks_commit_expected = self.pinned_pdk
 
@@ -730,23 +730,20 @@ class TestToolchainDriftVsWarning(unittest.TestCase):
         self.assertEqual(result.status, 1)
         self.assertIn("!= pinned", result.messages[0])
 
-    def test_unverifiable_pdk_provenance_is_a_warning_not_a_silent_pass(self):
-        """A PDK install whose commit can't be verified through volare's
-        path layout (resolved_commit_verified() returns None) must NOT
-        satisfy the pin -- it should warn, not pass silently, and must
-        never appear in `messages` (which would make it drift-fatal) nor
-        be omitted entirely (issue #8: this used to silently pass because
-        pdk.resolved_commit()'s "<pin> (unverified -- ...)" display string
-        happens to startswith() the pin)."""
+    def test_unverifiable_pdk_provenance_fails_closed(self):
+        """A PDK install whose commit can't be verified (no readable
+        SOURCES; resolved_commit_verified() returns None) must NOT satisfy
+        the pin -- it is drift-fatal (#178), not a warning, and never a
+        silent pass (issue #8: pdk.resolved_commit()'s "<pin> (unverified
+        -- ...)" display string happens to startswith() the pin)."""
         toolchain._ngspice_version = lambda: f"ngspice-{self.ngspice_floor}"
         toolchain._xschem_version = lambda: self.pinned_xschem
         toolchain.pdk.resolved_commit_verified = lambda info: None
         result = toolchain.check_env()
-        self.assertEqual(result.status, 0)
-        self.assertEqual(result.messages, [])
-        self.assertEqual(len(result.warnings), 1)
-        self.assertIn("unverifiable", result.warnings[0])
-        self.assertIn(self.pinned_pdk, result.warnings[0])
+        self.assertEqual(result.status, 1)
+        self.assertEqual(len(result.messages), 1)
+        self.assertIn("unverifiable", result.messages[0])
+        self.assertIn(self.pinned_pdk, result.messages[0])
 
     def test_allow_drift_downgrades_to_ok_but_keeps_the_message(self):
         toolchain._ngspice_version = lambda: f"ngspice-{self.ngspice_floor - 1}"
@@ -933,42 +930,102 @@ class TestPdkResolvedCommit(unittest.TestCase):
     function, and the fallback's "<pin> (unverified -- ...)" display
     string happened to startswith() the pin, silently satisfying
     toolchain.check_env()'s drift gate for an install of unknown
-    provenance."""
+    provenance. Issue #178: the SOURCES file is now the primary signal;
+    the ciel path hash is secondary."""
 
-    def test_verified_commit_found_via_volare_shaped_path(self):
+    OLD = "c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+    PIN = "f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
+
+    def _info(self, variant_dir, expected=None):
+        class FakeInfo:
+            pass
+
+        FakeInfo.variant_dir = variant_dir
+        FakeInfo.open_pdks_commit_expected = expected or self.PIN
+        return FakeInfo()
+
+    def _variant(self, tmp, commit_dir, sources):
+        d = Path(tmp) / "ciel" / "sky130" / "versions" / commit_dir / "sky130A"
+        d.mkdir(parents=True)
+        if sources is not None:
+            (d / "SOURCES").write_text(sources)
+        return d
+
+    def test_on_pin_tree_passes(self):
         with tempfile.TemporaryDirectory() as tmp:
-            commit = "a" * 40
-            versions_dir = Path(tmp) / "sky130" / "versions" / commit / "sky130A"
-            versions_dir.mkdir(parents=True)
+            d = self._variant(tmp, self.PIN, f"open_pdks {self.PIN}\n")
+            self.assertEqual(pdk.resolved_commit_verified(self._info(d)), self.PIN)
+            self.assertEqual(pdk.resolved_commit(self._info(d)), self.PIN)
 
-            class FakeInfo:
-                variant_dir = versions_dir
-                open_pdks_commit_expected = "b" * 40
+    def test_sources_other_commit_is_reported_as_that_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._variant(tmp, self.OLD, f"open_pdks {self.OLD}\n")
+            self.assertEqual(pdk.resolved_commit_verified(self._info(d)), self.OLD)
 
-            self.assertEqual(pdk.resolved_commit_verified(FakeInfo()), commit)
-            self.assertEqual(pdk.resolved_commit(FakeInfo()), commit)
+    def test_missing_sources_fails_closed_even_with_pin_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._variant(tmp, self.PIN, None)
+            self.assertIsNone(pdk.resolved_commit_verified(self._info(d)))
+            self.assertIn("UNVERIFIED", pdk.resolved_commit(self._info(d)))
 
-    def test_non_volare_layout_is_unverifiable(self):
+    def test_sources_without_open_pdks_line_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._variant(tmp, self.PIN, "skywater-pdk deadbeef\n")
+            self.assertIsNone(pdk.resolved_commit_verified(self._info(d)))
+
+    def test_sources_disagreeing_with_path_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._variant(tmp, self.PIN, f"open_pdks {self.OLD}\n")
+            self.assertIsNone(pdk.resolved_commit_verified(self._info(d)))
+            self.assertIn("UNVERIFIED", pdk.resolved_commit(self._info(d)))
+
+    def test_hand_install_with_sources_is_verifiable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "some-hand-install" / "sky130A"
+            d.mkdir(parents=True)
+            (d / "SOURCES").write_text(f"open_pdks {self.PIN}\n")
+            self.assertEqual(pdk.resolved_commit_verified(self._info(d)), self.PIN)
+
+    def test_non_ciel_layout_without_sources_is_unverifiable(self):
         with tempfile.TemporaryDirectory() as tmp:
             plain_dir = Path(tmp) / "some-hand-install" / "sky130A"
             plain_dir.mkdir(parents=True)
-
-            class FakeInfo:
-                variant_dir = plain_dir
-                open_pdks_commit_expected = "b" * 40
-
-            self.assertIsNone(pdk.resolved_commit_verified(FakeInfo()))
-            display = pdk.resolved_commit(FakeInfo())
-            self.assertTrue(display.startswith("b" * 40))
+            self.assertIsNone(pdk.resolved_commit_verified(self._info(plain_dir)))
+            display = pdk.resolved_commit(self._info(plain_dir))
+            self.assertTrue(display.startswith(self.PIN))
             self.assertIn("unverified", display)
 
     def test_nonexistent_path_is_unverifiable_not_an_error(self):
-        class FakeInfo:
-            variant_dir = Path("/definitely/does/not/exist/sky130A")
-            open_pdks_commit_expected = "c" * 40
+        info = self._info(Path("/definitely/does/not/exist/sky130A"), "c" * 40)
+        self.assertIsNone(pdk.resolved_commit_verified(info))
+        self.assertTrue(pdk.resolved_commit(info).startswith("c" * 40))
 
-        self.assertIsNone(pdk.resolved_commit_verified(FakeInfo()))
-        self.assertTrue(pdk.resolved_commit(FakeInfo()).startswith("c" * 40))
+    def test_stray_old_tree_fails_check_env_against_pin(self):
+        """End to end: a leftover tree at c6d73a3 resolved via PDK_ROOT is
+        drift-fatal against the pinned f6eeac7."""
+        with tempfile.TemporaryDirectory() as tmp:
+            d = self._variant(tmp, self.OLD, f"open_pdks {self.OLD}\n")
+            saved = (toolchain._ngspice_version, toolchain._xschem_version,
+                     toolchain.pdk.resolve)
+            cfg = toolchain._load()
+            try:
+                toolchain._ngspice_version = lambda: f"ngspice-{cfg['ngspice_min_major']}"
+                toolchain._xschem_version = lambda: cfg["xschem_tag"]
+
+                class Info:
+                    found = True
+                    variant = "sky130A"
+                    variant_dir = d
+                    error = ""
+                    open_pdks_commit_expected = cfg["open_pdks"]
+
+                toolchain.pdk.resolve = lambda: Info()
+                result = toolchain.check_env()
+            finally:
+                (toolchain._ngspice_version, toolchain._xschem_version,
+                 toolchain.pdk.resolve) = saved
+            self.assertEqual(result.status, 1)
+            self.assertIn("!= pinned", result.messages[0])
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ Resolution order (env wins over the committed default, matching
 sim/pdk.json's own convention and gf180-sar-adc's sim/harness/pdk.py):
 
   1. $PDK_ROOT / $PDK, if both set.
-  2. sim/pdk.json's "default_pdk_root" (~/.volare) / "variant" (sky130A).
+  2. sim/pdk.json's "default_pdk_root" (~/.ciel) / "variant" (sky130A).
 """
 
 from __future__ import annotations
@@ -68,12 +68,12 @@ def resolve() -> PdkInfo:
     )
 
 
-def _volare_commit_from_path(variant_dir: Path) -> str | None:
-    """The open_pdks commit volare encodes into the resolved variant
-    symlink's path (.../sky130/versions/<commit>/sky130A), or None if
-    variant_dir does not resolve through that shape (e.g. a hand-installed
-    or otherwise non-volare PDK, whose provenance this harness has no way
-    to verify).
+def _commit_from_path(variant_dir: Path) -> str | None:
+    """The 40-hex open_pdks commit ciel encodes into the resolved variant
+    symlink's path (.../ciel/sky130/versions/<commit>/sky130A), or None if
+    variant_dir does not resolve through that shape. A SECONDARY signal only:
+    the path says which version directory the symlink points at, not what
+    that tree was built from -- see _commit_from_sources().
     """
     try:
         resolved = variant_dir.resolve()
@@ -85,10 +85,33 @@ def _volare_commit_from_path(variant_dir: Path) -> str | None:
     return None
 
 
+def _commit_from_sources(variant_dir: Path) -> str | None:
+    """The open_pdks commit recorded in <variant_dir>/SOURCES (a line
+    "open_pdks <sha>"), or None when SOURCES is missing, unreadable or has
+    no such line. This is the PRIMARY provenance signal: a stray tree at a
+    different revision cannot pass it by sitting at a lookalike path.
+    """
+    try:
+        text = (variant_dir / "SOURCES").read_text()
+    except OSError:
+        return None
+    for line in text.splitlines():
+        fields = line.split()
+        if len(fields) == 2 and fields[0] == "open_pdks":
+            sha = fields[1].lower()
+            if len(sha) == 40 and all(c in "0123456789abcdef" for c in sha):
+                return sha
+    return None
+
+
 def resolved_commit_verified(info: PdkInfo) -> str | None:
     """The open_pdks commit actually installed at info.variant_dir, IFF its
-    provenance can be verified through volare's path layout -- None
-    otherwise.
+    provenance can be verified -- None otherwise.
+
+    Reads the variant's SOURCES file first. The resolved path's version hash
+    is only a secondary signal: if both are present and disagree the install
+    is unverifiable (None), and a missing/unreadable SOURCES is unverifiable
+    too (fail closed), even when the path looks right.
 
     Callers that must fail closed on unverifiable provenance (e.g.
     toolchain.check_env()'s pin-drift gate) use this, not resolved_commit()
@@ -99,23 +122,34 @@ def resolved_commit_verified(info: PdkInfo) -> str | None:
     suffix, which previously happened to `startswith()` the pin and so
     satisfied the drift gate for an install of unknown provenance.
     """
-    return _volare_commit_from_path(info.variant_dir)
+    from_sources = _commit_from_sources(info.variant_dir)
+    if from_sources is None:
+        return None
+    from_path = _commit_from_path(info.variant_dir)
+    if from_path is not None and from_path != from_sources:
+        return None
+    return from_sources
 
 
 def resolved_commit(info: PdkInfo) -> str:
     """Best-effort open_pdks commit actually installed at info.variant_dir,
     for DISPLAY in evidence records and summaries.
 
-    Falls back to the expected pin annotated
-    "(unverified -- non-volare layout)" so callers always get *some*
-    string to record. This fallback is a display convenience only -- it
-    must never be treated as proof the install is on pin; use
+    A SOURCES/path disagreement or a SOURCES-less tree is reported loudly,
+    never as a clean commit. The fallback is a display convenience only --
+    it must never be treated as proof the install is on pin; use
     resolved_commit_verified() for that decision.
     """
-    commit = _volare_commit_from_path(info.variant_dir)
-    if commit is not None:
-        return commit
-    return info.open_pdks_commit_expected + " (unverified -- non-volare layout)"
+    from_sources = _commit_from_sources(info.variant_dir)
+    from_path = _commit_from_path(info.variant_dir)
+    if from_sources is not None and (from_path is None or from_path == from_sources):
+        return from_sources
+    if from_sources is not None:
+        return (f"{from_sources} (UNVERIFIED -- SOURCES disagrees with path "
+                f"version {from_path})")
+    if from_path is not None:
+        return f"{from_path} (UNVERIFIED -- no readable SOURCES file)"
+    return info.open_pdks_commit_expected + " (unverified -- no SOURCES file)"
 
 
 def resolve_or_raise() -> PdkInfo:

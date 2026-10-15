@@ -3,10 +3,11 @@
 Bootstrap steps for the open-source analog flow this repo's `sim/` harness
 drives: xschem (schematic capture / netlisting) + ngspice (simulation)
 against the sky130 PDK, fetched/managed via
-[volare](https://github.com/efabless/volare).
+[ciel](https://github.com/fossi-foundation/ciel) (the successor to
+volare, whose version feed stopped in Aug 2025).
 
 This doc is meant to be followed from a shell on a machine that already has
-the xschem/ngspice/volare binaries installed — a from-scratch build/install
+the xschem/ngspice/ciel binaries installed — a from-scratch build/install
 recipe for those three tools is out of scope here (see "Toolchain versions"
 below for what to do if one is genuinely missing). There is no `layout/`
 tree in this repo yet, so this doc still has no layout/DRC/LVS-pass section
@@ -28,7 +29,7 @@ re-recorded against its own install and `sim/pdk.json` / `sim/toolchain.json`
 | --- | --- | --- |
 | xschem | `XSCHEM V3.4.7` | `/usr/local/bin/xschem` |
 | ngspice | `ngspice-46` | `/home/ubuntu/.local/bin/ngspice` |
-| volare | `Volare v0.20.6` | `/home/ubuntu/.local/bin/volare` |
+| ciel | `2.6.1` (pinned) | `pip install ciel==2.6.1` (venv or user site) |
 | python3 | `Python 3.12.3` | `/usr/bin/python3` |
 
 Recorded by running each tool's own version command on the machine doing
@@ -38,7 +39,7 @@ machine rather than trusting the table above:
 ```sh
 xschem -v          # -> XSCHEM V3.4.7 ...
 ngspice --version   # -> ngspice-46 : Circuit level simulation program ...
-volare --version    # -> Volare v0.20.6 ...
+ciel --version      # -> 2.6.1
 python3 --version   # -> Python 3.12.3
 ```
 
@@ -132,13 +133,13 @@ enforces (`sim/harness/toolchain.py`'s `check_env()`, driven by
 is checked but only ever produces a **warning** on drift (every evidence
 record already pins its own netlist by SHA-256, so an xschem difference
 doesn't invalidate anything — see `sim/harness/toolchain.py`'s module
-docstring), and `python_min: "3.9"` is a floor. `volare`'s own version isn't
-pin-checked by the harness at all; it only needs to be new enough to fetch
+docstring), and `python_min: "3.9"` is a floor. `ciel`'s own version isn't
+pin-checked by the harness at all (CI pins `ciel==2.6.1`); it only needs to be new enough to fetch
 and enable the `open_pdks` commit pinned below.
 
 If a tool is genuinely missing on your machine, this repo does not document
 a from-scratch build recipe for it — install via your platform's package
-manager (Homebrew, apt, pipx for `volare`, etc.) and re-run the version
+manager (Homebrew, apt, a venv for `ciel`, etc.) and re-run the version
 commands above before continuing.
 
 ## 1. Verify xschem works headlessly
@@ -160,13 +161,13 @@ example, substitute any other `.sch` under the same examples directory —
 this step only proves the xschem binary itself runs headlessly, not
 anything sky130-specific.
 
-## 2. Fetch + enable the sky130 PDK via volare
+## 2. Fetch + enable the sky130 PDK via ciel
 
 Use this repo's own `sim/pdk.json` `install_command` verbatim:
 
 ```sh
-volare fetch  --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
-volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+pip install ciel==2.6.1
+ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 ```
 
 **Why this specific `open_pdks` commit, not "newest available":**
@@ -176,12 +177,13 @@ provenance is comparable across every sky130 canary in this workspace — a
 newer commit would silently make this repo's numbers incomparable with its
 siblings'.
 
-After `volare enable`, `~/.volare` contains PDK variant symlinks:
+After `ciel enable`, `~/.ciel` contains PDK variant symlinks:
 
 ```sh
-ls -la ~/.volare | grep sky130
-# sky130A -> volare/sky130/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/sky130A
-# sky130B -> volare/sky130/versions/c6d73a35f524070e85faff4a6a9eef49553ebc2b/sky130B
+ls -la ~/.ciel | grep sky130
+# sky130A -> ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A
+# sky130B -> ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130B
+cat ~/.ciel/sky130A/SOURCES | grep open_pdks   # -> open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 ```
 
 This repo standardizes on the **`sky130A`** variant (`sim/pdk.json`'s
@@ -198,7 +200,7 @@ use:
 
 ```sh
 source sim/env.sh
-# -> sky130: PDK_ROOT=/home/you/.volare PDK=sky130A
+# -> sky130: PDK_ROOT=/home/you/.ciel PDK=sky130A
 ```
 
 If it instead prints `sky130: PDK not found -- run 'python3
