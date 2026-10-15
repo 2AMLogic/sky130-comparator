@@ -7,7 +7,7 @@ Live roadmap generated from GitHub label state by the Loom Guide role.
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
 
-_None._
+- **#180**: feat: re-pin open_pdks to f6eeac7 via ciel, verify PDK revision from SOURCES
 
 ## Very Important
 
@@ -44,7 +44,7 @@ _None._
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
-_None._
+- **#180**: feat: re-pin open_pdks to f6eeac7 via ciel, verify PDK revision from SOURCES
 
 ## Proposed
 
@@ -68,13 +68,13 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 0 |
+| Operator merge-risk holds | 1 |
 | Very important | 0 |
 | Important | 2 |
 | Ready (`loom:issue`) | 0 |
 | In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
-| Approved PRs awaiting merge | 0 |
+| Approved PRs awaiting merge | 1 |
 | Curated | 3 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
