@@ -4,6 +4,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-14
 
+- **PR #174**: feat(sim): supplemental reverse-polarity regeneration ladder (#170)
+- **Issue #170** (closed): Mirror gf180's supplemental reverse-polarity ladder fragment (bench-structure parity, gf180-comparator#158/#166)
 - **PR #172**: feat(sim): forward regeneration ladder with gf180 measure names (#171)
 - **Issue #171** (closed): Port gf180's forward regeneration ladder bench structure (prerequisite for #170)
 
