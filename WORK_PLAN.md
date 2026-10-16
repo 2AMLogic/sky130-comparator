@@ -21,6 +21,7 @@ _None._
 
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#127**: Establish a verified execution route for comparator campaign #125
+- **#178**: Re-pin open_pdks to f6eeac7 with ciel; verify PDK revision in search (177 part 1)
 
 ## Ready
 
@@ -71,7 +72,7 @@ _None._
 |------|-------|
 | Operator merge-risk holds | 1 |
 | Very important | 0 |
-| Important | 2 |
+| Important | 3 |
 | Ready (`loom:issue`) | 0 |
 | In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
