@@ -53,6 +53,7 @@ Issues carrying `loom:curated`.
 - **#3**: Track the gap to T1 sim-validated / bronze (klayout-tools design-evidence ladder) *(curated)*
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)*
 - **#127**: Establish a verified execution route for comparator campaign #125 *(curated)*
+- **#178**: Re-pin open_pdks to f6eeac7 with ciel; verify PDK revision in search (177 part 1) *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -75,7 +76,7 @@ _None._
 | In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
 | Approved PRs awaiting merge | 1 |
-| Curated | 3 |
+| Curated | 4 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
