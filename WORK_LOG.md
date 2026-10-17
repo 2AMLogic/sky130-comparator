@@ -212,3 +212,9 @@ Chronological record of merged pull requests and closed issues, maintained by th
 ### 2026-09-07
 
 - **Issue #1** (closed): Champion: Merge-Risk Hold Digest
+
+### 2026-09-06
+
+- **PR #5**: docs: bootstrap target-spec table, porting plan, and gap-to-T1 tracker
+- **Issue #4** (closed): Gap-to-T1 tracker: sky130-comparator bootstrap (T1/bronze design-evidence checklist)
+- **Issue #2** (closed): Bootstrap the block: draft target-spec, porting/design plan, gap-to-T1 tracker (wave-5 standup completion)
