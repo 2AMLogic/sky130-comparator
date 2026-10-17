@@ -17,9 +17,49 @@ move.
 
 ## The current verdict, honestly
 
-**4 of 11 T1 items are `met`: item 3 "DRC clean", item 4 "LVS clean", item 8
-"Characterization report" and item 11 "Power delivery (structural)". T1 is not
-awarded and no catalog tier is claimed.**
+**5 of 11 T1 items are `met`: item 2 "Layout", item 3 "DRC clean", item 4 "LVS
+clean", item 8 "Characterization report" and item 11 "Power delivery
+(structural)". T1 is not awarded and no catalog tier is claimed.**
+
+**Item 2, "Layout"** (issue #186) is cited from `evidence/item2.json`, a
+`"kind": "generic"` envelope with `"t1_item": 2` that pins
+`layout/comparator.gds` by path and content hash, so the row is `met` only
+while the GDS still re-hashes to the manifest's pinned value (verified: it is
+`stale_evidence` after a one-byte edit). It also carries a
+`provenance.regeneration` claim that `python3 layout/gen_comparator.py`
+reproduces those bytes; klt does not run the generator, so CI does
+(`gen_comparator.py --check`, `layout-device-count` job). Regenerate the
+envelope with `python3 scripts/layout-envelope.py --write`. **What it does not
+bind:** the generator and request documents. The docs describe a
+`provenance.input.paths` set binding (klayout-tools#3044), but the pinned
+klt 0.7.0 renders it `unanchored_evidence`, so the envelope binds the GDS alone
+and edits to `gen_comparator.py` surface through the CI regeneration check,
+not through the grade. Like item 8's, the `pass` is a claimant assertion; the
+tool-checked layout evidence is items 3, 4 and 11.
+
+**Items 1, 9 and 10 — inventories committed, envelopes waiting on a klt
+release** (issue #186). These rows are graded on an envelope that
+`klt signoff --attest {1,9,10} --inventory <file>` produces by running the
+item's mechanical checks (klayout-tools#2844). That landed after 0.7.0:
+PyPI's latest klayout-tools is **0.7.0** (checked 2026-10-17) and its
+`klt signoff` has no `--attest`. Pinning CI to a dev build would be
+unreproducible, and a hand-written envelope would grade on assertion, so the
+decision is to **wait for a release containing #2844**. What is committed now:
+[`attest/item1.json`](../attest/item1.json),
+[`attest/item9.json`](../attest/item9.json) and
+[`attest/item10.json`](../attest/item10.json), each listing the exact files and
+commands its item claims, so the follow-up is a one-command change per item
+(`klt signoff --attest N --inventory attest/itemN.json -o evidence/itemN.json`,
+cite the inventory's hash, add `... --check evidence/itemN.json` to the
+workflow, bump the pin and regenerate the record). Run with the dev build
+`klt 0.7.1.dev1743` on a worktree host, item 10 passed 11/11; items 1 and 9
+each failed one command check because that host's toolchain differs from the
+pins (ngspice 42 vs 46, xschem 3.4.4 vs 3.4.7: `design/netlist.sh --check`
+reported STALE, `sim/selftest.sh --quick` refused the drifted toolchain), so
+those two must be attested on a host that matches `sim/toolchain.json`.
+The item 9 `pins` follow `sim/pdk.json` / `sim/toolchain.json` as on `main`
+at the time of writing (PDK `c6d73a35f524…`); a re-pin shows up as `--check`
+drift. Until the envelopes exist items 1, 9 and 10 stay `unmet`/`no_evidence`.
 
 **Item 3, "DRC clean"** (issue #46), cited from
 `layout/drc-report.json` — a committed `klt drc` envelope over
@@ -115,18 +155,17 @@ table accepts a hand-assembled record through the opt-in `generic` envelope
 (see its section below). Those `unmet` rows are the correct result per issue
 #31's own "An all-`unmet` manifest is a correct result" section: they are the
 machine-readable statement of the gap, and they must not be decorated with
-citations that do not actually support them (items 1, 2, 9 and 10 in
-particular are graded on "some passing envelope was cited", never on topical
-relevance — see the grader contract).
+citations that do not actually support them (items 1, 2, 9 and 10 were
+graded on "some passing envelope was cited" when this was first written;
+they are now graded on artifact-anchored envelopes — see the item 2 and
+items 1/9/10 paragraphs above).
 
 Rows are `klt`-graded verdicts, not repo-content claims. Items 1
-(schematic `design/comparator.sch` + `design/netlist.sh`), 2 (the
-committed `layout/comparator.gds`) and 9 (`sim/comparator-decision`
-testbenches) have committed content, but the grade is about a *check
-behind a citation*, and no `klt` envelope backs them yet — the
-`unmet`/`no_evidence` row is the accurate mechanical statement, and for
-those three the grader could not tell a relevant citation from an
-irrelevant one anyway. The historical per-item prose context lives in
+(schematic `design/comparator.sch` + `design/netlist.sh`) and 9
+(`sim/comparator-decision` testbenches) have committed content, but the
+grade is about a *check behind a citation*, and no `klt --attest` envelope
+backs them yet — the `unmet`/`no_evidence` row is the accurate mechanical
+statement (inventories are committed under `attest/`; see above). The historical per-item prose context lives in
 tracker issue #3's edit history and `## Verified corrections`.
 
 Item 11's row is present and graded, as issue #31 requires, and the
@@ -281,6 +320,10 @@ Regenerate whenever:
 
 `scripts/check-t1-signoff.py` re-runs the signoff and compares the fresh
 report against the committed record:
+
+(Rule 5, issue #186: a met citation for item 1, 2, 9 or 10 must carry the
+grader's `artifact_binding` with `input_verified: true` — an unbound passing
+envelope is refused.)
 
 - **fails** on any cited item that is not `met` fresh (a pinned artifact
   that changed, vanished, or was replaced — CI goes red instead of

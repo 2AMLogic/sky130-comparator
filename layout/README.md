@@ -776,7 +776,7 @@ Standing limits, stated with the claim:
 - The structural supply question only; IR drop and electromigration
   (`klt power`) are outside it, and the extractor's lumped supply R is
   documented as pessimistic elsewhere.
-- Citing item 11 does not award T1 or any catalog tier: 4 of 11 items are met.
+- Citing item 11 does not award T1 or any catalog tier: 5 of 11 items are met.
 
 ## What is deliberately not attempted here
 
@@ -792,13 +792,11 @@ Per #3's one-at-a-time convention, each of these is its own issue:
 - **Post-layout re-simulation** (T1 item 7).
 
 `manifests/sky130-comparator.json` / `manifests/t1-signoff-report.json`
-carry four citations — items 3, 4, 8 and 11 (4 of 11 met, T1 not awarded); see
-"Why item 4 is cited" and "Why item 11 is cited" above. **T1 item 2 (Layout) stays
-`unmet` / `no_evidence`** even though the GDS it describes is committed:
-items 1, 2, 9 and 10 have no `klt` verb behind them, so citing *any*
-passing envelope would render them `met` on no topical basis at all
-(`klayout-tools` `docs/cli/signoff.md` → "Items 1, 2, 9, and 10: `klt
-signoff` cannot check topical relevance"). Leaving it uncited is the honest
-row, per `manifests/README.md`. `manifests/integrator-view.json`'s
+carry five citations — items 2, 3, 4, 8 and 11 (5 of 11 met, T1 not awarded); see
+"Why item 4 is cited" and "Why item 11 is cited" above. **T1 item 2 (Layout)**
+is cited from `evidence/item2.json` (issue #186), an artifact-anchored envelope
+binding `comparator.gds` by hash with a regeneration claim that CI re-checks
+(`gen_comparator.py --check`); read `manifests/README.md` for what that
+binding does and does not cover. `manifests/integrator-view.json`'s
 `gds.path` / `measured_area` are the layout's own record there, validated by
 `scripts/check-integrator-view.py`.

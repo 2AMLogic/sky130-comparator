@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "t1-attestation-inventory",
+  "t1_item": 10,
+  "description": "T1 item 10 (repo hygiene): README, LICENSE, the spec table and the CI workflow, plus the hermetic (stdlib-only) CI gates and their selftests, each of which exits non-zero on failure.",
+  "hygiene": [
+    "README.md",
+    "LICENSE",
+    "spec/README.md",
+    ".github/workflows/t1-signoff.yml"
+  ],
+  "checks": [
+    {"name": "t1-signoff-gate-selftest", "argv": ["python3", "scripts/check-t1-signoff.py", "selftest"]},
+    {"name": "characterization-envelope-selftest", "argv": ["python3", "scripts/characterization-envelope.py", "--selftest"]},
+    {"name": "characterization-envelope-fresh", "argv": ["python3", "scripts/characterization-envelope.py"]},
+    {"name": "integrator-view-selftest", "argv": ["python3", "scripts/check-integrator-view.py", "selftest"]},
+    {"name": "integrator-view-gate", "argv": ["python3", "scripts/check-integrator-view.py", "gate"]},
+    {"name": "sim-append-only-selftest", "argv": ["python3", "scripts/check-sim-append-only.py", "selftest"]},
+    {"name": "harness-unit-tests", "argv": ["python3", "-m", "unittest", "discover", "-s", "sim/tests", "-t", "."]}
+  ]
+}

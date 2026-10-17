@@ -90,6 +90,15 @@ jobs:
       - name: Re-run T1 signoff against the committed manifest
         run: python3 scripts/check-t1-signoff.py gate
 
+      # T1 item 2's artifact-anchored envelope (issue #186). The manifest pins
+      # evidence/item2.json's input hash, so `gate` above already goes red
+      # when layout/comparator.gds moves; this step says which file drifted
+      # and proves (selftest) that an edited member changes the digest.
+      - name: Layout-envelope selftest + currency check (hermetic)
+        run: |
+          python3 scripts/layout-envelope.py --selftest
+          python3 scripts/layout-envelope.py --check
+
       # The LVS envelope's own rot check (issue #49). layout/lvs-report.json
       # is cited for item 4 (issue #123, see manifests/README.md), but a
       # manifest pins an envelope's *layout*-side hash only, so a change to the schematic (and therefore to
@@ -180,6 +189,11 @@ jobs:
       # version string. Exit 3 on drift.
       - name: Re-extract the parasitics and diff against the committed netlists
         run: PDK_ROOT="$HOME/.volare" python3 layout/extract_pex.py --check
+
+      # The item-2 envelope's regeneration claim (issue #186): the committed
+      # GDS is what layout/gen_comparator.py produces. Byte-compare.
+      - name: Regenerate the layout and byte-compare against the committed GDS
+        run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check
 
   # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
   # (--sabotage-corners) is the only check that the corner runner really
