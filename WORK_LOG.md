@@ -4,6 +4,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-17
 
+- **PR #193**: docs: align layout-envelope docstring with single-path GDS binding
+- **Issue #191** (closed): layout-envelope.py module docstring still describes a provenance.input.paths set
 - **PR #190**: feat: cite T1 item 2 with an artifact-anchored envelope; add item 1/9/10 inventories
 - **Issue #186** (closed): Cite T1 items 1, 2, 9 and 10 with artifact-anchored evidence
 
