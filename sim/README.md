@@ -392,7 +392,7 @@ chain.
 ## Environment setup
 
 See [`docs/environment-setup.md`](../docs/environment-setup.md) for the
-step-by-step volare/xschem/ngspice bootstrap against the pins above (a dated
+step-by-step ciel/xschem/ngspice bootstrap against the pins above (a dated
 toolchain-versions table, the `sim/pdk.json` `install_command`, `sim/env.sh`
 usage, and a final `sim/run_corners.py --check-env` verification step).
 `sim/pdk.json`'s `install_command` and `sim/toolchain.json`'s pinned versions

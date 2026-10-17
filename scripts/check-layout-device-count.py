@@ -13,7 +13,7 @@ parser/count logic by importing it from the generator, so they cannot drift.
 Needs `klt` (klayout-tools, pinned in .github/workflows/t1-signoff.yml) and
 a resolvable sky130A PDK install at the sim/pdk.json pin:
 
-    python3 scripts/check-layout-device-count.py gate [--pdk-root ~/.volare]
+    python3 scripts/check-layout-device-count.py gate [--pdk-root ~/.ciel]
 
 `selftest` is hermetic (no klt, no PDK): it proves the counter accepts a
 known-good fixture netlist and rejects two corrupted ones (a missing device
@@ -130,7 +130,7 @@ def main() -> int:
     )
     parser.add_argument("mode", choices=["gate", "selftest"])
     parser.add_argument("--klt", default="klt")
-    parser.add_argument("--pdk-root", default="~/.volare")
+    parser.add_argument("--pdk-root", default="~/.ciel")
     args = parser.parse_args()
     if args.mode == "selftest":
         return selftest()
