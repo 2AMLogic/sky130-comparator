@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-17
+
+- **PR #190**: feat: cite T1 item 2 with an artifact-anchored envelope; add item 1/9/10 inventories
+- **Issue #186** (closed): Cite T1 items 1, 2, 9 and 10 with artifact-anchored evidence
+
 ### 2026-10-14
 
 - **PR #174**: feat(sim): supplemental reverse-polarity regeneration ladder (#170)
