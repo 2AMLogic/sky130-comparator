@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kind": "generic",
+  "status": "pass",
+  "t1_item": 2,
+  "summary": "layout/comparator.gds, regenerated from layout/gen_comparator.py (python3 layout/gen_comparator.py --check byte-compares it)",
+  "source": "layout/README.md",
+  "provenance": {
+    "klt_version": "0.7.0",
+    "klayout_version": "0.30.12",
+    "pdk": null,
+    "deck": null,
+    "input": {
+      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
+      "path": "layout/comparator.gds"
+    },
+    "regeneration": {
+      "generator": "python3 layout/gen_comparator.py",
+      "regenerated_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
+    }
+  }
+}

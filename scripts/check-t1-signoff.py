@@ -62,6 +62,10 @@ REPO_DEFAULTS = {
 KLT_BIN = "klt"
 
 
+# T1 items graded on an artifact-anchored envelope (issue #186).
+ANCHORED_ITEMS = {1, 2, 9, 10}
+
+
 def item_key(item: dict) -> tuple:
     """Identity for a report row: (tier, id, partition).
 
@@ -210,6 +214,24 @@ def compare(manifest: dict, committed: dict, fresh: dict) -> None:
                 "investigate rather than pass silently (issue #31 curator note)"
             )
 
+    # Rule 5 (issue #186): items 1, 2, 9 and 10 are claims about what the
+    # repository contains, so a met citation must be artifact-anchored -- the
+    # grader's `artifact_binding` names the item and re-hashed the audited
+    # artifact. A met row without it is an unbound assertion.
+    for k in sorted(fresh_met):
+        if k[1] not in ANCHORED_ITEMS or k[1] not in {
+            int(e.split(".", 1)[0]) for e in evidence if e.split(".", 1)[0].isdigit()
+        }:
+            continue
+        cite = fresh_met[k].get("citation")
+        binding = cite.get("artifact_binding") if isinstance(cite, dict) else None
+        if not isinstance(binding, dict) or binding.get("input_verified") is not True:
+            fail(
+                f"T1 {k[1]} is cited but its citation is not artifact-anchored "
+                "(no artifact_binding with input_verified: true) -- cite an "
+                "envelope that pins the audited artifact by path and hash"
+            )
+
     # Rule 4: a new pass must not pass silently the other way -- the
     # committed record is the tracker's verdict of record.
     for k in sorted(fresh_met):
@@ -319,6 +341,11 @@ def _fixture_report(block="fx-block", kind="analog", statuses=None,
                 "input_verified": True,
                 "exit_status": 0,
             }
+            if i in ANCHORED_ITEMS:
+                citation["artifact_binding"] = {
+                    "t1_item": i, "path": f"fx{i}.json",
+                    "content_hash": "sha256:fx", "input_verified": True,
+                }
             if input_verified_override is not _UNSET:
                 citation["input_verified"] = input_verified_override
         items.append({
@@ -395,6 +422,20 @@ def run_selftest(_args: argparse.Namespace) -> int:
           manifest=cite2,
           committed=_fixture_report(statuses={2: "met"}),
           fresh=_fixture_report(statuses={2: "met"}, input_verified_override=False))
+
+    unbound = _fixture_report(statuses={2: "met"})
+    del unbound["items"][1]["citation"]["artifact_binding"]
+    check("anchored item cited without artifact_binding fails",
+          expect_fail=True, expect_substr="not artifact-anchored",
+          manifest=cite2,
+          committed=_fixture_report(statuses={2: "met"}),
+          fresh=unbound)
+
+    check("unanchored item (3) needs no artifact_binding", expect_fail=False,
+          expect_substr=None,
+          manifest={"evidence": {"3": "fx3.json"}},
+          committed=_fixture_report(statuses={3: "met"}),
+          fresh=_fixture_report(statuses={3: "met"}))
 
     # Pass-with-warning cases.
     check("input_verified null warns but passes", expect_fail=False,

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "kind": "t1-attestation-inventory",
+  "t1_item": 1,
+  "description": "T1 item 1 (design sources): the xschem schematic and the SPICE fragment design/netlist.sh derives from it. The freshness check regenerates the fragment and diffs it (needs xschem + the pinned PDK, see docs/environment-setup.md). The schematic uses only PDK primitives, so there are no project symbol files.",
+  "sources": [
+    "design/comparator.sch",
+    "design/netlist.sh"
+  ],
+  "derived": [
+    {
+      "path": "sim/comparator-decision/testbench/comparator_core.spice",
+      "generator": "design/netlist.sh (xschem 3.4.7 netlister)",
+      "check": {"argv": ["bash", "design/netlist.sh", "--check"]}
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "kind": "t1-attestation-inventory",
+  "t1_item": 9,
+  "description": "T1 item 9 (testbenches shipped): every bench directory under sim/, the harness that runs them, and the cold-start self-test. cold_start is the --quick tier (unit tests + environment check, no ngspice) so it runs on a host without the PDK; sim/selftest.sh without --quick is the full simulation tier CI runs in its sim job.",
+  "testbenches": [
+    "sim/comparator-decision/run.py",
+    "sim/comparator-decision/testbench/comparator_core.spice",
+    "sim/comparator-regeneration/ladder.py",
+    "sim/comparator-regeneration/testbench/ladder.json",
+    "sim/harness-corner-smoke/testbench/harness_corner_smoke.spice",
+    "sim/harness-corner-smoke/testbench/tb.json",
+    "sim/mc-smoke/testbench/mc_smoke.spice",
+    "sim/mc-smoke/testbench/tb.json",
+    "sim/harness/__init__.py",
+    "sim/harness/cli.py",
+    "sim/harness/corners.py",
+    "sim/harness/evidence.py",
+    "sim/harness/mc_cli.py",
+    "sim/harness/mc_runner.py",
+    "sim/harness/measure.py",
+    "sim/harness/pdk.py",
+    "sim/harness/runner.py",
+    "sim/harness/testbench.py",
+    "sim/harness/toolchain.py",
+    "sim/selftest.sh",
+    "sim/pdk.json",
+    "sim/toolchain.json"
+  ],
+  "cold_start": {"argv": ["bash", "sim/selftest.sh", "--quick"]},
+  "pins": {
+    "pdk": {"name": "sky130A", "revision": "c6d73a35f524070e85faff4a6a9eef49553ebc2b"},
+    "tools": {"ngspice": "46", "xschem": "3.4.7", "klt": "0.7.0", "klayout": "0.30.12"}
+  }
+}

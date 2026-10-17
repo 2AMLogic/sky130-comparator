@@ -2,6 +2,10 @@
   "block": "sky130-comparator",
   "kind": "analog",
   "evidence": {
+    "2": {
+      "file": "evidence/item2.json",
+      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
+    },
     "3": {
       "file": "layout/drc-report.json",
       "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362"
