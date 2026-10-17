@@ -8,19 +8,19 @@
 Item 2 ("Layout") is graded on an envelope that names the item
 (`"t1_item": 2`) and pins the audited artifact by content hash, so the row is
 `met` only while the artifact still re-hashes to that value. The artifact
-here is a *set* (`provenance.input.paths`, klayout-tools#3044): the committed
-GDS together with the generator and the two request documents the generator
-writes, so editing any member turns the row `unmet`/`stale_evidence`. Items
-1, 9 and 10 use `klt signoff --attest` instead (see attest/ and
-manifests/README.md); item 2 has no attest producer, so this is the generic
-hand-built shape the grader documents.
+bound here is the committed GDS alone, by a single path: the pinned klt grades
+a single-path binding only (a `provenance.input.paths` set, klayout-tools#3044,
+renders `unanchored_evidence`). The generator and request documents are
+therefore not hash-bound; `provenance.regeneration` stands in for them, and CI
+re-checks that claim with `layout/gen_comparator.py --check`. Items 1, 9 and
+10 use `klt signoff --attest` instead (see attest/ and manifests/README.md);
+item 2 has no attest producer, so this is the generic hand-built shape the
+grader documents.
 
 `status: "pass"` is this repo's assertion that the GDS is the committed
 layout; it is not a tool check. The tool checks live in layout/drc-report.json
 (item 3) and layout/lvs-report.json (item 4).
 
-The combined digest is the sha256 of the lines `<hex>  <path>\\n` over the
-members sorted bytewise by path (`input_set_digest` in klayout_tools.signoff).
 Stdlib only.
 """
 
