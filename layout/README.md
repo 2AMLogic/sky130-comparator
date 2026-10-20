@@ -40,7 +40,7 @@ compose evidence now pins each `klt gen` block's own GDS by hash.
 `klayout_tools.build_identity.klayout_version_expected()`; issue #123 moved
 both pins together), the same pin as `docs/environment-setup.md` and
 `.github/workflows/t1-signoff.yml`; PDK `sky130A` at open_pdks
-`c6d73a35f5…` (`~/.volare`, per `sim/pdk.json`). Override the install root
+`f6eeac7dad…` (`~/.ciel`, per `sim/pdk.json`). Override the install root
 with `--pdk-root`, and the binary with `--klt` (e.g. a venv that holds the
 pin). The engine is pinned because klt declares only `klayout>=0.30` and
 stamps `provenance.klayout_version_mismatch` against the version it
@@ -232,7 +232,7 @@ hash `sha256:f8f2c3f4…` (klt 0.7.0; `a1d90e06…` under 0.6.0), over
 `layout/comparator.gds` at `sha256:53e36442…` — the input hash the manifest **pins**, so a regenerated
 GDS renders item 3 `unmet` (stale evidence) instead of silently grading
 yesterday's run. The envelope also records `provenance.pdk` (`sky130A`,
-open_pdks `c6d73a35f5…`, resolved from the `--pdk-root` flag) and
+open_pdks `f6eeac7dad…`, resolved from the `--pdk-root` flag) and
 `provenance.klayout_version_mismatch: false` — the engine that produced it
 is the one klt build-tests against (klt 0.7.0 / klayout 0.30.12).
 
@@ -259,7 +259,7 @@ records the path CI resolves and the hash the manifest pins — and refuses
 to write anything but a clean verdict). Standalone, the same run is:
 
 ```sh
-klt drc layout/comparator.gds --deck sky130 --pdk sky130A --pdk-root ~/.volare \
+klt drc layout/comparator.gds --deck sky130 --pdk sky130A --pdk-root ~/.ciel \
     --format json > layout/drc-report.json
 ```
 

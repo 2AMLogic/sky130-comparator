@@ -165,17 +165,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install klt + volare (pinned; see docs/environment-setup.md)
-        run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12" volare
+      - name: Install klt + ciel (pinned; see docs/environment-setup.md)
+        run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12" ciel==2.6.1
 
       - name: Gate selftest (hermetic; proves a wrong count fails)
         run: python3 scripts/check-layout-device-count.py selftest
 
       - name: Enable the pinned sky130A PDK (sim/pdk.json)
-        run: volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+        run: ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 
       - name: Re-run the device-count assertion over the committed GDS
-        run: python3 scripts/check-layout-device-count.py gate --pdk-root ~/.volare
+        run: python3 scripts/check-layout-device-count.py gate --pdk-root ~/.ciel
 
       # Post-layout (parasitics) reproducibility gate (issue #57, T1 item 7).
       # Re-extracts the committed GDS and diffs the result against the
@@ -188,7 +188,7 @@ jobs:
       # an off-pin extraction is a different measurement, not a different
       # version string. Exit 3 on drift.
       - name: Re-extract the parasitics and diff against the committed netlists
-        run: PDK_ROOT="$HOME/.volare" python3 layout/extract_pex.py --check
+        run: PDK_ROOT="$HOME/.ciel" python3 layout/extract_pex.py --check
 
       # The item-2 envelope's regeneration claim (issue #186): the committed
       # GDS is what layout/gen_comparator.py produces. Byte-compare.
@@ -264,14 +264,14 @@ jobs:
           echo "$out"
           echo "$out" | grep -q 'ngspice-46' || { echo "::error::ngspice 46 required"; exit 1; }
 
-      - name: Install volare (pinned PDK manager; see docs/environment-setup.md)
-        run: python -m pip install volare
+      - name: Install ciel (pinned PDK manager; see docs/environment-setup.md)
+        run: python -m pip install ciel==2.6.1
 
       - name: Enable the pinned sky130A PDK (sim/pdk.json)
-        run: volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+        run: ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 
       # Reduced default mode (the "check:ci" mode); --require-pdk turns a
       # missing ngspice/PDK into a failure instead of a skip. Stage 4's
       # sabotage negative control is part of this run.
       - name: Harness acceptance test (sim/selftest.sh --require-pdk)
-        run: PDK_ROOT="$HOME/.volare" bash sim/selftest.sh --require-pdk
+        run: PDK_ROOT="$HOME/.ciel" bash sim/selftest.sh --require-pdk

@@ -29,7 +29,7 @@ the same file).
                                                 # committed GDS, change nothing
 
 PDK resolution defaults to the repo pin (``sim/pdk.json``: sky130A at
-``~/.volare``, open_pdks ``c6d73a35f5...``); override with ``--pdk-root``.
+``~/.ciel``, open_pdks ``f6eeac7dad...``); override with ``--pdk-root``.
 Every artifact this script writes carries relative paths only -- no absolute
 host paths anywhere (the gf180 twin hit exactly that: gf180-comparator#45).
 
@@ -153,7 +153,7 @@ DBU = 1000
 
 # --- PDK pin (mirrors sim/pdk.json) ------------------------------------------
 PDK_VARIANT = "sky130A"
-PDK_ROOT_DEFAULT = "~/.volare"  # default_pdk_root in sim/pdk.json
+PDK_ROOT_DEFAULT = "~/.ciel"  # default_pdk_root in sim/pdk.json
 KLT_PIN = "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12"
 
 # --- T1 item 4 (LVS) request -------------------------------------------------
