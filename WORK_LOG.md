@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-20
+
+- **PR #180**: feat: re-pin open_pdks to f6eeac7 via ciel, verify PDK revision from SOURCES
+- **Issue #178** (closed): Re-pin open_pdks to f6eeac7 with ciel; verify PDK revision in search (177 part 1)
+
 ### 2026-10-17
 
 - **PR #193**: docs: align layout-envelope docstring with single-path GDS binding
