@@ -55,7 +55,7 @@ python3 sim/run_corners.py --check-env        # toolchain + PDK pin check
 python3 sim/run_corners.py --list             # available experiments
 source sim/env.sh                             # export PDK_ROOT / PDK
 
-python3 sim/run_corners.py <experiment> --record
+python3 sim/run_corners.py <experiment> --record     # raw outputs -> artifact store (see "Stored evidence")
 python3 sim/monte_carlo.py  <experiment> --seed 1 --n 100 --record
 
 sim/selftest.sh                               # the harness acceptance test (one command)
@@ -269,6 +269,42 @@ with its own `<record-id>`, `Netlist provenance: extracted`, and a
 `Supersedes` field, carrying the schematic-vs-extracted delta in its Result
 section. The extracted record **appends alongside** the schematic one; it
 never replaces or edits it.
+
+## Stored evidence (artifact store)
+
+Since issue #198, **new** runs do not commit raw outputs. `--record` (corner
+and Monte Carlo runners) and `sim/run_store_evidence.py` (any other campaign)
+stage the raw bytes -- per-corner / per-draw ngspice logs and the netlist
+snapshot -- in the git-ignored `sim/.work/<bench>/<record-id>/` tree, put them
+in the fleet artifact store with `klt artifact put`, and commit exactly two
+things: `manifests/artifacts/<bench>-<record-id>.manifest.json` (every `uri`
+is `artifact:<key>`; see `manifests/artifacts/README.md`) and the Markdown
+record `sim/<bench>/records/<record-id>.md`, which gains a "Stored evidence"
+table (name, size, sha256 per object). Evidence bytes are private, manifests
+are public. History is not rewritten: evidence committed before this change
+stays where it is, and the append-only rule above is unchanged.
+
+- **Fail closed.** `$KLT_ARTIFACT_BROKER` unset, no `klt artifact put`, a `klt`
+  older than klayout-tools `7e3561f`, or an unreachable/refusing broker exits
+  **10** *before* any simulation runs; a failure while storing exits 10 with
+  nothing written under `manifests/` or `sim/<bench>/`. There is no fallback
+  that commits the bytes. Staged bytes stay in `sim/.work/` so the run is not
+  lost.
+- **Verify.** `klt artifact verify <manifest>` (or `python3
+  scripts/check-artifact-manifests.py verify <manifest>`) fetches every object
+  through the broker and re-hashes it. Needs `$KLT_ARTIFACT_BROKER`.
+- **CI.** `python3 scripts/check-artifact-manifests.py check --tree <sha>`
+  (schema, `artifact:` uris only, fails if a stored object's bytes are also
+  tracked; `selftest` carries the negative controls). CI cannot reach the
+  broker, so it does **not** hash-verify the bytes.
+- **Characterization report.** `scripts/characterization-envelope.py` pins
+  committed paths by byte hash. New records are still committed Markdown under
+  `records/`, so they are indexed and pinned as before; the raw logs they
+  summarize are cited through the record's manifest, never as an Evidence index
+  row.
+- **Grids.** Multi-corner and Monte Carlo grids go through `klt sim` (batch
+  fleet) rather than a hand-launched loop; stage its outputs and store them with
+  `sim/run_store_evidence.py`.
 
 ## Append-only rule
 

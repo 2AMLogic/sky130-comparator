@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import pdk, runner, testbench, toolchain
+from . import evidence, evidence_store, pdk, runner, testbench, toolchain
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--temps", help="comma-separated temperature (C) override")
     ap.add_argument("--supply-tol", type=float, help="supply tolerance override (e.g. 0.1)")
     ap.add_argument("--sabotage-corners", action="store_true", help="force process corner to tt (negative control)")
-    ap.add_argument("--record", action="store_true", help="write an evidence record under sim/<experiment>/records/")
+    ap.add_argument("--record", action="store_true", help="store raw outputs in the artifact store; commit a manifest + record under sim/<experiment>/records/")
     ap.add_argument("--supersedes", default="", help="record-id this run's evidence record supersedes")
     ap.add_argument("--note", default="", help="free-text note attached to the evidence record")
     ap.add_argument("--quiet", action="store_true", help="suppress per-corner progress output")
@@ -64,6 +64,15 @@ def main(argv: list[str] | None = None) -> int:
     process_corners = args.corners.split(",") if args.corners else None
     temperatures_c = [float(t) for t in args.temps.split(",")] if args.temps else None
 
+    if args.record:
+        # Fail closed before spending simulation time (issue #198): the raw
+        # outputs go to the artifact store, never to git.
+        try:
+            evidence_store.preflight(evidence.REPO_ROOT)
+        except evidence_store.StoreError as e:
+            print(f"EVIDENCE CANNOT BE STORED -- nothing run, nothing written: {e}", file=sys.stderr)
+            return 10
+
     result, axis_spreads = runner.run(
         manifest,
         process_corners=process_corners,
@@ -74,9 +83,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.record:
-        record_path = runner.write_evidence(
-            result, axis_spreads, note=args.note, supersedes=args.supersedes
-        )
+        try:
+            record_path = runner.write_evidence(
+                result, axis_spreads, note=args.note, supersedes=args.supersedes
+            )
+        except evidence_store.StoreError as e:
+            print(f"EVIDENCE NOT STORED -- nothing committed (fail closed): {e}", file=sys.stderr)
+            return 10
         print(f"wrote {record_path}")
 
     if not args.quiet:

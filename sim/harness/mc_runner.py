@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import corners as corners_mod
-from . import evidence, measure, pdk, testbench, toolchain
+from . import evidence, evidence_store, measure, pdk, testbench, toolchain
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 
@@ -260,23 +260,20 @@ def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Pa
     experiment_dir = manifest.experiment_dir
     names = list(manifest.measure.keys())
 
-    # Reserve the namespace atomically first (issue #144).
-    resv = evidence.reserve_record(
-        experiment_dir, ("mc-draws",), record_id=result.record_id
-    )
-    if resv.record_id != result.record_id:
-        print(f"  record id {result.record_id} was taken; using {resv.record_id}")
-        result.record_id = resv.record_id
-    draws_dir = resv.log_dirs["mc-draws"]
+    # Raw draw logs go to the artifact store (issue #198), not git; only the
+    # manifest and the record are committed.
+    repo_root = evidence.REPO_ROOT
+    rid = evidence_store.free_record_id(repo_root, experiment_dir, result.record_id)
+    if rid != result.record_id:
+        print(f"  record id {result.record_id} was taken; using {rid}")
+        result.record_id = rid
+    blobs = {}
     for i, d in enumerate(result.draws):
-        evidence.write_new_text(draws_dir / f"draw_{i}_seed{d.seed}.log", d.log_text)
+        blobs[f"mc-draws/{result.record_id}/draw_{i}_seed{d.seed}.log"] = d.log_text
     for i, d in enumerate(result.negative_control_draws):
-        evidence.write_new_text(draws_dir / f"negctrl_{i}_seed{d.seed}.log", d.log_text)
-
-    record_path = resv.record_path
-    evidence.write_netlist_snapshot(
-        experiment_dir, result.record_id, manifest.netlist_fragment
-    )
+        blobs[f"mc-draws/{result.record_id}/negctrl_{i}_seed{d.seed}.log"] = d.log_text
+    blobs[f"netlist-snapshots/{result.record_id}.spice"] = manifest.netlist_fragment.read_text()
+    record_path = experiment_dir / "records" / f"{result.record_id}.md"
 
     dists = distributions(result.draws, names)
     ctrl_ok, ctrl_failures = negative_control_ok(result, names)
@@ -338,5 +335,8 @@ def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Pa
     a("")
     lines.extend(evidence.footer_lines("sim/monte_carlo.py", supersedes))
 
-    evidence.publish_record(record_path, "\n".join(lines))
+    evidence_store.store_run(
+        repo_root=repo_root, experiment_dir=experiment_dir,
+        record_id=result.record_id, blobs=blobs, record_text="\n".join(lines),
+    )
     return record_path
