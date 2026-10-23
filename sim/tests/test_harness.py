@@ -30,7 +30,9 @@ SIM_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SIM_DIR))
 
 from harness import corners, evidence, measure, runner  # noqa: E402
-from harness import mc_runner, pdk, testbench, toolchain  # noqa: E402
+from harness import evidence_store, mc_runner, pdk, testbench, toolchain  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_evidence_store import _fake_put  # noqa: E402
 
 
 class TestMeasureParse(unittest.TestCase):
@@ -262,6 +264,7 @@ class TestReservation(unittest.TestCase):
                 mock.patch.object(runner.pdk, "resolved_commit", return_value="c"), \
                 mock.patch.object(evidence, "environment_block", return_value=["env"]), \
                 mock.patch.object(evidence, "REPO_ROOT", self.exp), \
+                mock.patch.object(evidence_store, "put_files", _fake_put), \
                 mock.patch.object(runner.corners_mod, "corner_matrix_summary_line",
                                   return_value="line", create=True), \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -274,9 +277,19 @@ class TestReservation(unittest.TestCase):
         text = out.read_text()
         self.assertNotIn(evidence.RESERVATION_MARKER, text)
         self.assertIn("prev-id", text)
+        # raw bytes go to the artifact store (issue #198): only the manifest
+        # and the record are written; nothing lands under corners/ or
+        # netlist-snapshots/.
+        self.assertFalse((self.exp / "corners").exists())
+        self.assertFalse((self.exp / "netlist-snapshots").exists())
+        manifest_doc = json.loads(
+            (self.exp / "manifests" / "artifacts"
+             / f"{self.exp.name}-{res.record_id}.manifest.json").read_text())
         self.assertEqual(
-            (self.exp / "corners" / res.record_id / "tt_27_1p80.log").read_text(), "LOG\n")
-        self.assertTrue((self.exp / "netlist-snapshots" / f"{res.record_id}.spice").exists())
+            [e["name"] for e in manifest_doc["entries"]],
+            [f"sim/{self.exp.name}/corners/{res.record_id}/tt_27_1p80.log",
+             f"sim/{self.exp.name}/netlist-snapshots/{res.record_id}.spice"])
+        self.assertIn("## Stored evidence", text)
 
 
 class TestRunKltYield(unittest.TestCase):

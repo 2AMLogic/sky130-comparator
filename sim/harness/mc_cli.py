@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import mc_runner, testbench
+from . import evidence, evidence_store, mc_runner, testbench
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--supply", type=float, help="supply (V); defaults to the manifest's nominal_supply_v")
     ap.add_argument("--seed", type=int, required=False, default=1, help="base rndseed (recorded; draws use seed, seed+1, ...)")
     ap.add_argument("--n", type=int, required=False, default=10, help="sample count N")
-    ap.add_argument("--record", action="store_true", help="write an evidence record under sim/<experiment>/records/")
+    ap.add_argument("--record", action="store_true", help="store raw outputs in the artifact store; commit a manifest + record under sim/<experiment>/records/")
     ap.add_argument("--supersedes", default="", help="record-id this run's evidence record supersedes")
     ap.add_argument("--note", default="", help="free-text note attached to the evidence record")
     ap.add_argument("--quiet", action="store_true")
@@ -53,6 +53,15 @@ def main(argv: list[str] | None = None) -> int:
 
     supply_v = args.supply if args.supply is not None else manifest.nominal_supply_v
 
+    if args.record:
+        # Fail closed before spending simulation time (issue #198): the raw
+        # outputs go to the artifact store, never to git.
+        try:
+            evidence_store.preflight(evidence.REPO_ROOT)
+        except evidence_store.StoreError as e:
+            print(f"EVIDENCE CANNOT BE STORED -- nothing run, nothing written: {e}", file=sys.stderr)
+            return 10
+
     result = mc_runner.run(
         manifest,
         process_corner=args.corner,
@@ -68,7 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     pos_ok, pos_failures = mc_runner.positive_control_ok(result, names, manifest.checks)
 
     if args.record:
-        record_path = mc_runner.write_evidence(result, note=args.note, supersedes=args.supersedes)
+        try:
+            record_path = mc_runner.write_evidence(result, note=args.note, supersedes=args.supersedes)
+        except evidence_store.StoreError as e:
+            print(f"EVIDENCE NOT STORED -- nothing committed (fail closed): {e}", file=sys.stderr)
+            return 10
         print(f"wrote {record_path}")
 
     dists = mc_runner.distributions(result.draws, names)

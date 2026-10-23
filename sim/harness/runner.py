@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import corners as corners_mod
-from . import evidence, measure, pdk, testbench, toolchain
+from . import evidence, evidence_store, measure, pdk, testbench, toolchain
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 
@@ -195,26 +195,18 @@ def write_evidence(
     # ngspice a second time (each sky130-library invocation costs ~15-20s on
     # this toolchain; doubling it here for a --record run would be wasteful
     # and could theoretically diverge from what was just evaluated).
-    # Reserve the namespace atomically first (issue #144): if the proposed
-    # ID is taken the next valid ID is used, and nothing existing is touched.
-    resv = evidence.reserve_record(
-        experiment_dir, ("corners",), record_id=result.record_id
-    )
-    if resv.record_id != result.record_id:
-        old = result.record_id
-        result.record_id = resv.record_id
-        for p in result.points:
-            p.log_path = resv.log_dirs["corners"] / p.log_path.name
-        print(f"  record id {old} was taken; using {resv.record_id}")
-    corners_dir = resv.log_dirs["corners"]
+    # The raw bytes go to the artifact store (issue #198), not git; only the
+    # manifest and this record are committed. If the proposed ID is taken the
+    # next valid ID is used, and nothing existing is touched.
+    repo_root = evidence.REPO_ROOT
+    rid = evidence_store.free_record_id(repo_root, experiment_dir, result.record_id)
+    if rid != result.record_id:
+        print(f"  record id {result.record_id} was taken; using {rid}")
+        result.record_id = rid
     info = pdk.resolve()
-    for p in result.points:
-        evidence.write_new_text(corners_dir / f"{p.corner_id}.log", p.log_text)
-
-    record_path = resv.record_path
-    evidence.write_netlist_snapshot(
-        experiment_dir, result.record_id, manifest.netlist_fragment
-    )
+    blobs = {f"corners/{result.record_id}/{p.corner_id}.log": p.log_text for p in result.points}
+    blobs[f"netlist-snapshots/{result.record_id}.spice"] = manifest.netlist_fragment.read_text()
+    record_path = experiment_dir / "records" / f"{result.record_id}.md"
 
     lines: list[str] = []
     a = lines.append
@@ -263,5 +255,8 @@ def write_evidence(
     a("")
     lines.extend(evidence.footer_lines("sim/run_corners.py", supersedes))
 
-    evidence.publish_record(record_path, "\n".join(lines))
+    evidence_store.store_run(
+        repo_root=repo_root, experiment_dir=experiment_dir,
+        record_id=result.record_id, blobs=blobs, record_text="\n".join(lines),
+    )
     return record_path

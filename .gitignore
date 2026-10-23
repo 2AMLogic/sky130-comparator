@@ -14,6 +14,10 @@ bsim4v5.out
 !sim/*/corners/**/*.log
 !sim/*/mc-draws/**/*.log
 sim/build/
+# Staging area for --record runs (issue #198): raw outputs wait here until
+# `klt artifact put` stores them; only the manifest under manifests/artifacts/
+# and the Markdown record are committed. Never un-ignore.
+sim/.work/
 design/build/
 # layout generator scratch (layout/_gen/, per layout/README.md): the committed
 # deliverables are layout/comparator.gds + the evidence JSONs, regenerated
