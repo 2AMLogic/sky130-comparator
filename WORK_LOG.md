@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-23
+
+- **PR #199**: feat(sim): store new run evidence in the artifact store, commit only manifest + record
+- **Issue #198** (closed): Adopt the common artifact store for sim evidence (manifests in git, bytes via klt artifact)
+
 ### 2026-10-20
 
 - **PR #180**: feat: re-pin open_pdks to f6eeac7 via ciel, verify PDK revision from SOURCES
