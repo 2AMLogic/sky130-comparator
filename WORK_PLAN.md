@@ -32,7 +32,7 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-_None._
+- **#189**: Attest T1 items 1, 9 and 10 once a klt release contains signoff --attest
 
 ## PRs Awaiting Review
 
@@ -44,7 +44,7 @@ _None._
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
-_None._
+- **#201**: feat: attest T1 item 10 with klt 0.8.0 and gate it in CI
 
 ## Proposed
 
@@ -53,6 +53,7 @@ Issues carrying `loom:curated`.
 - **#3**: Track the gap to T1 sim-validated / bronze (klayout-tools design-evidence ladder) *(curated)*
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)*
 - **#127**: Establish a verified execution route for comparator campaign #125 *(curated)*
+- **#189**: Attest T1 items 1, 9 and 10 once a klt release contains signoff --attest *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -72,10 +73,10 @@ _None._
 | Very important | 0 |
 | Important | 2 |
 | Ready (`loom:issue`) | 0 |
-| In Progress (`loom:building`) | 0 |
+| In Progress (`loom:building`) | 1 |
 | PRs awaiting review | 0 |
-| Approved PRs awaiting merge | 0 |
-| Curated | 3 |
+| Approved PRs awaiting merge | 1 |
+| Curated | 4 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
