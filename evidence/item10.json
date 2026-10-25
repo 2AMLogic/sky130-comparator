@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "kind": "generic",
+  "status": "pass",
+  "t1_item": 10,
+  "summary": "T1 item 10 (Repo hygiene): 11/11 attestation checks passed (klt signoff --attest)",
+  "source": "attest/item10.json",
+  "attestation": {
+    "producer": "klt signoff --attest",
+    "inventory_schema_version": 1,
+    "hash_algorithm": "sha256-raw-bytes",
+    "check_count": 11,
+    "passed_count": 11,
+    "checks": [
+      {
+        "check": "present",
+        "role": "hygiene",
+        "path": ".github/workflows/t1-signoff.yml",
+        "passed": true,
+        "content_hash": "sha256:072c0b91ade8b5da6c739cc152277a721c314d3edbb827b1487ebfe4b8687b27"
+      },
+      {
+        "check": "present",
+        "role": "hygiene",
+        "path": "LICENSE",
+        "passed": true,
+        "content_hash": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "check": "present",
+        "role": "hygiene",
+        "path": "README.md",
+        "passed": true,
+        "content_hash": "sha256:be5269713c1c93837a654e1262803ce25ddc86436df01a38ca863e338617c64a"
+      },
+      {
+        "check": "present",
+        "role": "hygiene",
+        "path": "spec/README.md",
+        "passed": true,
+        "content_hash": "sha256:3188ec2dc84abd1a4c1560b737bbd56cb952f21acc07223a1c593cb87bda327c"
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "t1-signoff-gate-selftest",
+        "argv": [
+          "python3",
+          "scripts/check-t1-signoff.py",
+          "selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "characterization-envelope-selftest",
+        "argv": [
+          "python3",
+          "scripts/characterization-envelope.py",
+          "--selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "characterization-envelope-fresh",
+        "argv": [
+          "python3",
+          "scripts/characterization-envelope.py"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "integrator-view-selftest",
+        "argv": [
+          "python3",
+          "scripts/check-integrator-view.py",
+          "selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "integrator-view-gate",
+        "argv": [
+          "python3",
+          "scripts/check-integrator-view.py",
+          "gate"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "sim-append-only-selftest",
+        "argv": [
+          "python3",
+          "scripts/check-sim-append-only.py",
+          "selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "harness-unit-tests",
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "sim/tests",
+          "-t",
+          "."
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      }
+    ]
+  },
+  "provenance": {
+    "klt_version": "0.8.0",
+    "klayout_version": null,
+    "pdk": null,
+    "deck": null,
+    "input": {
+      "path": {
+        "path": "attest/item10.json",
+        "scope": "repo"
+      },
+      "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60"
+    }
+  }
+}

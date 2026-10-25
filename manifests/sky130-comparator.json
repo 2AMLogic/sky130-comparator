@@ -20,6 +20,10 @@
         "scripts/characterization-envelope.py"
       ]
     },
+    "10": {
+      "file": "evidence/item10.json",
+      "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60"
+    },
     "11": [
       {
         "file": "layout/erc-report.json",

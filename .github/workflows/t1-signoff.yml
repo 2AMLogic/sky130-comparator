@@ -84,7 +84,7 @@ jobs:
         run: python3 scripts/check-artifact-manifests.py check --tree "$TARGET_SHA"
 
       - name: Install klt (pinned; see manifests/README.md)
-        run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12"
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
 
       - name: Gate selftest (hermetic; proves the rot detector bites)
         run: python3 scripts/check-t1-signoff.py selftest
@@ -146,6 +146,16 @@ jobs:
               --deck sky130 --pdk sky130 --format json > /tmp/erc-report.json
           diff -u layout/erc-report.json /tmp/erc-report.json
 
+      # T1 item 10's attestation envelope (issue #189). `--check` re-runs the
+      # inventory's presence checks and hermetic commands and compares the
+      # result to the committed envelope: exit non-zero when an inventoried
+      # file (README, LICENSE, spec/README.md, this workflow) or a gate's
+      # behavior moved since evidence/item10.json was produced. Items 1 and 9
+      # have no committed envelope yet (they need a host matching
+      # sim/toolchain.json), so they have no step here.
+      - name: Re-check the item-10 attestation envelope
+        run: klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json
+
       # Rule-9 integrator view (issue #36): stdlib-only, no klt needed.
       - name: Integrator-view selftest (hermetic)
         run: python3 scripts/check-integrator-view.py selftest
@@ -180,6 +190,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Stays on klt 0.7.0 on purpose: layout/extract_pex.py asserts this pin
+      # against the committed extraction (resistances differ up to 2.3x per net
+      # between klt builds), so a bump here is a re-measurement (issue #125),
+      # not a pin edit.
       - name: Install klt + ciel (pinned; see docs/environment-setup.md)
         run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12" ciel==2.6.1
 
