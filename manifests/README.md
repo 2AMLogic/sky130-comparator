@@ -378,7 +378,12 @@ in the klt version/ruleset id and a new `regeneration` block on item 2's row
 (`executed_by_klt: false`, regenerated hash equal to the cited one). The
 `layout-device-count` job stays on `0.7.0`: `layout/extract_pex.py` asserts
 that pin against the committed extraction, and re-extracting under another
-build is a re-measurement (issue #125), not a pin edit.
+build is a re-measurement (issue #125), not a pin edit. The signoff job's
+`klt lvs --check layout/lvs-report.json` and the ERC byte-diff against
+`layout/erc-report.json` also stay on `0.7.0` (a side venv in that job):
+under 0.8.0 the bundled LVS deck hash and `klt_version` drift (exit 3) and
+ERC emits `schema_version` 2, so moving either is a re-measurement of that
+envelope, not a pin edit.
 
 ## The integrator-view gate (issue #36)
 
