@@ -2,6 +2,10 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-10-27
+
+- **PR #201**: feat: attest T1 item 10 with klt 0.8.0 and gate it in CI
+
 ### 2026-10-23
 
 - **PR #199**: feat(sim): store new run evidence in the artifact store, commit only manifest + record
