@@ -225,8 +225,19 @@ jobs:
 
       # The item-2 envelope's regeneration claim (issue #186): the committed
       # GDS is what layout/gen_comparator.py produces. Byte-compare.
+      #
+      # Stays on klt 0.7.0 (side venv): the committed GDS was generated under
+      # 0.7.0, and 0.8.0 regenerates a different GDS (and 107 composed-DRC
+      # violations vs the committed 0). Regenerating the layout under 0.8.0 is
+      # a separate follow-up (issue #204); until then only this step is pinned
+      # back, the extraction/PEX checks above having been re-measured on 0.8.0.
+      - name: Install klt 0.7.0 in a side venv (GDS producer)
+        run: |
+          python -m venv "$RUNNER_TEMP/klt070"
+          "$RUNNER_TEMP/klt070/bin/pip" install "klayout-tools==0.7.0" "klayout==0.30.12"
+
       - name: Regenerate the layout and byte-compare against the committed GDS
-        run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check
+        run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check --klt "$RUNNER_TEMP/klt070/bin/klt"
 
   # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
   # (--sabotage-corners) is the only check that the corner runner really
