@@ -134,7 +134,7 @@ script against a THROWAWAY environment instead:
 
     uv venv /tmp/pex-pin-env
     uv pip install --python /tmp/pex-pin-env/bin/python \
-        "klayout-tools==0.7.0" "klayout==0.30.12"
+        "klayout-tools==0.8.0" "klayout==0.30.12"
     PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
 
 Usage:
@@ -179,7 +179,7 @@ PDK_VARIANT = "sky130A"
 # because the extracted resistances are not stable across builds (see the
 # module docstring). Bump these only together with the doc and both CI
 # installs, in the same change that re-commits the regenerated artifacts.
-PINNED_KLT_VERSION = "0.7.0"
+PINNED_KLT_VERSION = "0.8.0"
 PINNED_KLAYOUT_VERSION = "0.30.12"
 
 PIN_HINT = (
