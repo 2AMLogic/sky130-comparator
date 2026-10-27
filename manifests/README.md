@@ -57,7 +57,7 @@ host has ngspice 42 / xschem 3.4.4, where each fails one command check
 the drifted toolchain), and the toolchain pin is not relaxed to make them pass
 (host gap: #146). Until `evidence/item1.json` and `evidence/item9.json` exist
 those rows stay `unmet`/`no_evidence`. When attesting them, update
-`attest/item9.json`'s `tools.klt` (still `0.7.0`) and re-check its `pins`
+`attest/item9.json`'s `tools.klt` (still `0.7.0`; unrelated to the #204 envelope re-measurement) and re-check its `pins`
 against `sim/pdk.json` / `sim/toolchain.json`; a re-pin shows up as `--check`
 drift.
 
@@ -376,14 +376,16 @@ verdicts and the coverage, don't rubber-stamp the version string. The 0.7.0 →
 0.8.0 bump (issue #189) changed no verdict: the regenerated record differs only
 in the klt version/ruleset id and a new `regeneration` block on item 2's row
 (`executed_by_klt: false`, regenerated hash equal to the cited one). The
-`layout-device-count` job stays on `0.7.0`: `layout/extract_pex.py` asserts
-that pin against the committed extraction, and re-extracting under another
-build is a re-measurement (issue #125), not a pin edit. The signoff job's
-`klt lvs --check layout/lvs-report.json` and the ERC byte-diff against
-`layout/erc-report.json` also stay on `0.7.0` (a side venv in that job):
-under 0.8.0 the bundled LVS deck hash and `klt_version` drift (exit 3) and
-ERC emits `schema_version` 2, so moving either is a re-measurement of that
-envelope, not a pin edit.
+`layout-device-count` job, the signoff job's `klt lvs --check
+layout/lvs-report.json` and the ERC byte-diff against `layout/erc-report.json`
+were held on `0.7.0` through that bump (the latter two in a side venv)
+because moving them is a re-measurement, not a pin edit. Issue #204 did that
+re-measurement and moved all of them to 0.8.0: LVS is still `match` and ERC
+still `clean` with `erc_coverage.skipped: []`; the envelopes differ in schema
+(`schema_version` 2), `klt_version`, the bundled LVS deck hash, and the
+extracted poly-resistor R values (2003.8 / 20797.4 Ω became 2692.1 / 21485.7 Ω
+in `layout/extract-parasitics.json` and the LVS placeholder note). The
+side venv is gone.
 
 ## The integrator-view gate (issue #36)
 

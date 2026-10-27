@@ -69,21 +69,21 @@ The T1 signoff manifest (issue #31) is graded by
 
 | Tool | Version | Install path |
 | --- | --- | --- |
-| klt (klayout-tools) | `0.7.0` | `uv tool install "klayout-tools==0.7.0" --with klayout==0.30.12`, or a venv: `pip install "klayout-tools==0.7.0" "klayout==0.30.12"` |
+| klt (klayout-tools) | `0.8.0` | `uv tool install "klayout-tools==0.8.0" --with klayout==0.30.12`, or a venv: `pip install "klayout-tools==0.8.0" "klayout==0.30.12"` |
 | klayout (engine under klt) | `0.30.12` | same install; `klayout_tools.build_identity.klayout_version_expected()` |
 
 ```sh
-klt --version       # -> klt 0.7.0
+klt --version       # -> klt 0.8.0
 python -c "import klayout; print(klayout.__version__)"   # -> 0.30.12
 ```
 
-The install is pinned the same way in CI (`klayout-tools==0.7.0`,
+The install is pinned the same way in CI (`klayout-tools==0.8.0`,
 `klayout==0.30.12`) so the committed evidence record
 (`manifests/t1-signoff-report.json`) and every re-grade are produced by the
 same grader build.
 
 **Why the engine is pinned too.** klt declares `klayout>=0.30`, so an
-unpinned install resolves whatever klayout is newest that day; klt 0.7.0
+unpinned install resolves whatever klayout is newest that day; klt 0.8.0
 build-tests against `klayout==0.30.12` and stamps
 `provenance.klayout_version_mismatch: true` (plus a stderr warning that
 "DRC/LVS report counts … may differ") on any other engine. Measured on this
@@ -112,7 +112,7 @@ use a **throwaway** environment rather than changing host tooling:
 ```sh
 uv venv /tmp/pex-pin-env
 uv pip install --python /tmp/pex-pin-env/bin/python \
-    "klayout-tools==0.7.0" "klayout==0.30.12"
+    "klayout-tools==0.8.0" "klayout==0.30.12"
 PATH=/tmp/pex-pin-env/bin:$PATH python3 layout/extract_pex.py
 ```
 

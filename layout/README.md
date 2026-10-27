@@ -35,8 +35,10 @@ builds, so nothing in that toolchain move is a geometry change.
 `source_digest` per placed block (additive; no field removed), so the
 compose evidence now pins each `klt gen` block's own GDS by hash.
 
-**Toolchain pin.** `klt` (klayout-tools) **0.7.0** on the **klayout
-0.30.12** engine (the engine klt 0.7.0 build-tests against,
+**Toolchain pin.** `klt` (klayout-tools) **0.8.0** on the **klayout
+0.30.12** engine (the engine klt 0.8.0 build-tests against; the LVS, ERC and
+parasitic-extraction envelopes were re-measured under it in issue #204, while
+`gen_comparator.py` and its DRC/compose reports remain 0.7.0 products;
 `klayout_tools.build_identity.klayout_version_expected()`; issue #123 moved
 both pins together), the same pin as `docs/environment-setup.md` and
 `.github/workflows/t1-signoff.yml`; PDK `sky130A` at open_pdks

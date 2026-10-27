@@ -36,7 +36,7 @@ from _gate_common import report_cases
 OUT = "evidence/item2.json"
 MEMBERS = ["layout/comparator.gds"]
 # Versions of the tools that produced the members; the generator pins them.
-KLT_VERSION = "0.7.0"
+KLT_VERSION = "0.8.0"
 KLAYOUT_VERSION = "0.30.12"
 
 

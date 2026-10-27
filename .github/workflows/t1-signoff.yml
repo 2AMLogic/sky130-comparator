@@ -126,17 +126,10 @@ jobs:
       # would report a reconstruction failure rather than real drift. No PDK
       # needed -- nothing here resolves one.
       #
-      # Stays on klt 0.7.0 (side venv below): the envelope was produced under
-      # 0.7.0, and 0.8.0 bundles a different LVS deck (provenance.deck.content_hash
-      # drifts) and a different klt_version, so `--check` exits 3 under 0.8.0.
-      # Moving it is a re-measurement of the LVS verdict, not a pin edit.
-      - name: Install klt 0.7.0 in a side venv (LVS/ERC envelopes' producer)
-        run: |
-          python -m venv "$RUNNER_TEMP/klt070"
-          "$RUNNER_TEMP/klt070/bin/pip" install "klayout-tools==0.7.0" "klayout==0.30.12"
-
+      # Runs on the main klt 0.8.0 install above: the envelope was re-measured
+      # under 0.8.0 (issue #204; verdict unchanged, see layout/README.md).
       - name: Re-hash the committed LVS envelope's own inputs
-        run: '"$RUNNER_TEMP/klt070/bin/klt" lvs --check layout/lvs-report.json'
+        run: klt lvs --check layout/lvs-report.json
 
       # The ERC supply-spec envelope's own rot check (issue #68).
       # layout/erc-report.json is cited for item 11 (issue #123, see
@@ -151,11 +144,10 @@ jobs:
       # here too. No PDK needed -- `--deck`/`--pdk` are curated-table names,
       # not an install (the same reason this job stays PDK-free).
       #
-      # Also stays on klt 0.7.0: 0.8.0 emits ERC schema_version 2 (file object,
-      # antenna_tables_omitted), so the byte-compare would fail on format alone.
+      # Re-measured under klt 0.8.0 (ERC schema_version 2; issue #204).
       - name: Re-run the committed ERC supply spec and diff the envelope
         run: |
-          "$RUNNER_TEMP/klt070/bin/klt" erc layout/comparator.gds layout/erc-spec.json \
+          klt erc layout/comparator.gds layout/erc-spec.json \
               --deck sky130 --pdk sky130 --format json > /tmp/erc-report.json
           diff -u layout/erc-report.json /tmp/erc-report.json
 
@@ -203,12 +195,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Stays on klt 0.7.0 on purpose: layout/extract_pex.py asserts this pin
-      # against the committed extraction (resistances differ up to 2.3x per net
-      # between klt builds), so a bump here is a re-measurement (issue #125),
-      # not a pin edit.
+      # layout/extract_pex.py asserts this pin against the committed extraction
+      # (resistances differ up to 2.3x per net between klt builds), so a bump
+      # here is a re-measurement (issues #125, #204), not a pin edit.
       - name: Install klt + ciel (pinned; see docs/environment-setup.md)
-        run: python -m pip install "klayout-tools==0.7.0" "klayout==0.30.12" ciel==2.6.1
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12" ciel==2.6.1
 
       - name: Gate selftest (hermetic; proves a wrong count fails)
         run: python3 scripts/check-layout-device-count.py selftest
@@ -234,8 +225,19 @@ jobs:
 
       # The item-2 envelope's regeneration claim (issue #186): the committed
       # GDS is what layout/gen_comparator.py produces. Byte-compare.
+      #
+      # Stays on klt 0.7.0 (side venv): the committed GDS was generated under
+      # 0.7.0, and 0.8.0 regenerates a different GDS (and 107 composed-DRC
+      # violations vs the committed 0). Regenerating the layout under 0.8.0 is
+      # a separate follow-up (issue #204); until then only this step is pinned
+      # back, the extraction/PEX checks above having been re-measured on 0.8.0.
+      - name: Install klt 0.7.0 in a side venv (GDS producer)
+        run: |
+          python -m venv "$RUNNER_TEMP/klt070"
+          "$RUNNER_TEMP/klt070/bin/pip" install "klayout-tools==0.7.0" "klayout==0.30.12"
+
       - name: Regenerate the layout and byte-compare against the committed GDS
-        run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check
+        run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check --klt "$RUNNER_TEMP/klt070/bin/klt"
 
   # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
   # (--sabotage-corners) is the only check that the corner runner really

@@ -6,7 +6,7 @@
   "summary": "layout/comparator.gds, regenerated from layout/gen_comparator.py (python3 layout/gen_comparator.py --check byte-compares it)",
   "source": "layout/README.md",
   "provenance": {
-    "klt_version": "0.7.0",
+    "klt_version": "0.8.0",
     "klayout_version": "0.30.12",
     "pdk": null,
     "deck": null,

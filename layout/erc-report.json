@@ -1,11 +1,15 @@
 {
-  "schema_version": 1,
-  "file": "layout/comparator.gds",
+  "schema_version": 2,
+  "file": {
+    "path": "layout/comparator.gds",
+    "scope": "repo"
+  },
   "spec": "layout/erc-spec.json",
   "pdk": "sky130",
   "findings_only": false,
   "gate_role": "poly",
   "gate_count": 8,
+  "antenna_tables_omitted": false,
   "gates": [
     {
       "gate_id": "gate0",
@@ -528,7 +532,7 @@
   },
   "ties_disclosure": null,
   "provenance": {
-    "klt_version": "0.7.0",
+    "klt_version": "0.8.0",
     "klayout_version": "0.30.12",
     "pdk": {
       "name": "sky130",
@@ -537,7 +541,7 @@
     },
     "deck": {
       "name": "sky130",
-      "content_hash": "sha256:f8f2c3f48eada473dc34a7a8926c0b04fef446fb351a70a636ce43a9ca9c70ba",
+      "content_hash": "sha256:ba0f97887e3d231aec8b54f1f52f2941ded0228f0234b6759712bcaca0e942e6",
       "released": true
     },
     "input": {
