@@ -17,9 +17,9 @@ move.
 
 ## The current verdict, honestly
 
-**5 of 11 T1 items are `met`: item 2 "Layout", item 3 "DRC clean", item 4 "LVS
-clean", item 8 "Characterization report" and item 11 "Power delivery
-(structural)". T1 is not awarded and no catalog tier is claimed.**
+**6 of 11 T1 items are `met`: item 2 "Layout", item 3 "DRC clean", item 4 "LVS
+clean", item 8 "Characterization report", item 10 "Repo hygiene" and item 11
+"Power delivery (structural)". T1 is not awarded and no catalog tier is claimed.**
 
 **Item 2, "Layout"** (issue #186) is cited from `evidence/item2.json`, a
 `"kind": "generic"` envelope with `"t1_item": 2` that pins
@@ -37,29 +37,29 @@ and edits to `gen_comparator.py` surface through the CI regeneration check,
 not through the grade. Like item 8's, the `pass` is a claimant assertion; the
 tool-checked layout evidence is items 3, 4 and 11.
 
-**Items 1, 9 and 10 — inventories committed, envelopes waiting on a klt
-release** (issue #186). These rows are graded on an envelope that
-`klt signoff --attest {1,9,10} --inventory <file>` produces by running the
-item's mechanical checks (klayout-tools#2844). That landed after 0.7.0:
-PyPI's latest klayout-tools is **0.7.0** (checked 2026-10-17) and its
-`klt signoff` has no `--attest`. Pinning CI to a dev build would be
-unreproducible, and a hand-written envelope would grade on assertion, so the
-decision is to **wait for a release containing #2844**. What is committed now:
-[`attest/item1.json`](../attest/item1.json),
-[`attest/item9.json`](../attest/item9.json) and
-[`attest/item10.json`](../attest/item10.json), each listing the exact files and
-commands its item claims, so the follow-up is a one-command change per item
-(`klt signoff --attest N --inventory attest/itemN.json -o evidence/itemN.json`,
-cite the inventory's hash, add `... --check evidence/itemN.json` to the
-workflow, bump the pin and regenerate the record). Run with the dev build
-`klt 0.7.1.dev1743` on a worktree host, item 10 passed 11/11; items 1 and 9
-each failed one command check because that host's toolchain differs from the
-pins (ngspice 42 vs 46, xschem 3.4.4 vs 3.4.7: `design/netlist.sh --check`
-reported STALE, `sim/selftest.sh --quick` refused the drifted toolchain), so
-those two must be attested on a host that matches `sim/toolchain.json`.
-The item 9 `pins` follow `sim/pdk.json` / `sim/toolchain.json` as on `main`
-at the time of writing (PDK `c6d73a35f524…`); a re-pin shows up as `--check`
-drift. Until the envelopes exist items 1, 9 and 10 stay `unmet`/`no_evidence`.
+**Item 10, "Repo hygiene"** (issue #189) is cited from `evidence/item10.json`,
+the envelope `klt signoff --attest 10 --inventory attest/item10.json -o
+evidence/item10.json` produces (11/11 checks, klt 0.8.0). The manifest cites it
+with the inventory's hash (`sha256:0a3c842f…`), and CI re-runs the same command
+with `--check evidence/item10.json`, which exits 3 (`drifted`) when an
+inventoried file or gate changes. The envelope hashes `README.md`, `LICENSE`,
+`spec/README.md` and `.github/workflows/t1-signoff.yml`, so **re-attest in the
+same change that edits any of them**. Negative control (scratch copy, one
+byte appended to `LICENSE`): `--check` went `match` (exit 0) to `drifted`
+(exit 3).
+
+**Items 1 and 9 — inventories committed, envelopes still waiting on a matching
+host** (issues #186, #189). klt 0.8.0 ships `klt signoff --attest N --inventory
+attest/itemN.json`, but items 1 and 9 must be attested on a host whose
+toolchain matches `sim/toolchain.json` (ngspice 46, xschem 3.4.7). The dispatch
+host has ngspice 42 / xschem 3.4.4, where each fails one command check
+(`design/netlist.sh --check` reports STALE; `sim/selftest.sh --quick` refuses
+the drifted toolchain), and the toolchain pin is not relaxed to make them pass
+(host gap: #146). Until `evidence/item1.json` and `evidence/item9.json` exist
+those rows stay `unmet`/`no_evidence`. When attesting them, update
+`attest/item9.json`'s `tools.klt` (still `0.7.0`) and re-check its `pins`
+against `sim/pdk.json` / `sim/toolchain.json`; a re-pin shows up as `--check`
+drift.
 
 **Item 3, "DRC clean"** (issue #46), cited from
 `layout/drc-report.json` — a committed `klt drc` envelope over
@@ -364,7 +364,7 @@ see "The current verdict, honestly" above, and read them against
 [`layout/README.md`](../layout/README.md)'s claim.
 
 CI (`.github/workflows/t1-signoff.yml`) installs klt **pinned to
-`klayout-tools==0.7.0`** on the **`klayout==0.30.12`** engine — the build
+`klayout-tools==0.8.0`** on the **`klayout==0.30.12`** engine — the build
 that graded the committed record — then runs the gate's hermetic selftest
 and the live gate. Bump the pin deliberately, regenerate the record in the
 same change (see above), and note that a klt whose own checklist differs
@@ -372,7 +372,18 @@ from the vendored doc reports `build_t1_item_count`/`graded_by_build`
 disclosures rather than failing. **A klt bump can move the evidence as well
 as the report**: 0.6.0's curated sky130 deck added 10 rules over 0.5.0's,
 so `layout/drc-report.json` had to be re-run in the same change — diff the
-verdicts and the coverage, don't rubber-stamp the version string.
+verdicts and the coverage, don't rubber-stamp the version string. The 0.7.0 →
+0.8.0 bump (issue #189) changed no verdict: the regenerated record differs only
+in the klt version/ruleset id and a new `regeneration` block on item 2's row
+(`executed_by_klt: false`, regenerated hash equal to the cited one). The
+`layout-device-count` job stays on `0.7.0`: `layout/extract_pex.py` asserts
+that pin against the committed extraction, and re-extracting under another
+build is a re-measurement (issue #125), not a pin edit. The signoff job's
+`klt lvs --check layout/lvs-report.json` and the ERC byte-diff against
+`layout/erc-report.json` also stay on `0.7.0` (a side venv in that job):
+under 0.8.0 the bundled LVS deck hash and `klt_version` drift (exit 3) and
+ERC emits `schema_version` 2, so moving either is a re-measurement of that
+envelope, not a pin edit.
 
 ## The integrator-view gate (issue #36)
 
