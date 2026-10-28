@@ -4,6 +4,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-10-27
 
+- **PR #205**: build: re-measure LVS/ERC/extraction envelopes under klt 0.8.0
+- **Issue #204** (closed): Bump klayout-tools pin 0.7.0 → 0.8.0
 - **PR #201**: feat: attest T1 item 10 with klt 0.8.0 and gate it in CI
 
 ### 2026-10-23
