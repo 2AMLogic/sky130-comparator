@@ -32,7 +32,7 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-- **#189**: Attest T1 items 1, 9 and 10 once a klt release contains signoff --attest
+_None._
 
 ## PRs Awaiting Review
 
@@ -44,7 +44,7 @@ _None._
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
-- **#201**: feat: attest T1 item 10 with klt 0.8.0 and gate it in CI
+_None._
 
 ## Proposed
 
@@ -73,9 +73,9 @@ _None._
 | Very important | 0 |
 | Important | 2 |
 | Ready (`loom:issue`) | 0 |
-| In Progress (`loom:building`) | 1 |
+| In Progress (`loom:building`) | 0 |
 | PRs awaiting review | 0 |
-| Approved PRs awaiting merge | 1 |
+| Approved PRs awaiting merge | 0 |
 | Curated | 4 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
