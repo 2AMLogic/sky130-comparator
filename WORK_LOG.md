@@ -2,6 +2,11 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-11-05
+
+- **PR #208**: fix(layout): widen router metal for klt 0.8.0 via enclosure; retire 0.7.0 side venv
+- **Issue #207** (closed): Bump klayout-tools pin 0.7.0 → 0.8.0
+
 ### 2026-10-27
 
 - **PR #205**: build: re-measure LVS/ERC/extraction envelopes under klt 0.8.0
