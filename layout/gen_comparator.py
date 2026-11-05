@@ -2,7 +2,7 @@
 """layout/gen_comparator.py -- generate the comparator's GDS layout (issue #44).
 
 The single reviewable source for ``layout/comparator.gds``: it generates
-every device block with ``klt gen`` (klayout-tools 0.7.0 on the klayout
+every device block with ``klt gen`` (klayout-tools 0.8.0 on the klayout
 0.30.12 engine, pinned the same way as ``docs/environment-setup.md`` and
 ``.github/workflows/t1-signoff.yml``),
 places and routes them with a deterministic router this repo controls, and
@@ -141,11 +141,13 @@ L_MET2 = (69, 20)
 # --- rule-derived geometry (sky130 deck thresholds + margin) -----------------
 MCON_UM = 0.17   # ct.2 spacing 0.19 respected by the track pitch below
 VIA_UM = 0.15    # via.1a_a min size 0.15
-PAD_UM = 0.30    # met1/met2 landing pad: 0.065 over mcon, 0.075 over via
-WIRE_UM = 0.30   # met1/met2 wire width (m1.1/m2.1 minimum is 0.14)
+PAD_UM = 0.32    # met1/met2 landing pad: 0.075 over mcon, 0.085 over via
+WIRE_UM = 0.32   # met1/met2 wire width (m1.1/m2.1 minimum is 0.14); 0.32 =
+                 # via 0.15 + 2 x 0.085, the adjacent-edge via enclosure
+                 # (met1/met2.enclosing_adjacent.via.1) klt 0.8.0 checks
 MET1_SPACE_UM = 0.14  # m1.2
 MCON_SPACE_UM = 0.19  # ct.2
-TRACK_PITCH_UM = 0.50  # y pitch for met1 branches: 0.30 wire + 0.20 gap
+TRACK_PITCH_UM = 0.50  # y pitch for met1 branches: 0.32 wire + 0.18 gap
 PAD_MARGIN_UM = 0.12   # keep an mcon this far inside its li1 pad's own edges
 LICON_UM = 0.17
 LICON_PITCH_UM = 0.60
@@ -154,7 +156,7 @@ DBU = 1000
 # --- PDK pin (mirrors sim/pdk.json) ------------------------------------------
 PDK_VARIANT = "sky130A"
 PDK_ROOT_DEFAULT = "~/.ciel"  # default_pdk_root in sim/pdk.json
-KLT_PIN = "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12"
+KLT_PIN = "klayout-tools 0.8.0 (klt 0.8.0), klayout 0.30.12"
 
 # --- T1 item 4 (LVS) request -------------------------------------------------
 # The reference side is the schematic's own derivation product -- what

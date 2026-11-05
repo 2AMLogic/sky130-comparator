@@ -26,7 +26,7 @@ python3 layout/gen_comparator.py           # regenerate + verify + emit
 python3 layout/gen_comparator.py --check   # byte-compare against the committed GDS
 ```
 
-`--check` passes (re-verified at the 0.7.0 pin, issue #123): the flow is deterministic (no randomness, no dict-ordering
+`--check` passes (re-verified at the 0.8.0 pin, issue #207): the flow is deterministic (no randomness, no dict-ordering
 dependence), so a re-run at the pinned toolchain reproduces
 `comparator.gds` byte-for-byte. It also survived the klt 0.5.0 → 0.6.0 bump
 (#47) unchanged — the committed GDS is byte-identical across both generator
@@ -37,8 +37,9 @@ compose evidence now pins each `klt gen` block's own GDS by hash.
 
 **Toolchain pin.** `klt` (klayout-tools) **0.8.0** on the **klayout
 0.30.12** engine (the engine klt 0.8.0 build-tests against; the LVS, ERC and
-parasitic-extraction envelopes were re-measured under it in issue #204, while
-`gen_comparator.py` and its DRC/compose reports remain 0.7.0 products;
+parasitic-extraction envelopes were re-measured under it in issue #204, and
+`gen_comparator.py`, the GDS and the DRC/compose reports were regenerated under
+it in issue #207;
 `klayout_tools.build_identity.klayout_version_expected()`; issue #123 moved
 both pins together), the same pin as `docs/environment-setup.md` and
 `.github/workflows/t1-signoff.yml`; PDK `sky130A` at open_pdks
@@ -802,3 +803,16 @@ binding `comparator.gds` by hash with a regeneration claim that CI re-checks
 binding does and does not cover. `manifests/integrator-view.json`'s
 `gds.path` / `measured_area` are the layout's own record there, validated by
 `scripts/check-integrator-view.py`.
+
+## klt 0.8.0 regeneration (issue #207)
+
+Regenerating under klt 0.8.0 first reported 107 composed-DRC violations (61
+`met1.enclosing_adjacent.via.1`, 46 `met2.enclosing_adjacent.via.1`), all on
+the router's via1 landings, none inside a `klt gen` block. Root cause: the
+router drew 0.30 um met1/met2, so a 0.15 um via1 had 0.075 um enclosure on
+every side, under the 0.085 um adjacent-edge via enclosure; the 0.7.0 deck
+did not report it. The fix is in the generator, not the deck: `WIRE_UM` and
+`PAD_UM` are 0.32 um (0.15 + 2 x 0.085). Composed DRC is 0, LVS/ERC probes
+pass, and `--check` is byte-identical. The wider metal moves the GDS and the
+extracted RC (see `extract-parasitics.json`), so post-layout campaigns
+measured on the 0.7.0 products are stale (tracked in #125).

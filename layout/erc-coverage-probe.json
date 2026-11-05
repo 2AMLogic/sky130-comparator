@@ -1,7 +1,7 @@
 {
   "tool": {
-    "klt_pin": "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12",
-    "klt_version": "0.7.0",
+    "klt_pin": "klayout-tools 0.8.0 (klt 0.8.0), klayout 0.30.12",
+    "klt_version": "0.8.0",
     "klayout_version": "0.30.12",
     "antenna_pdk": "sky130",
     "deck": "sky130"
@@ -11,8 +11,8 @@
   "signoff_spec": "layout/erc-spec.json",
   "signoff_erc_status": "clean",
   "signoff_skipped_reasons": [],
-  "signoff_layout_content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
-  "signoff_spec_content_hash": "sha256:21e14abfe732686acf311dac33f8ce7f10257eee3db12ecbedf0f9ac0946fd33",
+  "signoff_layout_content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
+  "signoff_spec_content_hash": "sha256:63c747300a6cd30c1304a93e4b3ff2f26caf66969ffd812f7b39567ee9e6a39b",
   "probes": [
     {
       "id": "tie_wrong_net",
@@ -243,7 +243,7 @@
     ],
     "item_11_status": "met",
     "item_11_reason": null,
-    "t1_met_count_if_cited": 4,
+    "t1_met_count_if_cited": 3,
     "t1_item_count": 11,
     "supply_nets_graded": [
       "VDD",

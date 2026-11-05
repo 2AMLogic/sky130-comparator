@@ -1,6 +1,9 @@
 {
-  "schema_version": 2,
-  "file": "layout/comparator.gds",
+  "schema_version": 3,
+  "file": {
+    "path": "layout/comparator.gds",
+    "scope": "repo"
+  },
   "deck": "sky130",
   "dbu_um": 0.001,
   "status": "clean",
@@ -39,6 +42,7 @@
       "76/20",
       "76/44",
       "78/44",
+      "79/20",
       "80/20",
       "81/125",
       "82/64",
@@ -65,7 +69,9 @@
       "68/44",
       "69/20",
       "86/20",
-      "94/20"
+      "93/44",
+      "94/20",
+      "95/20"
     ],
     "layers_in_stream_without_rules": [
       "66/13",
@@ -92,6 +98,7 @@
       "met1.area.1",
       "met1.enclosing.mcon.1",
       "met1.enclosing.via.1",
+      "met1.enclosing_adjacent.via.1",
       "met1.holes_area.1",
       "met1.ongrid.1",
       "met1.space.1",
@@ -99,22 +106,35 @@
       "met2.angle.1",
       "met2.area.1",
       "met2.enclosing.via.1",
+      "met2.enclosing_adjacent.via.1",
       "met2.holes_area.1",
       "met2.ongrid.1",
       "met2.space.1",
       "met2.width.1",
+      "npc.angle.1",
+      "npc.ongrid.1",
+      "npc.space.1",
+      "npc.width.1",
+      "nsdm.angle.1",
+      "nsdm.ongrid.1",
+      "nsdm.space.1",
+      "nsdm.width.1",
       "nwell.angle.1",
       "nwell.ongrid.1",
       "nwell.space.1",
       "nwell.width.1",
       "poly.angle.1",
       "poly.enclosing.licon.1",
+      "poly.endcap.diff.1",
       "poly.ongrid.1",
       "poly.width.1",
       "psdm.angle.1",
       "psdm.ongrid.1",
+      "psdm.space.1",
+      "psdm.width.1",
       "rpm.angle.1",
       "rpm.ongrid.1",
+      "rpm.width.1",
       "tap.angle.1",
       "tap.enclosing.licon.1",
       "tap.ongrid.1",
@@ -147,11 +167,13 @@
       "lvtn.angle.1",
       "lvtn.ongrid.1",
       "met2.enclosing.via2.1",
+      "met2.enclosing_adjacent.via2.1",
       "met3.angle.1",
       "met3.area.1",
       "met3.enclosing.capm.1",
       "met3.enclosing.via2.1",
       "met3.enclosing.via3.1",
+      "met3.enclosing_adjacent.via3.1",
       "met3.holes_area.1",
       "met3.ongrid.1",
       "met3.space.1",
@@ -176,12 +198,9 @@
       "mf.ongrid.1",
       "ncm.angle.1",
       "ncm.ongrid.1",
-      "npc.angle.1",
-      "npc.ongrid.1",
-      "nsdm.angle.1",
-      "nsdm.ongrid.1",
       "nsm.angle.1",
       "nsm.ongrid.1",
+      "nwell.enclosed.hvi.1",
       "pad.angle.1",
       "pad.ongrid.1",
       "pwbm.angle.1",
@@ -194,6 +213,7 @@
       "tunm.ongrid.1",
       "uhvi.angle.1",
       "uhvi.ongrid.1",
+      "urpm.width.1",
       "vhvi.angle.1",
       "vhvi.ongrid.1",
       "via2.angle.1",
@@ -212,6 +232,8 @@
       "vpp.ongrid.1"
     ],
     "voltage_domain_warnings": [],
+    "unchecked_rules": [],
+    "marker_blind_layers_in_stream": [],
     "deck_scope": [
       "cap2m",
       "capm",
@@ -224,13 +246,53 @@
       "m3",
       "m4",
       "m5",
+      "npc",
+      "nsdm",
       "nwell",
       "poly",
+      "psdm",
+      "rpm",
+      "urpm",
       "via",
       "via2",
       "via3",
       "via4",
       "x"
+    ],
+    "unmodeled_rules": [
+      "difftap.10",
+      "difftap.11",
+      "difftap.8",
+      "difftap.9",
+      "hvi.1",
+      "hvi.2a",
+      "hvntm.1",
+      "hvntm.2",
+      "hvtp.1",
+      "hvtp.2",
+      "hvtr.1",
+      "hvtr.2",
+      "hvtr.2_a",
+      "m1.3ab",
+      "m1.5",
+      "m2.3ab",
+      "m2.5",
+      "m3.3ab",
+      "m4.5ab",
+      "n/psdm.10a",
+      "n/psdm.10b",
+      "n/psdm.5a",
+      "n/psdm.5b",
+      "n/psdm.6",
+      "n/psdm.7",
+      "n/psdm.8",
+      "npc.4",
+      "pad.2",
+      "rdl.1",
+      "rdl.2",
+      "via.5a",
+      "via2.5",
+      "via3.5"
     ],
     "schema_version": 1,
     "known": true,
@@ -255,6 +317,7 @@
       "met1.area.1",
       "met1.enclosing.mcon.1",
       "met1.enclosing.via.1",
+      "met1.enclosing_adjacent.via.1",
       "met1.holes_area.1",
       "met1.ongrid.1",
       "met1.space.1",
@@ -262,22 +325,35 @@
       "met2.angle.1",
       "met2.area.1",
       "met2.enclosing.via.1",
+      "met2.enclosing_adjacent.via.1",
       "met2.holes_area.1",
       "met2.ongrid.1",
       "met2.space.1",
       "met2.width.1",
+      "npc.angle.1",
+      "npc.ongrid.1",
+      "npc.space.1",
+      "npc.width.1",
+      "nsdm.angle.1",
+      "nsdm.ongrid.1",
+      "nsdm.space.1",
+      "nsdm.width.1",
       "nwell.angle.1",
       "nwell.ongrid.1",
       "nwell.space.1",
       "nwell.width.1",
       "poly.angle.1",
       "poly.enclosing.licon.1",
+      "poly.endcap.diff.1",
       "poly.ongrid.1",
       "poly.width.1",
       "psdm.angle.1",
       "psdm.ongrid.1",
+      "psdm.space.1",
+      "psdm.width.1",
       "rpm.angle.1",
       "rpm.ongrid.1",
+      "rpm.width.1",
       "tap.angle.1",
       "tap.enclosing.licon.1",
       "tap.ongrid.1",
@@ -378,6 +454,10 @@
         "reason": "no_applicable_geometry"
       },
       {
+        "id": "met2.enclosing_adjacent.via2.1",
+        "reason": "no_applicable_geometry"
+      },
+      {
         "id": "met3.angle.1",
         "reason": "no_applicable_geometry"
       },
@@ -395,6 +475,10 @@
       },
       {
         "id": "met3.enclosing.via3.1",
+        "reason": "no_applicable_geometry"
+      },
+      {
+        "id": "met3.enclosing_adjacent.via3.1",
         "reason": "no_applicable_geometry"
       },
       {
@@ -494,27 +578,15 @@
         "reason": "no_applicable_geometry"
       },
       {
-        "id": "npc.angle.1",
-        "reason": "no_applicable_geometry"
-      },
-      {
-        "id": "npc.ongrid.1",
-        "reason": "no_applicable_geometry"
-      },
-      {
-        "id": "nsdm.angle.1",
-        "reason": "no_applicable_geometry"
-      },
-      {
-        "id": "nsdm.ongrid.1",
-        "reason": "no_applicable_geometry"
-      },
-      {
         "id": "nsm.angle.1",
         "reason": "no_applicable_geometry"
       },
       {
         "id": "nsm.ongrid.1",
+        "reason": "no_applicable_geometry"
+      },
+      {
+        "id": "nwell.enclosed.hvi.1",
         "reason": "no_applicable_geometry"
       },
       {
@@ -563,6 +635,10 @@
       },
       {
         "id": "uhvi.ongrid.1",
+        "reason": "no_applicable_geometry"
+      },
+      {
+        "id": "urpm.width.1",
         "reason": "no_applicable_geometry"
       },
       {
@@ -635,20 +711,20 @@
     "nothing_checked_reasons": []
   },
   "provenance": {
-    "klt_version": "0.7.0",
+    "klt_version": "0.8.0",
     "klayout_version": "0.30.12",
     "pdk": {
       "name": "sky130A",
       "source": "--pdk-root flag",
-      "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+      "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
     },
     "deck": {
       "name": "sky130",
-      "content_hash": "sha256:f8f2c3f48eada473dc34a7a8926c0b04fef446fb351a70a636ce43a9ca9c70ba",
+      "content_hash": "sha256:ba0f97887e3d231aec8b54f1f52f2941ded0228f0234b6759712bcaca0e942e6",
       "released": true
     },
     "input": {
-      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
+      "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
       "role": "layout"
     },
     "klayout_version_mismatch": false

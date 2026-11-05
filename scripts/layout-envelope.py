@@ -47,7 +47,7 @@ def sha(data: bytes) -> str:
 def build(repo: Path, members=MEMBERS) -> dict:
     """Envelope binding `members[0]` (the GDS) by path, plus a regeneration claim.
 
-    The pinned klt 0.7.0 grades a single-path binding only: a `paths` set
+    The pinned klt 0.8.0 grades a single-path binding only: a `paths` set
     (klayout-tools#3044) renders `unanchored_evidence` there although the
     docs describe it, so the generator and request documents are not bound by
     hash. What stands in for them is `provenance.regeneration` (#2887): the

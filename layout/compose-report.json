@@ -6,14 +6,14 @@
   "pdk": {
     "name": "sky130A",
     "variant": "sky130A",
-    "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+    "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
   },
   "dbu_um": 0.001,
   "bbox_um": {
     "x0": 0.0,
-    "y0": 4.390000000000001,
-    "x1": 40.59,
-    "y1": 86.43
+    "y0": 4.090000000000002,
+    "x1": 40.78,
+    "y1": 86.72999999999999
   },
   "ports": [],
   "blocks": [
@@ -23,16 +23,16 @@
       "generator": "mos_array",
       "cell_name": "PTAIL",
       "source_path": "ptail.gds",
-      "source_digest": "sha256:dc39fed18a1eb6c734ebd82d8a816981a5cc7c8b9ff55df53ec9e33dfe028974",
+      "source_digest": "sha256:93d56a5ba541fc3236d01d82cd254cfb1a5886e911cf024cc99b6e18ad9a7e7d",
       "offset_um": {
         "x": 2.0,
         "y": 44.6
       },
       "bbox_um": {
-        "x0": 2.0,
-        "y0": 44.6,
-        "x1": 3.34,
-        "y1": 46.22
+        "x0": 1.875,
+        "y0": 44.45,
+        "x1": 3.465,
+        "y1": 46.370000000000005
       },
       "orientation": "none",
       "abuts": []
@@ -43,16 +43,16 @@
       "generator": "diff_pair",
       "cell_name": "INPAIR",
       "source_path": "inpair.gds",
-      "source_digest": "sha256:575c2540bd54cc90554e5b617ce1df62d2344446981b4418e12f8f4b8abf84e0",
+      "source_digest": "sha256:3b91e65910be777460b8567c39c796f8d9c3a07c16570866baee076a4d452b26",
       "offset_um": {
         "x": 5.5,
-        "y": 37.89
+        "y": 37.74
       },
       "bbox_um": {
-        "x0": 5.5,
-        "y0": 37.89,
-        "x1": 8.58,
-        "y1": 52.93
+        "x0": 5.375,
+        "y0": 37.59,
+        "x1": 8.705,
+        "y1": 53.230000000000004
       },
       "orientation": "none",
       "abuts": []
@@ -63,16 +63,16 @@
       "generator": "res_array",
       "cell_name": "RLOAD",
       "source_path": "rload.gds",
-      "source_digest": "sha256:157975a02706bcbb310fdfa10841e45ad5c2dfce4ddae3f4e0db2e9a60a166fe",
+      "source_digest": "sha256:0ba1f2a402618cc30b7a4f3a31616d25fd2977c9909d4ae330938678ec51c7ed",
       "offset_um": {
         "x": 5.5,
         "y": 65.0
       },
       "bbox_um": {
-        "x0": 5.5,
-        "y0": 65.0,
-        "x1": 28.34,
-        "y1": 66.1
+        "x0": 5.25,
+        "y0": 63.875,
+        "x1": 28.53,
+        "y1": 69.075
       },
       "orientation": "none",
       "abuts": []
@@ -83,16 +83,16 @@
       "generator": "diff_pair",
       "cell_name": "STN",
       "source_path": "stn.gds",
-      "source_digest": "sha256:4d7d19015617fdc01a407b21a8b935a68970e0986a4dd46176a90a9349a6df91",
+      "source_digest": "sha256:c067a1794546de497ecf237cfe863f66f0bc915f2a2874978d29bd44fce2573d",
       "offset_um": {
         "x": 11.0,
-        "y": 36.39
+        "y": 36.239999999999995
       },
       "bbox_um": {
-        "x0": 11.0,
-        "y0": 36.39,
-        "x1": 12.34,
-        "y1": 54.43
+        "x0": 10.875,
+        "y0": 36.089999999999996,
+        "x1": 12.465,
+        "y1": 54.73
       },
       "orientation": "none",
       "abuts": []
@@ -103,16 +103,16 @@
       "generator": "mos_array",
       "cell_name": "TAIL2",
       "source_path": "tail2.gds",
-      "source_digest": "sha256:8fcd2a1cc84d3f0a269c63b6958d01f4ac9ae590ad6e6d76d53c9d3f3ccc8cbe",
+      "source_digest": "sha256:983373536e29d30403d17e3ef3f11361c7ce777c2169c08094bb0fddb19b55c0",
       "offset_um": {
         "x": 15.0,
         "y": 41.0
       },
       "bbox_um": {
-        "x0": 15.0,
-        "y0": 41.0,
-        "x1": 16.34,
-        "y1": 49.82
+        "x0": 14.875,
+        "y0": 40.85,
+        "x1": 16.465,
+        "y1": 49.97
       },
       "orientation": "none",
       "abuts": []
@@ -123,16 +123,16 @@
       "generator": "diff_pair",
       "cell_name": "LATP",
       "source_path": "latp.gds",
-      "source_digest": "sha256:e615e3f6ea6147055d8a17c8a9084fe393040fed8284437bec1a96d8f097ce95",
+      "source_digest": "sha256:5fa2fdbe7cebbfd915820c27cd3fca0cc3d8aa0298f0883a874129cb6188464a",
       "offset_um": {
         "x": 18.5,
-        "y": 28.39
+        "y": 28.240000000000002
       },
       "bbox_um": {
         "x0": 18.35,
-        "y0": 28.240000000000002,
+        "y0": 28.090000000000003,
         "x1": 19.99,
-        "y1": 62.58
+        "y1": 63.03
       },
       "orientation": "none",
       "abuts": []
@@ -143,16 +143,16 @@
       "generator": "diff_pair",
       "cell_name": "RST",
       "source_path": "rst.gds",
-      "source_digest": "sha256:205711d0e62913b5b02d4c7a89d2e2ff70399bc94157f917871281bcf227e8f5",
+      "source_digest": "sha256:ce9f23153247580c12170c3468978ea4be8bb654b67adee408922542e01b3d22",
       "offset_um": {
         "x": 22.5,
-        "y": 36.39
+        "y": 36.239999999999995
       },
       "bbox_um": {
         "x0": 22.35,
-        "y0": 36.24,
+        "y0": 36.089999999999996,
         "x1": 23.99,
-        "y1": 54.58
+        "y1": 55.029999999999994
       },
       "orientation": "none",
       "abuts": []
@@ -163,16 +163,16 @@
       "generator": "diff_pair",
       "cell_name": "ABSORB",
       "source_path": "absorb.gds",
-      "source_digest": "sha256:a7935a589d97bb46d9baf89a77b2e23d6a5bda8909779bd869d350ca3c8dd515",
+      "source_digest": "sha256:a416d8cba9343e7d817aef378d30f13c507e10fb33ccc7fb935ff0a065cfb9df",
       "offset_um": {
         "x": 30.0,
-        "y": 4.390000000000001
+        "y": 4.240000000000002
       },
       "bbox_um": {
-        "x0": 30.0,
-        "y0": 4.390000000000001,
-        "x1": 31.34,
-        "y1": 86.43
+        "x0": 29.875,
+        "y0": 4.090000000000002,
+        "x1": 31.465,
+        "y1": 86.72999999999999
       },
       "orientation": "none",
       "abuts": []
@@ -183,16 +183,16 @@
       "generator": "mos_array",
       "cell_name": "CLKCAP",
       "source_path": "clkcap.gds",
-      "source_digest": "sha256:bb85bfb5861d1113dfa3df39aa5e7d5e4464268fe4946e7878fb05696d65ff99",
+      "source_digest": "sha256:177c50dc6fef7590390ffa5795aa5ff706a4e397fc8500f41f082cead2c9b506",
       "offset_um": {
         "x": 34.0,
         "y": 35.0
       },
       "bbox_um": {
-        "x0": 34.0,
-        "y0": 35.0,
-        "x1": 35.34,
-        "y1": 55.82
+        "x0": 33.875,
+        "y0": 34.85,
+        "x1": 35.465,
+        "y1": 55.97
       },
       "orientation": "none",
       "abuts": []
@@ -203,16 +203,16 @@
       "generator": "res_array",
       "cell_name": "RCLKS",
       "source_path": "rclks.gds",
-      "source_digest": "sha256:04bd7734ec9792f9a72ca6b57b1fa3157136d2447c34efb03d1e3cc9172bb6e0",
+      "source_digest": "sha256:48dfb56e39423b7fad0e52d17c426a4febabc1ff76a37f73140511519b2eeed1",
       "offset_um": {
         "x": 38.0,
         "y": 44.825
       },
       "bbox_um": {
-        "x0": 38.0,
-        "y0": 44.825,
-        "x1": 40.59,
-        "y1": 45.175000000000004
+        "x0": 37.75,
+        "y0": 43.7,
+        "x1": 40.78,
+        "y1": 46.300000000000004
       },
       "orientation": "none",
       "abuts": []
@@ -223,16 +223,16 @@
       "generator": "draw",
       "cell_name": "ROUTE",
       "source_path": "route.gds",
-      "source_digest": "sha256:de456355a9c961fe7fa74155f712e7cc064598472de69ab19119aa5a982bb403",
+      "source_digest": "sha256:afa18679889d1c420f0260bfe794be4ab3a85f91288b454fcd4725dae75d2e9b",
       "offset_um": {
         "x": 0.0,
         "y": 0.0
       },
       "bbox_um": {
         "x0": 0.0,
-        "y0": 9.85,
-        "x1": 40.53,
-        "y1": 86.28
+        "y0": 9.84,
+        "x1": 40.495,
+        "y1": 86.66
       },
       "orientation": "none",
       "abuts": []
@@ -300,12 +300,15 @@
     "block 'route' is placed 0.00um from block 'rclks' (strategy: explicit), closer than rclks's own declared drc_hints.foreign_clearance_um of 0.40um"
   ],
   "provenance": {
-    "klt_version": "0.7.0",
+    "klt_version": "0.8.0",
     "klayout_version": "0.30.12",
     "pdk": {
       "name": "sky130A",
-      "source": "search root: ~/.volare",
-      "version": "open_pdks c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+      "source": "search root: ~/.ciel",
+      "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7",
+      "ambiguous_sources": [
+        "search root: ~/.volare"
+      ]
     },
     "deck": null,
     "input": null

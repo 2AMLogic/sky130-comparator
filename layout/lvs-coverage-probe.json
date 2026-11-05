@@ -1,13 +1,13 @@
 {
   "tool": {
-    "klt_pin": "klayout-tools 0.7.0 (klt 0.7.0), klayout 0.30.12",
+    "klt_pin": "klayout-tools 0.8.0 (klt 0.8.0), klayout 0.30.12",
     "engine": "klayout",
     "engine_version": "0.30.12"
   },
   "method": "negative controls for layout/lvs-report.json: one klt lvs compare per row, each against a perturbed scratch copy of sim/comparator-decision/testbench/comparator_core.spice (the committed netlist is never written to) and the same layout/comparator.gds the signoff run used. A row with compare_covers_this=true asserts the compare DETECTS that defect (so the signoff match is not vacuous); a row with compare_covers_this=false asserts it does NOT -- those are the holes layout/README.md's LVS section discloses. Each row also records supply_pairing, the measurement T1 item 11's LVS half is graded on (klt signoff's _lvs_reference_carries_supplies): see layout/README.md -> 'Why item 11 is cited'.",
   "signoff_report": "layout/lvs-report.json",
   "signoff_status": "match",
-  "signoff_layout_sha256": "53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
+  "signoff_layout_sha256": "d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
   "signoff_reference_sha256": "e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4",
   "signoff_supply_pairing": {
     "net_correspondence_rows": 12,
