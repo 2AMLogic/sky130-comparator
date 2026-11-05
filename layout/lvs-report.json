@@ -142,7 +142,7 @@
     "engine": "klayout",
     "engine_version": "0.30.12",
     "netgen_binary": null,
-    "layout_sha256": "53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
+    "layout_sha256": "d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
     "reference_sha256": "e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4",
     "extracted_netlist": null
   },
@@ -156,7 +156,7 @@
       "released": true
     },
     "input": {
-      "content_hash": "sha256:53e3644202f0c0f8dc6617236cc6dfbd077e48e790b783b65d900b1bf3771362",
+      "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
       "role": "layout"
     },
     "klayout_version_mismatch": false
@@ -280,7 +280,7 @@
       "pin": true
     },
     {
-      "layout": "\\$10",
+      "layout": "\\$5",
       "reference": "OUTN1",
       "pin": false
     },
@@ -290,17 +290,17 @@
       "pin": true
     },
     {
-      "layout": "\\$6",
+      "layout": "\\$9",
       "reference": "OUTP1",
       "pin": false
     },
     {
-      "layout": "\\$7",
+      "layout": "\\$6",
       "reference": "TAIL2",
       "pin": false
     },
     {
-      "layout": "\\$4",
+      "layout": "\\$7",
       "reference": "TAILP",
       "pin": false
     },

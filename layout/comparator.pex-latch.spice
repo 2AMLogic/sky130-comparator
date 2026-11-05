@@ -34,70 +34,74 @@
 * - substrate tie: 1e+12 ohm to ground -- the substrate is capacitively floating in transient analysis (DC reference only); see --substrate-tie-ohms
 *
 * --- netlist ---
-* device instance $3 r0 *1 11.67,40.39 nfet
+* device instance $3 r0 *1 11.67,40.24 nfet
 XM_STN_P OUTP__t3 OUTP1__t4 TAIL2__t2 GND__t15 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
 * device instance $6 r0 *1 15.67,45 nfet
 XM_TAIL2 TAIL2__t0 CLKT__t0 GND__t5 GND__t16 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
-* device instance $9 r0 *1 11.67,49.61 nfet
+* device instance $9 r0 *1 11.67,49.76 nfet
 XM_STN_N OUTN__t0 OUTN1__t4 TAIL2__t1 GND__t17 sky130_fd_pr__nfet_01v8 L=0.5 W=8 AS=3.36 AD=3.36 PS=16.84 PD=16.84
-* device instance _10_t4 r0 *1 0,0
-R_OUTN1__t4_OUTN1 OUTN1__t4 OUTN1 63.8294796949
-* device instance _10 r0 *1 0,0
-C_OUTN1_vsubs OUTN1 vsubs 8.969341e-15
 * device instance _3_t0 r0 *1 0,0
-R_CLKT__t0_CLKT CLKT__t0 CLKT 143.4961709
+R_CLKT__t0_CLKT CLKT__t0 CLKT 357.328511994
 * device instance _3 r0 *1 0,0
-C_CLKT_vsubs CLKT vsubs 9.133617e-15
-* device instance _6_t4 r0 *1 0,0
-R_OUTP1__t4_OUTP1 OUTP1__t4 OUTP1 49.5476042882
+C_CLKT_vsubs CLKT vsubs 1.0238036e-14
+* device instance _5_t4 r0 *1 0,0
+R_OUTN1__t4_OUTN1 OUTN1__t4 OUTN1 98.7474814997
+* device instance _5 r0 *1 0,0
+C_OUTN1_vsubs OUTN1 vsubs 9.906148e-15
+* device instance _6_t0 r0 *1 0,0
+R_TAIL2__t0_TAIL2 TAIL2__t0 TAIL2 156.787929129
+* device instance _6_t1 r0 *1 0,0
+R_TAIL2__t1_TAIL2 TAIL2__t1 TAIL2 290.638685436
+* device instance _6_t2 r0 *1 0,0
+R_TAIL2__t2_TAIL2 TAIL2__t2 TAIL2 290.638685436
 * device instance _6 r0 *1 0,0
-C_OUTP1_vsubs OUTP1 vsubs 8.445951e-15
-* device instance _7_t0 r0 *1 0,0
-R_TAIL2__t0_TAIL2 TAIL2__t0 TAIL2 160.656121868
-* device instance _7_t1 r0 *1 0,0
-R_TAIL2__t1_TAIL2 TAIL2__t1 TAIL2 289.117489066
-* device instance _7_t2 r0 *1 0,0
-R_TAIL2__t2_TAIL2 TAIL2__t2 TAIL2 289.117489066
-* device instance _7 r0 *1 0,0
-C_TAIL2_vsubs TAIL2 vsubs 4.013191e-15
+C_TAIL2_vsubs TAIL2 vsubs 3.954834e-15
+* device instance _9_t4 r0 *1 0,0
+R_OUTP1__t4_OUTP1 OUTP1__t4 OUTP1 81.0300268944
+* device instance _9 r0 *1 0,0
+C_OUTP1_vsubs OUTP1 vsubs 9.303445e-15
 * device instance GND_t5 r0 *1 0,0
-R_GND__t5_GND GND__t5 GND 93.0161692482
+R_GND__t5_GND GND__t5 GND 92.7048430922
 * device instance GND_t15 r0 *1 0,0
-R_GND__t15_GND GND__t15 GND 198.299238242
+R_GND__t15_GND GND__t15 GND 199.058537964
 * device instance GND_t16 r0 *1 0,0
-R_GND__t16_GND GND__t16 GND 93.0161692482
+R_GND__t16_GND GND__t16 GND 92.7048430922
 * device instance GND_t17 r0 *1 0,0
-R_GND__t17_GND GND__t17 GND 167.038774413
+R_GND__t17_GND GND__t17 GND 165.875393678
 * device instance GND r0 *1 0,0
-C_GND_vsubs GND vsubs 3.5595668e-14
+C_GND_vsubs GND vsubs 3.5731335e-14
 * device instance OUTN_t0 r0 *1 0,0
-R_OUTN__t0_OUTN OUTN__t0 OUTN 265.023762098
+R_OUTN__t0_OUTN OUTN__t0 OUTN 309.428769076
 * device instance OUTN r0 *1 0,0
-C_OUTN_vsubs OUTN vsubs 1.1631209e-14
+C_OUTN_vsubs OUTN vsubs 1.1879141e-14
 * device instance OUTP_t3 r0 *1 0,0
-R_OUTP__t3_OUTP OUTP__t3 OUTP 264.692369173
+R_OUTP__t3_OUTP OUTP__t3 OUTP 309.017376002
 * device instance OUTP r0 *1 0,0
-C_OUTP_vsubs OUTP vsubs 1.1348877e-14
-* device instance cc__10__6 r0 *1 0,0
-C_OUTN1_OUTP1 OUTN1 OUTP1 8.9015e-17
+C_OUTP_vsubs OUTP vsubs 1.1510864e-14
 * device instance cc__3_GND r0 *1 0,0
-C_CLKT_GND CLKT GND 6.4921e-17
+C_CLKT_GND CLKT GND 7.1819e-17
 * device instance cc__3_OUTN r0 *1 0,0
-C_CLKT_OUTN CLKT OUTN 2.4095e-17
+C_CLKT_OUTN CLKT OUTN 2.7415e-17
 * device instance cc__3_OUTP r0 *1 0,0
-C_CLKT_OUTP CLKT OUTP 3.8484e-17
-* device instance cc__7_GND r0 *1 0,0
-C_TAIL2_GND TAIL2 GND 2.8778e-17
-* device instance cc__7_OUTN r0 *1 0,0
-C_TAIL2_OUTN TAIL2 OUTN 3.8484e-17
-* device instance cc__7_OUTP r0 *1 0,0
-C_TAIL2_OUTP TAIL2 OUTP 2.6437e-17
+C_CLKT_OUTP CLKT OUTP 4.2763e-17
+* device instance cc__5__9 r0 *1 0,0
+C_OUTN1_OUTP1 OUTN1 OUTP1 8.5526e-17
+* device instance cc__5_OUTN r0 *1 0,0
+C_OUTN1_OUTN OUTN1 OUTN 1.5348e-17
+* device instance cc__5_OUTP r0 *1 0,0
+C_OUTN1_OUTP OUTN1 OUTP 1.3707e-17
+* device instance cc__6_GND r0 *1 0,0
+C_TAIL2_GND TAIL2 GND 3.0697e-17
+* device instance cc__6_OUTN r0 *1 0,0
+C_TAIL2_OUTN TAIL2 OUTN 2.9056e-17
+* device instance cc__6_OUTP r0 *1 0,0
+C_TAIL2_OUTP TAIL2 OUTP 1.5348e-17
 * device instance cc_GND_OUTN r0 *1 0,0
-C_GND_OUTN GND OUTN 1.2047e-17
+C_GND_OUTN GND OUTN 1.3707e-17
 * device instance cc_GND_OUTP r0 *1 0,0
-C_GND_OUTP GND OUTP 1.2047e-17
+C_GND_OUTP GND OUTP 1.3707e-17
 * device instance cc_OUTN_OUTP r0 *1 0,0
-C_OUTN_OUTP OUTN OUTP 4.819e-17
+C_OUTN_OUTP OUTN OUTP 5.4829e-17
 * device instance vsubs_dctie r0 *1 0,0
 R_vsubs_0 vsubs 0 1e+12
 *

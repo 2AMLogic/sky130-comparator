@@ -7,7 +7,7 @@
     },
     "inpair": {
       "x": 5.5,
-      "y": 37.89
+      "y": 37.74
     },
     "rload": {
       "x": 5.5,
@@ -15,7 +15,7 @@
     },
     "stn": {
       "x": 11.0,
-      "y": 36.39
+      "y": 36.239999999999995
     },
     "tail2": {
       "x": 15.0,
@@ -23,15 +23,15 @@
     },
     "latp": {
       "x": 18.5,
-      "y": 28.39
+      "y": 28.240000000000002
     },
     "rst": {
       "x": 22.5,
-      "y": 36.39
+      "y": 36.239999999999995
     },
     "absorb": {
       "x": 30.0,
-      "y": 4.390000000000001
+      "y": 4.240000000000002
     },
     "clkcap": {
       "x": 34.0,
@@ -94,86 +94,86 @@
   },
   "nets": {
     "CLK": {
-      "met1_area_um2": 0.9675,
-      "met2_area_um2": 0.09,
-      "wire_area_um2": 1.0575,
+      "met1_area_um2": 1.048,
+      "met2_area_um2": 0.1024,
+      "wire_area_um2": 1.1504,
       "via_count": 1,
       "mcon_count": 1
     },
     "CLKT": {
-      "met1_area_um2": 8.694,
-      "met2_area_um2": 19.26,
-      "wire_area_um2": 27.954,
+      "met1_area_um2": 9.3488,
+      "met2_area_um2": 21.0496,
+      "wire_area_um2": 30.3984,
       "via_count": 11,
       "mcon_count": 5
     },
     "GND": {
-      "met1_area_um2": 13.683,
-      "met2_area_um2": 37.77,
-      "wire_area_um2": 51.453,
+      "met1_area_um2": 14.6336,
+      "met2_area_um2": 40.4672,
+      "wire_area_um2": 55.1008,
       "via_count": 13,
       "mcon_count": 9
     },
     "OUTN": {
-      "met1_area_um2": 4.92,
-      "met2_area_um2": 24.48,
-      "wire_area_um2": 29.4,
+      "met1_area_um2": 5.28,
+      "met2_area_um2": 26.4448,
+      "wire_area_um2": 31.7248,
       "via_count": 6,
       "mcon_count": 4
     },
     "OUTN1": {
-      "met1_area_um2": 10.173,
-      "met2_area_um2": 14.13,
-      "wire_area_um2": 24.303,
+      "met1_area_um2": 10.7728,
+      "met2_area_um2": 16.0448,
+      "wire_area_um2": 26.8176,
       "via_count": 7,
       "mcon_count": 5
     },
     "OUTP": {
-      "met1_area_um2": 4.659,
-      "met2_area_um2": 23.73,
-      "wire_area_um2": 28.389,
+      "met1_area_um2": 4.96,
+      "met2_area_um2": 25.3248,
+      "wire_area_um2": 30.2848,
       "via_count": 6,
       "mcon_count": 4
     },
     "OUTP1": {
-      "met1_area_um2": 9.099,
-      "met2_area_um2": 13.38,
-      "wire_area_um2": 22.479,
+      "met1_area_um2": 9.752,
+      "met2_area_um2": 14.7648,
+      "wire_area_um2": 24.5168,
       "via_count": 7,
       "mcon_count": 5
     },
     "TAIL2": {
-      "met1_area_um2": 2.283,
-      "met2_area_um2": 3.09,
-      "wire_area_um2": 5.373,
+      "met1_area_um2": 2.4544,
+      "met2_area_um2": 2.9824,
+      "wire_area_um2": 5.4368,
       "via_count": 3,
       "mcon_count": 3
     },
     "TAILP": {
-      "met1_area_um2": 2.844,
-      "met2_area_um2": 2.49,
-      "wire_area_um2": 5.334,
+      "met1_area_um2": 3.0592,
+      "met2_area_um2": 2.8224,
+      "wire_area_um2": 5.8816,
       "via_count": 5,
       "mcon_count": 5
     },
     "VDD": {
-      "met1_area_um2": 9.981,
-      "met2_area_um2": 40.26,
-      "wire_area_um2": 50.241,
+      "met1_area_um2": 10.6624,
+      "met2_area_um2": 42.6496,
+      "wire_area_um2": 53.312,
       "via_count": 14,
       "mcon_count": 8
     },
     "VINN": {
-      "met1_area_um2": 1.533,
-      "met2_area_um2": 2.19,
-      "wire_area_um2": 3.723,
+      "met1_area_um2": 1.7312,
+      "met2_area_um2": 2.9824,
+      "wire_area_um2": 4.7136,
       "via_count": 2,
       "mcon_count": 2
     },
     "VINP": {
-      "met1_area_um2": 1.623,
-      "met2_area_um2": 2.64,
-      "wire_area_um2": 4.263,
+      "met1_area_um2": 1.8208,
+      "met2_area_um2": 2.3424,
+      "wire_area_um2": 4.1632,
       "via_count": 2,
       "mcon_count": 2
     }
@@ -185,11 +185,11 @@
         "OUTN"
       ],
       "wire_area_um2": [
-        28.389,
-        29.4
+        30.2848,
+        31.7248
       ],
-      "delta_um2": 1.011,
-      "delta_percent": 3.5
+      "delta_um2": 1.44,
+      "delta_percent": 4.64
     },
     {
       "pair": [
@@ -197,11 +197,11 @@
         "OUTN1"
       ],
       "wire_area_um2": [
-        22.479,
-        24.303
+        24.5168,
+        26.8176
       ],
-      "delta_um2": 1.824,
-      "delta_percent": 7.8
+      "delta_um2": 2.3008,
+      "delta_percent": 8.96
     },
     {
       "pair": [
@@ -209,11 +209,11 @@
         "VINN"
       ],
       "wire_area_um2": [
-        4.263,
-        3.723
+        4.1632,
+        4.7136
       ],
-      "delta_um2": 0.54,
-      "delta_percent": 13.52
+      "delta_um2": 0.5504,
+      "delta_percent": 12.4
     }
   ]
 }
