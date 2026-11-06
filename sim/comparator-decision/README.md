@@ -287,19 +287,22 @@ answer, recorded here because it governs what the campaign could afford:
 the `klt sim` batch fleet.
 
 **Why not the batch fleet.** The fleet is reached by submitting a `klt sim`
-**request JSON** with a `corners` or `monte_carlo` block; the backend then
-fans that request out. `run.py` is not such a request and cannot become one
-cheaply -- it drives `ngspice` directly because none of this bench's five
-measurements is expressible as the verbatim `.meas` cards a `klt sim` request
-grades against limits. That is the *same* structural gap, for the *same*
-reason, that makes `klt pex` unusable for T1 item 7 (see "Why not `klt pex`?"
-above), and it is already filed as
-[`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478).
-Routing this campaign to the fleet therefore means first re-expressing the
-bench as a `klt sim` request -- which is not a dispatch detail, it is the
-tool gap itself, and it is out of scope for a measurement issue. No new
-friction issue was filed: #2478 already describes this gap exactly, and #64
-encountered it in the same form rather than a new one.
+**request JSON**; the backend then fans that request out. `run.py` is not such
+a request: it drives `ngspice` directly. When issue #64 was decided, that was
+justified by the claim that none of this bench's five measurements was
+expressible as the verbatim `.meas` cards a `klt sim` request grades
+([`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478)).
+That premise is stale: #2478 closed on 2026-09-25 and
+[`#2482`](https://github.com/2AMLogic/klayout-tools/issues/2482) (ordered steps,
+several solves in one corner) closed on 2026-10-09. Issue #211's pilot
+([`records/klt-pilot-kickback-20261106.md`](records/klt-pilot-kickback-20261106.md))
+expressed `kickback` as a `klt sim` request (`klt-pilot/`) and ran both legs on
+the batch fleet: `loaded` 1.8736 mV, `ideal` 0.0000 mV against the `run.py`
+baseline 1.8902 mV (indicative only: PDK `f6eeac7` vs `c6d73a35`). So a `klt sim`
+route exists for `kickback`. `regen`, `offset`, `noise` and `reset` have not
+been attempted, and the serial-on-host decision below is the historical record
+of what #64 did, not a statement that the fleet is unusable. Choosing the
+execution route is #127's decision.
 
 **Why serial was affordable anyway.** The estimate #64 was scoped against
 (~20 min per `regen` sweep, ~25 min per `offset` N=16 run, "well over a

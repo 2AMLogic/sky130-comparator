@@ -1,0 +1,9 @@
+* kickback pilot body (loaded) -- circuit body for klt sim (issue #211); mirrors run.py _kickback_deck
+.param vdd_val = 1.8
+Vdd VDD 0 dc {vdd_val}
+Vclk CLK 0 PULSE(0 {vdd_val} 5n 0.1n 0.1n 40n 55.1n)
+Vsrcp VSRC_P 0 dc 0.925
+Vsrcn VSRC_N 0 dc 0.875
+Rsp VSRC_P VINP 1000
+Rsn VSRC_N VINN 1000
+.include ../testbench/comparator_core.spice
