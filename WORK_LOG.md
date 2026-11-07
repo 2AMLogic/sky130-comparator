@@ -2,6 +2,12 @@
 
 Chronological record of merged pull requests and closed issues, maintained by the Loom Guide role. Newest entries appear first.
 
+### 2026-11-07
+
+- **PR #215**: ci: build xschem 3.4.7 and re-check the item-1 attestation envelope
+- **PR #210**: feat(evidence): attest and cite T1 items 1 and 9
+- **Issue #189** (closed): Attest T1 items 1, 9 and 10 once a klt release contains signoff --attest
+
 ### 2026-11-06
 
 - **PR #212**: sim: pilot kickback as a klt sim request on the batch fleet
