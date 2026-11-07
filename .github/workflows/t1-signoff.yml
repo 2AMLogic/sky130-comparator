@@ -156,8 +156,11 @@ jobs:
       # result to the committed envelope: exit non-zero when an inventoried
       # file (README, LICENSE, spec/README.md, this workflow) or a gate's
       # behavior moved since evidence/item10.json was produced. Items 1 and 9
-      # have no committed envelope yet (they need a host matching
-      # sim/toolchain.json), so they have no step here.
+      # are attested too (evidence/item1.json, evidence/item9.json) but their
+      # inventories run xschem 3.4.7 / ngspice 46 + the pinned PDK, which this
+      # PDK-free job does not install: item 9 is re-checked in the
+      # harness-selftest job below; item 1 (design/netlist.sh --check needs
+      # xschem) has no CI step yet, see the PR for issue #189.
       - name: Re-check the item-10 attestation envelope
         run: klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json
 
@@ -308,3 +311,15 @@ jobs:
       # sabotage negative control is part of this run.
       - name: Harness acceptance test (sim/selftest.sh --require-pdk)
         run: PDK_ROOT="$HOME/.ciel" bash sim/selftest.sh --require-pdk
+
+      # T1 item 9's attestation envelope (issue #189). `--check` re-runs the
+      # inventory's testbench presence checks and its cold_start command
+      # (sim/selftest.sh --quick) and compares against the committed
+      # evidence/item9.json; it also re-asserts the pins recorded in the
+      # inventory (klt 0.8.0, ngspice 46, xschem 3.4.7 -- hence the pinned klt
+      # install here). Needs ngspice 46 + the PDK, which this job provides.
+      - name: Install klt (pinned; same pin as the signoff job)
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
+
+      - name: Re-check the item-9 attestation envelope
+        run: PDK_ROOT="$HOME/.ciel" klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json
