@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "kind": "generic",
+  "status": "pass",
+  "t1_item": 1,
+  "summary": "T1 item 1 (Design sources): 4/4 attestation checks passed (klt signoff --attest)",
+  "source": "attest/item1.json",
+  "attestation": {
+    "producer": "klt signoff --attest",
+    "inventory_schema_version": 1,
+    "hash_algorithm": "sha256-raw-bytes",
+    "check_count": 4,
+    "passed_count": 4,
+    "checks": [
+      {
+        "check": "present",
+        "role": "source",
+        "path": "design/comparator.sch",
+        "passed": true,
+        "content_hash": "sha256:bbcf7430218b6a6999f2b4a654978a59859f5815951d18820b81bf37ae76a69b"
+      },
+      {
+        "check": "present",
+        "role": "source",
+        "path": "design/netlist.sh",
+        "passed": true,
+        "content_hash": "sha256:f5fd587d2ef6c2244bb2bdf2fde8c33f629693c659ca383bd412d6244a613e33"
+      },
+      {
+        "check": "present",
+        "role": "derived",
+        "path": "sim/comparator-decision/testbench/comparator_core.spice",
+        "passed": true,
+        "content_hash": "sha256:e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4"
+      },
+      {
+        "check": "command",
+        "role": "freshness",
+        "target": "sim/comparator-decision/testbench/comparator_core.spice",
+        "generator": "design/netlist.sh (xschem 3.4.7 netlister)",
+        "argv": [
+          "bash",
+          "design/netlist.sh",
+          "--check"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      }
+    ]
+  },
+  "provenance": {
+    "klt_version": "0.8.0",
+    "klayout_version": null,
+    "pdk": null,
+    "deck": null,
+    "input": {
+      "path": {
+        "path": "attest/item1.json",
+        "scope": "repo"
+      },
+      "content_hash": "sha256:5802a00123fbedad916d97ac3ee73fab287837321783aea07edce4d06d2c8699"
+    }
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "kind": "generic",
+  "status": "pass",
+  "t1_item": 9,
+  "summary": "T1 item 9 (Testbenches shipped): 25/25 attestation checks passed (klt signoff --attest)",
+  "source": "attest/item9.json",
+  "attestation": {
+    "producer": "klt signoff --attest",
+    "inventory_schema_version": 1,
+    "hash_algorithm": "sha256-raw-bytes",
+    "check_count": 25,
+    "passed_count": 25,
+    "checks": [
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/comparator-decision/run.py",
+        "passed": true,
+        "content_hash": "sha256:0f0e4ee58fe28cfa9c1cb123cff3a10d29800d93006023c277314579d3c80df9"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/comparator-decision/testbench/comparator_core.spice",
+        "passed": true,
+        "content_hash": "sha256:e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/comparator-regeneration/ladder.py",
+        "passed": true,
+        "content_hash": "sha256:6bbdb5bc1856f7b6ba0294218928bb32f6219b2a553df3d9609305b7f3493806"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/comparator-regeneration/testbench/ladder.json",
+        "passed": true,
+        "content_hash": "sha256:70133e465e4d36f40b644632788792c4e0e31c335a3a1d2b404e465c3507ddb5"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness-corner-smoke/testbench/harness_corner_smoke.spice",
+        "passed": true,
+        "content_hash": "sha256:f59d596e29ef89f46df6783d3081cae8e03deecaea42a8dc16b2697ffd945345"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness-corner-smoke/testbench/tb.json",
+        "passed": true,
+        "content_hash": "sha256:b7530c291bc90cc68c0ec425af8f54f4d6e0278d6904bf6b9cb38fe921d55c9d"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/__init__.py",
+        "passed": true,
+        "content_hash": "sha256:988e53b0619188574ce896e5185fff2246e2e247b4d41483b39d29ad73155ccd"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/cli.py",
+        "passed": true,
+        "content_hash": "sha256:a010d467daedf2cdd4094e96853f944d50588590062962f1891d07afeddd9e4d"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/corners.py",
+        "passed": true,
+        "content_hash": "sha256:e23cd820e236ec627d85cf0bcb6839d709eb767789d7354b5d636ec9a3da1073"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/evidence.py",
+        "passed": true,
+        "content_hash": "sha256:47bb9195231c6d48505b8c765eab68445d3e2adf8cdf5481f24bf90f7a44cdff"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/mc_cli.py",
+        "passed": true,
+        "content_hash": "sha256:60ab31a83f4401690791e5537af59d8380b721a156c61ca5add4481d901e21a0"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/mc_runner.py",
+        "passed": true,
+        "content_hash": "sha256:eaf5e0ddeaff802dd1cc9a9088c0282da6f442f2a86728f1ac41f253c2c1c7fc"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/measure.py",
+        "passed": true,
+        "content_hash": "sha256:1426eeac839523d4aafd17167ef66efe4e02bd05d75f8f3459168673f09ebf0d"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/pdk.py",
+        "passed": true,
+        "content_hash": "sha256:74bab21d09a658c9c7b09b6a54dce211b0c053f1671a0dde5b3a07e426e227fc"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/runner.py",
+        "passed": true,
+        "content_hash": "sha256:23189853944a6daf719516123ce7e10c2001c53c86af04af9c79174ba731972f"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/testbench.py",
+        "passed": true,
+        "content_hash": "sha256:3459ddca7c9daf80de5a759bf7816d4dbec9913d0a8b4a6345d574587133df68"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/harness/toolchain.py",
+        "passed": true,
+        "content_hash": "sha256:97ab34443b0655565e1f46487b0034f473502dad20c8b2c16af22221383a60ec"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/mc-smoke/testbench/mc_smoke.spice",
+        "passed": true,
+        "content_hash": "sha256:043221da7ee9a3b418ceed3bee3d8f36424fe9cf5863d1dee7ff494eabdb6445"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/mc-smoke/testbench/tb.json",
+        "passed": true,
+        "content_hash": "sha256:2626a1fa1992a7fe67d1f55b3cba8c93eed01d432a076a98b1276cd6c1c5abb7"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/pdk.json",
+        "passed": true,
+        "content_hash": "sha256:d2b017d632a78846b5a8bd3f87f3b4edec18d42a5d3de3d064b13b5ad6dae7f0"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/selftest.sh",
+        "passed": true,
+        "content_hash": "sha256:9904fa94f41a2f77d0f22c993fc4444cee63b0f04759afdc26f5cf7d6081d942"
+      },
+      {
+        "check": "present",
+        "role": "testbench",
+        "path": "sim/toolchain.json",
+        "passed": true,
+        "content_hash": "sha256:10713d0f381fced006860064684d98f9fef49d3634e7e3a0a17ff3d1d32507eb"
+      },
+      {
+        "check": "command",
+        "role": "cold_start",
+        "argv": [
+          "bash",
+          "sim/selftest.sh",
+          "--quick"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "pin",
+        "role": "pdk",
+        "passed": true,
+        "value": {
+          "name": "sky130A",
+          "revision": "c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+        }
+      },
+      {
+        "check": "pin",
+        "role": "tools",
+        "passed": true,
+        "value": {
+          "klayout": "0.30.12",
+          "klt": "0.8.0",
+          "ngspice": "46",
+          "xschem": "3.4.7"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "klt_version": "0.8.0",
+    "klayout_version": null,
+    "pdk": null,
+    "deck": null,
+    "input": {
+      "path": {
+        "path": "attest/item9.json",
+        "scope": "repo"
+      },
+      "content_hash": "sha256:def3840ddf0c07b0a0a3c9864436c408c48945134c4430e23ebb41fa3eb3363e"
+    }
+  }
+}

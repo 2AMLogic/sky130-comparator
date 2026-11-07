@@ -2,6 +2,10 @@
   "block": "sky130-comparator",
   "kind": "analog",
   "evidence": {
+    "1": {
+      "file": "evidence/item1.json",
+      "content_hash": "sha256:5802a00123fbedad916d97ac3ee73fab287837321783aea07edce4d06d2c8699"
+    },
     "2": {
       "file": "evidence/item2.json",
       "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c"
@@ -19,6 +23,10 @@
         "python3",
         "scripts/characterization-envelope.py"
       ]
+    },
+    "9": {
+      "file": "evidence/item9.json",
+      "content_hash": "sha256:def3840ddf0c07b0a0a3c9864436c408c48945134c4430e23ebb41fa3eb3363e"
     },
     "10": {
       "file": "evidence/item10.json",
