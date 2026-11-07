@@ -323,3 +323,78 @@ jobs:
 
       - name: Re-check the item-9 attestation envelope
         run: PDK_ROOT="$HOME/.ciel" klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json
+
+  # T1 item 1's attestation envelope (issue #189). `--check` runs the
+  # inventory's derived-file check (`design/netlist.sh --check`), which
+  # regenerates comparator_core.spice from design/comparator.sch with xschem
+  # and diffs it, then compares against the committed evidence/item1.json.
+  # sim/toolchain.json pins xschem_tag 3.4.7; ubuntu-latest's apt xschem is an
+  # older release (the dispatch worker's 3.4.4 fails this very check), so
+  # 3.4.7 is built from the pinned upstream tarball and the install prefix is
+  # cached, mirroring the ngspice 46 build above. Needs only xschem + the
+  # sky130A PDK's xschemrc (no ngspice). Unlike harness-selftest this job also
+  # runs on pull_request: it is cheap once cached and is what validates a
+  # change to this build recipe before it lands on main.
+  item1-netlist-check:
+    runs-on: ubuntu-latest
+    env:
+      XSCHEM_VERSION: "3.4.7"
+      XSCHEM_URL: https://github.com/StefanSchippers/xschem/archive/refs/tags/3.4.7.tar.gz
+      XSCHEM_SHA256: 8f6c7165c38f528b6cbae8f9fae72cde3b765652df90597011a5f7b5e7fdb273
+      XSCHEM_PREFIX: ${{ github.workspace }}/.xschem-prefix
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore cached xschem 3.4.7 install prefix
+        id: xschem-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.XSCHEM_PREFIX }}
+          # Key = version + tarball sha256 + configure contract.
+          key: xschem-3.4.7-8f6c7165c38f528b6cbae8f9fae72cde3b765652df90597011a5f7b5e7fdb273-default-v1
+
+      # Build deps are needed only on a cache miss; the runtime libs below
+      # are needed either way.
+      - name: Build xschem 3.4.7 from the pinned upstream tarball (cache miss)
+        if: steps.xschem-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              build-essential flex bison tcl-dev tk-dev libx11-dev \
+              libxpm-dev libxrender-dev libcairo2-dev
+          mkdir -p "$RUNNER_TEMP/xschem-src"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/xschem-src/xschem.tar.gz" "$XSCHEM_URL"
+          echo "$XSCHEM_SHA256  $RUNNER_TEMP/xschem-src/xschem.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/xschem-src/xschem.tar.gz" -C "$RUNNER_TEMP/xschem-src"
+          cd "$RUNNER_TEMP/xschem-src/xschem-${XSCHEM_VERSION}"
+          ./configure --prefix="$XSCHEM_PREFIX"
+          make -j2
+          make install
+
+      - name: Install xschem runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              tcl tk libx11-6 libxpm4 libxrender1 libcairo2
+
+      - name: Put xschem 3.4.7 on PATH and assert the version
+        run: |
+          set -euo pipefail
+          echo "$XSCHEM_PREFIX/bin" >> "$GITHUB_PATH"
+          out="$("$XSCHEM_PREFIX/bin/xschem" --version)"
+          echo "$out"
+          echo "$out" | grep -q 'XSCHEM V3.4.7' || { echo "::error::xschem 3.4.7 required"; exit 1; }
+
+      - name: Install klt + ciel (pinned; same pins as the other jobs)
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12" ciel==2.6.1
+
+      - name: Enable the pinned sky130A PDK (sim/pdk.json)
+        run: ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
+
+      - name: Re-check the item-1 attestation envelope
+        run: PDK_ROOT="$HOME/.ciel" klt signoff --attest 1 --inventory attest/item1.json --check evidence/item1.json
