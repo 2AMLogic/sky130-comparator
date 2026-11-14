@@ -1,0 +1,26 @@
+{
+  "dry_run": true,
+  "status": "valid",
+  "engine": "ngspice",
+  "backend": "batch",
+  "hosts": 1,
+  "netlist": "/home/ubuntu/GitHub/sky130-comparator/.loom/worktrees/issue-220/sim/comparator-decision/klt-pilot/regen-body.spice",
+  "models_lib": "/home/ubuntu/.ciel/sky130A/libs.tech/ngspice/sky130.lib.spice",
+  "unit_count": 2,
+  "units": [
+    {
+      "corner_id": "tt/novdd/27C"
+    },
+    {
+      "corner_id": "ss/novdd/-40C"
+    }
+  ],
+  "monte_carlo": null,
+  "staged_files": [],
+  "warnings": [],
+  "published_runner": {
+    "status": "unknown",
+    "client_klt_version": "0.9.2.dev1022+g2a9c52b27ce7",
+    "images": []
+  }
+}
