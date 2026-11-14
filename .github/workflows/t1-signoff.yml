@@ -12,9 +12,12 @@
 # under it is pinned to the version that klt build tests against
 # (`klayout_version_expected()`) so an envelope regenerated here records
 # `provenance.klayout_version_mismatch: false` instead of the tool's own
-# "counts may differ" warning. Upgrade deliberately: bump both pins, re-run
-# the regeneration command from manifests/README.md, and commit the refreshed
-# record in the same change.
+# "counts may differ" warning. The pin values themselves live in one place --
+# layout/gen_comparator.py (`KLT_VERSION` / `KLAYOUT_VERSION`, issue #245);
+# the check-toolchain-pin gate below fails this workflow if any install line
+# in this file disagrees with them. Upgrade deliberately: bump that one
+# source of truth, re-run the regeneration command from manifests/README.md,
+# and commit the refreshed record in the same change.
 
 name: t1-signoff
 
@@ -85,6 +88,16 @@ jobs:
 
       - name: Install klt (pinned; see manifests/README.md)
         run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
+
+      # The pin's single source of truth is layout/gen_comparator.py (issue
+      # #245). This gate re-derives the pin from that module and fails if ANY
+      # `klayout-tools==` / `klayout==` install line in THIS file disagrees --
+      # scanned line by line, so it covers every job above and any job added
+      # later, with no job count to maintain. Hermetic: no klt, no PDK.
+      - name: Toolchain-pin gate selftest + gate (workflow installs == gen_comparator.py)
+        run: |
+          python3 scripts/check-toolchain-pin.py selftest
+          python3 scripts/check-toolchain-pin.py gate
 
       - name: Gate selftest (hermetic; proves the rot detector bites)
         run: python3 scripts/check-t1-signoff.py selftest
