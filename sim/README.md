@@ -47,6 +47,18 @@ Divergences from `sky130-sar-adc`'s harness, each deliberate:
    It ported ahead of a caller existing so a future statistical-row
    experiment driver here does not need a second port pass; it is inert
    until one exists.
+2. **`sim/harness/record.py` (issue #240) has no upstream counterpart.**
+   The two runners' `write_evidence()` bodies and the two CLIs' fail-closed
+   preflight/stored-error handlers were byte-for-byte copies of each other
+   (porting residue); they are extracted into shared `begin_record()` /
+   `finalize_record()` / `record_preflight()` / `store_record_fail_closed()`
+   helpers so a record header, environment block, footer attribution or
+   refusal message can only change in one place. Emitted record text is
+   byte-identical to the pre-extraction copies (goldens pinned in
+   `sim/tests/test_harness.py`), and the `free_record_id()` + `store_run()`
+   reservation strategy is kept verbatim — it is a documented alternative
+   to `evidence.reserve_record()` + `publish_record()` for the
+   artifact-store path, not a stale copy of it.
 
 ## Quick start
 
