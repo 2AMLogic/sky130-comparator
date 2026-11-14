@@ -305,7 +305,30 @@ then showed the route also carries an **extracted** DUT -- both legs ran on the
 fleet with the DUT included from `layout/comparator.pex.spice`, which each
 report's `netlist_closure` records at `scope: "repo"`, giving `loaded`
 2.2747 mV and `ideal` 0.0000 mV on the current 0.35 um / klt 0.8.0 geometry
-(indicative only: ngspice-47 vs #211's ngspice-46). `regen`, `offset`, `noise` and `reset` have not
+(indicative only: ngspice-47 vs #211's ngspice-46).
+
+Issue #220's pilot
+([`records/klt-pilot-regen-20261114.md`](records/klt-pilot-regen-20261114.md))
+then did the same for **`regen`**, which feeds the ratified Decision-time row.
+A route exists for it too, and needs no change to the circuit body: a
+`measurements[].crossings` entry takes a vector *expression* as its `signal`,
+so `v(OUTP) - v(OUTN)` crossing `0.5*VDD` is expressible directly against an
+unmodified `_regen_deck`. One request, two corners, `status: "pass"`, zero
+diagnostics: decision time at 50 mV is **0.401379 ns** at `tt`/27 C
+(baseline 0.4025 ns, record `20260922-070800-e084b55`) and **0.352366 ns** at
+`ss`/-40 C (baseline 0.3575 ns, record `20260922-071313-e084b55`). Unlike the
+`kickback` pilot the delta is **decomposed, not indicative**: `run.py`'s rule
+re-measured on the current environment reproduces the `tt` baseline exactly,
+so the -0.278 % there is entirely the methodology difference (`klt sim`
+interpolates the crossing; `run.py` takes the first sample at or after it, so
+its answer is quantized to the 5 ps output grid). The pilot also found that
+the two model libraries sky130A ships are **not** interchangeable --
+`libs.tech/ngspice` instead of the `libs.tech/combined` that `run.py` uses
+moves this measurement by 5 % at `ss`/-40 C, which is the library the
+`kickback` pilot's request happened to name. Tool gap filed as
+[`klayout-tools#5651`](https://github.com/2AMLogic/klayout-tools/issues/5651).
+
+`offset`, `noise` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
 of what #64 did, not a statement that the fleet is unusable. Choosing the
 execution route is #127's decision.
