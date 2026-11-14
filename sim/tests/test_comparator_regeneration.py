@@ -144,6 +144,26 @@ class GraderControls(unittest.TestCase):
         fails = ladder.grade(_response(process_scale=0.0), m)
         self.assertTrue(any("process-axis spread" in f for f in fails), fails)
 
+    def test_negative_control_runaway_spread_fails_ceiling(self):
+        # Issue #235's failure scenario: a max_spread_pct_by_axis ceiling
+        # used to be silently ignored here (the ladder's local copy graded
+        # floors only). Through the shared evaluator it must fail a
+        # response whose temperature-axis spread runs away.
+        m = json.loads(json.dumps(self.m))
+        m["checks"]["td_od50_ns"]["max_spread_pct_by_axis"] = {"temperature": 40.0}
+        fails = ladder.grade(_response(), m)
+        self.assertTrue(
+            any("td_od50_ns: temperature-axis spread" in f and "above ceiling" in f
+                for f in fails), fails)
+
+    def test_grade_with_typo_axis_name_skips_instead_of_crashing(self):
+        # Unified with sim/harness/runner.py (issue #235): an axis named in
+        # a floor but absent from the spreads is skipped by the shared
+        # evaluator's guard, not a KeyError from the ladder's local copy.
+        m = json.loads(json.dumps(self.m))
+        m["checks"]["td_od50_ns"]["min_spread_pct_by_axis"]["tepmreature"] = 5.0
+        self.assertEqual(ladder.grade(_response(), m), [])
+
 
 class ReverseLadder(unittest.TestCase):
     def setUp(self):
