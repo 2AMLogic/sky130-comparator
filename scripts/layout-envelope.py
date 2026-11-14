@@ -34,8 +34,8 @@ from pathlib import Path
 from _gate_common import report_cases
 
 OUT = "evidence/item2.json"
-MEMBERS = ["layout/comparator.gds"]
-# Versions of the tools that produced the members; the generator pins them.
+GDS = "layout/comparator.gds"
+# Versions of the tools that produced it; the generator pins them.
 KLT_VERSION = "0.8.0"
 KLAYOUT_VERSION = "0.30.12"
 
@@ -44,8 +44,8 @@ def sha(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
-def build(repo: Path, members=MEMBERS) -> dict:
-    """Envelope binding `members[0]` (the GDS) by path, plus a regeneration claim.
+def build(repo: Path) -> dict:
+    """Envelope binding the committed GDS by path, plus a regeneration claim.
 
     The pinned klt 0.8.0 grades a single-path binding only: a `paths` set
     (klayout-tools#3044) renders `unanchored_evidence` there although the
@@ -54,8 +54,7 @@ def build(repo: Path, members=MEMBERS) -> dict:
     claim that `python3 layout/gen_comparator.py` reproduces the GDS bytes,
     whose truth CI re-checks with `gen_comparator.py --check`.
     """
-    gds = members[0]
-    h = sha((repo / gds).read_bytes())
+    h = sha((repo / GDS).read_bytes())
     return {
         "schema_version": 1,
         "kind": "generic",
@@ -71,7 +70,7 @@ def build(repo: Path, members=MEMBERS) -> dict:
             "klayout_version": KLAYOUT_VERSION,
             "pdk": None,
             "deck": None,
-            "input": {"content_hash": h, "path": gds},
+            "input": {"content_hash": h, "path": GDS},
             "regeneration": {
                 "generator": "python3 layout/gen_comparator.py",
                 "regenerated_hash": h,
@@ -88,21 +87,18 @@ def run_selftest(_args) -> int:
     results = []
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
-        for m in MEMBERS:
-            (repo / m).parent.mkdir(parents=True, exist_ok=True)
-            (repo / m).write_bytes(m.encode())
+        (repo / GDS).parent.mkdir(parents=True, exist_ok=True)
+        (repo / GDS).write_bytes(GDS.encode())
         base = build(repo)
-        results.append(("rebuild over unchanged members is byte-identical",
+        results.append(("rebuild over an unchanged GDS is byte-identical",
                         render(build(repo)) == render(base)))
-        for m in MEMBERS:
-            (repo / m).write_bytes(b"edited")
-            changed = build(repo)
-            results.append((
-                f"editing {m} changes the combined digest",
-                changed["provenance"]["input"]["content_hash"]
-                != base["provenance"]["input"]["content_hash"],
-            ))
-            (repo / m).write_bytes(m.encode())
+        (repo / GDS).write_bytes(b"edited")
+        changed = build(repo)
+        results.append((
+            f"editing {GDS} changes provenance.input.content_hash",
+            changed["provenance"]["input"]["content_hash"]
+            != base["provenance"]["input"]["content_hash"],
+        ))
     return report_cases(results)
 
 
