@@ -24,6 +24,36 @@ conventions (`testbench/`, `netlist-snapshots/`, `corners/`, `mc-draws/`,
 `records/`) this experiment follows; this file covers only what is specific
 to `comparator-decision/`.
 
+## Driver module layout
+
+The driver is one module per experiment over a shared preamble (issue #224
+split it out of a single 4331-line `run.py`; it follows the same module-split
+convention `sim/README.md` records for `sim/harness/`):
+
+| Module | Owns |
+|---|---|
+| [`run.py`](run.py) | the CLI (`main()`), and a read-only re-export of the flat attribute surface the unit suite reads |
+| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`) and the evidence-record head/tail |
+| [`regen.py`](regen.py) | `regen` |
+| [`offset.py`](offset.py) | `offset` and `offset-bisect` (they share the `_pickoff_*` machinery) |
+| [`noise.py`](noise.py) | `noise` |
+| [`noise_tran.py`](noise_tran.py) | `noise-tran`, and its chunked/resumable campaign driver (issue #100) |
+| [`reset.py`](reset.py) | `reset` |
+| [`kickback.py`](kickback.py) | `kickback` |
+
+Every invocation is still `python3 sim/comparator-decision/run.py <mode>`, and
+every record is still written by `run.py <mode>` — the split moved code, not
+behaviour. `sim/comparator-decision/` is not a legal Python package name, so
+`run.py` is loaded by path and the siblings reach each other through
+`sys.path`, exactly as the driver has always reached `sim/harness/`;
+`_shared.py`'s docstring documents that convention.
+
+The split is verified by construction rather than by assertion: the unit suite
+(`sim/tests/test_comparator_decision.py`, 220 tests) is unchanged except for
+six monkeypatch *targets*, and every deck builder's emitted text plus the
+record-prose helpers were dumped before and after the move, at both DUT
+provenances and three corners, and diffed byte for byte.
+
 ## Provenance
 
 The `regen` / `offset` / `noise` **measurement methodology** implemented by
@@ -210,7 +240,7 @@ answer — a post-layout record that had quietly measured the schematic DUT
 would be worse than no record — and issue #65 answers them rather than
 guessing. The rules live next to the code that implements them (the
 POST-LAYOUT DECK SURGERY note in
-[`run.py`](run.py)) and are pinned by
+[`_shared.py`](_shared.py)) and are pinned by
 `sim/tests/test_comparator_decision.py::TestPostLayoutTerminalMoves`:
 
 1. **Which device, when the layout drew one schematic device as several.**
