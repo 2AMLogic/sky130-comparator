@@ -7,7 +7,6 @@ Ported (issue #8) from 2AMLogic/sky130-sar-adc's sim/harness/runner.py
 
 from __future__ import annotations
 
-import statistics
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,32 +45,12 @@ def _evaluate_checks(
     value: float,
     axis_spreads: dict[str, float],
 ) -> list[str]:
-    failures = []
-    if "min" in checks and value < checks["min"]:
-        failures.append(f"{name}={value:.6g} < min {checks['min']}")
-    if "max" in checks and value > checks["max"]:
-        failures.append(f"{name}={value:.6g} > max {checks['max']}")
-    for axis, floor in checks.get("min_spread_pct_by_axis", {}).items():
-        spread = axis_spreads.get(axis)
-        if spread is not None and spread < floor:
-            failures.append(
-                f"{name}: {axis}-axis spread {spread:.4g}% below floor {floor}%"
-            )
-    for axis, ceiling in checks.get("max_spread_pct_by_axis", {}).items():
-        spread = axis_spreads.get(axis)
-        if spread is not None and spread > ceiling:
-            failures.append(
-                f"{name}: {axis}-axis spread {spread:.4g}% above ceiling {ceiling}%"
-            )
-    return failures
-
-
-def _spread_pct(values: list[float]) -> float:
-    if not values:
-        return 0.0
-    lo, hi = min(values), max(values)
-    denom = abs(statistics.fmean(values)) or 1e-30
-    return abs(hi - lo) / denom * 100.0
+    """Per-point check evaluation for one measurement: the shared
+    min/max and spread floor/ceiling evaluators (corners.py, issue #235)
+    composed in the order the failure lines are recorded."""
+    return corners_mod.min_max_failures(
+        name, checks, value
+    ) + corners_mod.spread_failures(name, checks, axis_spreads)
 
 
 def run(
@@ -157,9 +136,9 @@ def run(
             if p.process_corner == baseline_process and p.temp_c == baseline_temp and name in p.measures
         ]
         axis_spreads[name] = {
-            "process": _spread_pct(process_slice),
-            "temperature": _spread_pct(temp_slice),
-            "supply": _spread_pct(supply_slice),
+            "process": corners_mod.spread_pct(process_slice),
+            "temperature": corners_mod.spread_pct(temp_slice),
+            "supply": corners_mod.spread_pct(supply_slice),
         }
 
     overall_ok = True

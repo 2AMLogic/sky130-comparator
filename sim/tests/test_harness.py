@@ -369,11 +369,11 @@ class TestRunKltYield(unittest.TestCase):
 
 class TestRunnerHelpers(unittest.TestCase):
     def test_spread_pct(self):
-        self.assertAlmostEqual(runner._spread_pct([0.9, 0.9, 0.9]), 0.0)
-        self.assertAlmostEqual(runner._spread_pct([0.81, 0.9, 0.99]), 20.0)
+        self.assertAlmostEqual(corners.spread_pct([0.9, 0.9, 0.9]), 0.0)
+        self.assertAlmostEqual(corners.spread_pct([0.81, 0.9, 0.99]), 20.0)
 
     def test_spread_pct_empty(self):
-        self.assertEqual(runner._spread_pct([]), 0.0)
+        self.assertEqual(corners.spread_pct([]), 0.0)
 
     def test_evaluate_checks_min_max(self):
         failures = runner._evaluate_checks("x", {"min": 0.5, "max": 1.0}, 0.3, {})
@@ -391,6 +391,31 @@ class TestRunnerHelpers(unittest.TestCase):
         checks = {"max_spread_pct_by_axis": {"process": 1.0}}
         bad = runner._evaluate_checks("x", checks, 1.0, {"process": 5.0})
         self.assertEqual(len(bad), 1)
+
+    def test_spread_failures_message_wording_is_shared_verbatim(self):
+        """The exact wording every grading path emits and committed records
+        are read back by -- the byte-identity contract issue #235's
+        consolidation depends on. Unprefixed; callers add their own."""
+        checks = {"min_spread_pct_by_axis": {"temperature": 17.0},
+                  "max_spread_pct_by_axis": {"supply": 40.0}}
+        self.assertEqual(
+            corners.spread_failures("td", checks, {"temperature": 5.0, "supply": 99.0}),
+            ["td: temperature-axis spread 5% below floor 17.0%",
+             "td: supply-axis spread 99% above ceiling 40.0%"],
+        )
+
+    def test_spread_failures_skip_axis_without_a_spread(self):
+        self.assertEqual(
+            corners.spread_failures("x", {"min_spread_pct_by_axis": {"process": 5.0}}, {}),
+            [],
+        )
+
+    def test_min_max_failures_unprefixed(self):
+        self.assertEqual(
+            corners.min_max_failures("x", {"min": 0.5}, 0.3),
+            ["x=0.3 < min 0.5"],
+        )
+        self.assertEqual(corners.min_max_failures("x", {}, 0.3), [])
 
     def test_run_ngspice_raises_on_nonzero_return_code(self):
         """A crashed/erroring ngspice must surface as an explicit harness

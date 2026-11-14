@@ -11,11 +11,16 @@ unratified spec value as a pass/fail threshold. A testbench manifest
 (tb.json) must supply its own nominal_supply_v, process corners,
 temperatures, and supply tolerance; this module only supplies PDK-derived
 helpers (mismatch-corner lookup, corner-id formatting, supply-point
-spreading), which are properties of the PDK and of repo convention, not of
-this block's own spec.
+spreading) and repo-convention-level grading helpers (the shared per-axis
+spread metric and its floor/ceiling failure strings, graded identically
+by every bench -- see spread_pct/spread_failures below), which are
+properties of the PDK and of repo convention, not of this block's own
+spec.
 """
 
 from __future__ import annotations
+
+import statistics
 
 from .pdk import load_pdk_json
 
@@ -52,6 +57,56 @@ def supply_points(nominal_v: float, tolerance: float) -> list[float]:
     # De-dup in case rounding collapses lo/hi onto nominal (tolerance ~ 0).
     points = sorted({lo, nominal_v, hi})
     return points
+
+
+def spread_pct(values: list[float]) -> float:
+    """Relative (max - min) spread of one OAT-axis slice, in percent: the
+    per-axis sensitivity metric every grading path shares
+    (sim/harness/runner.py and the comparator-regeneration ladder --
+    issue #235 consolidated the ladder's copy here). An empty slice
+    spreads 0.0."""
+    if not values:
+        return 0.0
+    lo, hi = min(values), max(values)
+    denom = abs(statistics.fmean(values)) or 1e-30
+    return abs(hi - lo) / denom * 100.0
+
+
+def min_max_failures(name: str, checks: dict, value: float) -> list[str]:
+    """Per-point min/max limit failures for one measurement, as unprefixed
+    strings -- callers add any per-point prefix of their own (the harness
+    adds none; the ladder prefixes the corner id)."""
+    failures = []
+    if "min" in checks and value < checks["min"]:
+        failures.append(f"{name}={value:.6g} < min {checks['min']}")
+    if "max" in checks and value > checks["max"]:
+        failures.append(f"{name}={value:.6g} > max {checks['max']}")
+    return failures
+
+
+def spread_failures(
+    name: str, checks: dict, axis_spreads: dict[str, float]
+) -> list[str]:
+    """Per-axis spread floor/ceiling failures for one measurement (`checks`
+    is that measurement's entry in a manifest's `checks`), as unprefixed
+    strings byte-identical across every grading path so committed records
+    keep reading the same. An axis named in a floor/ceiling but absent
+    from `axis_spreads` is skipped (the guard sim/harness/runner.py has
+    always used; issue #235 unified the ladder's KeyError on it)."""
+    failures = []
+    for axis, floor in checks.get("min_spread_pct_by_axis", {}).items():
+        spread = axis_spreads.get(axis)
+        if spread is not None and spread < floor:
+            failures.append(
+                f"{name}: {axis}-axis spread {spread:.4g}% below floor {floor}%"
+            )
+    for axis, ceiling in checks.get("max_spread_pct_by_axis", {}).items():
+        spread = axis_spreads.get(axis)
+        if spread is not None and spread > ceiling:
+            failures.append(
+                f"{name}: {axis}-axis spread {spread:.4g}% above ceiling {ceiling}%"
+            )
+    return failures
 
 
 def corner_matrix_summary_line(
