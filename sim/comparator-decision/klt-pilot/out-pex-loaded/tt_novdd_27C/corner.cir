@@ -1,0 +1,16 @@
+* klt sim -- generated corner deck, do not edit
+.lib /opt/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice tt
+.include /var/tmp/eda-job-klt-sim-9f5b42ac764b/inputs/netlist.cir
+.temp 27
+.meas tran vinp_q find v(vinp) at=5n
+.meas tran vinp_max max v(vinp) from=0 to=45.1n
+.meas tran vinp_min min v(vinp) from=0 to=45.1n
+.meas tran vinn_q find v(vinn) at=5n
+.meas tran vinn_max max v(vinn) from=0 to=45.1n
+.meas tran vinn_min min v(vinn) from=0 to=45.1n
+.control
+save all
+tran 0.005n 45.1n
+quit
+.endc
+.end

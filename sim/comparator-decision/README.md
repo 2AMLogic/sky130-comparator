@@ -299,7 +299,13 @@ several solves in one corner) closed on 2026-10-09. Issue #211's pilot
 expressed `kickback` as a `klt sim` request (`klt-pilot/`) and ran both legs on
 the batch fleet: `loaded` 1.8736 mV, `ideal` 0.0000 mV against the `run.py`
 baseline 1.8902 mV (indicative only: PDK `f6eeac7` vs `c6d73a35`). So a `klt sim`
-route exists for `kickback`.
+route exists for `kickback`. Issue #219's follow-up pilot
+([`records/klt-pilot-kickback-pex-20261114.md`](records/klt-pilot-kickback-pex-20261114.md))
+then showed the route also carries an **extracted** DUT -- both legs ran on the
+fleet with the DUT included from `layout/comparator.pex.spice`, which each
+report's `netlist_closure` records at `scope: "repo"`, giving `loaded`
+2.2747 mV and `ideal` 0.0000 mV on the current 0.35 um / klt 0.8.0 geometry
+(indicative only: ngspice-47 vs #211's ngspice-46).
 
 Issue #220's pilot
 ([`records/klt-pilot-regen-20261114.md`](records/klt-pilot-regen-20261114.md))
