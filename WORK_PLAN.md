@@ -13,7 +13,7 @@ _None._
 
 `loom:very-important` (one counts per workspace); every stage takes these first.
 
-_None._
+- **#219**: Pilot: kickback on the extracted netlist as a klt sim request (tt/27 C)
 
 ## Important
 
@@ -21,6 +21,7 @@ _None._
 
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#127**: Establish a verified execution route for comparator campaign #125
+- **#220**: Pilot: regen (decision time at 50 mV overdrive) as a klt sim request
 
 ## Ready
 
@@ -38,7 +39,7 @@ _None._
 
 PRs waiting on Judge (`loom:review-requested`).
 
-_None._
+- **#218**: docs: roadmap as of 2026-11-13
 
 ## Approved (Awaiting Merge)
 
@@ -70,11 +71,11 @@ _None._
 | Bucket | Count |
 |------|-------|
 | Operator merge-risk holds | 0 |
-| Very important | 0 |
-| Important | 2 |
+| Very important | 1 |
+| Important | 3 |
 | Ready (`loom:issue`) | 0 |
 | In Progress (`loom:building`) | 0 |
-| PRs awaiting review | 0 |
+| PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 0 |
 | Curated | 4 |
 | Architect / Hermit proposals | 3 |
