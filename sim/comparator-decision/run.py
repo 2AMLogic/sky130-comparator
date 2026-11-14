@@ -31,8 +31,8 @@ below) is ported from
 a94fde09244c5e86bafb2adb0a97533d2d59dd65, `main` as of 2026-09-09 -- see
 README.md for the full verification), per spec/porting-plan.md's "Next
 steps" item 3. What is deliberately NOT ported: sky130-sar-adc-specific numbers
-(this repo has no ratified spec/target-spec.md to grade against yet -- the
-top-level README's target-spec table is DRAFT), the `regen-corners` /
+(this repo grades against its own target-spec rows instead -- the
+DR-002/DR-005 ratified bounds recorded in _shared.py), the `regen-corners` /
 `noise-corners` full-PVT-sweep subcommands (later additions there, driven by
 that repo's own topology bugs and ratified-corner-set campaigns -- issue #9's
 acceptance criteria ask for one nominal-corner record per experiment, not a

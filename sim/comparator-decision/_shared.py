@@ -284,8 +284,10 @@ STEERING_GATE_INJECTION = (
 )
 
 # --- Fixed testbench constants. This repo's target-spec table (top-level
-# README) is DRAFT (spec/README.md), so nothing here is graded against a
-# ratified line -- these are planning values only, matching the constants
+# README) is ratified per-row -- DR-002 (Offset sigma, Input-referred
+# noise, Kickback) and DR-005 (Decision time); only Supply/power is
+# DRAFT/OPEN with no ratified bound -- so the spec-row constants below
+# carry the DR-002/DR-005 ratified bounds, matching the constants
 # sky130-sar-adc's comparator-decision driver used at the same DUT nodes. ---
 VDD = 1.8  # V -- this repo's own 1.8V core-supply constraint (CLAUDE.md).
 VCM = VDD / 2  # 0.9V common-mode input.
@@ -314,8 +316,7 @@ PICKOFF_NS = 0.65
 # states its own comparison against the ratified row (values cite DR-002
 # Decision 1: target <= 15 mV 3-sigma, stretch <= 8 mV 3-sigma, input-referred).
 OFFSET_TARGET_MV = 15.0
-OFFSET_STRETCH_MV = 8.0  # time after evaluate-start used as the offset pick-off
-# point -- see the `offset` methodology comment at the top of offset.py.
+OFFSET_STRETCH_MV = 8.0
 NOISE_FSTART_HZ = 1e3
 NOISE_FSTOP_HZ = 1e9
 
@@ -323,10 +324,10 @@ PROCESS_CORNERS = ["tt", "ss", "ff", "sf", "fs"]
 
 # --- Shared evidence-record preamble fields. Since issue #24 the DUT is this
 # repo's OWN design (design/comparator.sch), not the sky130-sar-adc-ported
-# placeholder issue #9 stood up the plumbing against -- but the top-level
-# README target-spec table is still DRAFT and unratified, so a measurement
-# here still substantiates no spec ROW. Both halves of that have to be said,
-# and said the same way in every record this driver writes. ---
+# placeholder issue #9 stood up the plumbing against -- and CLAIM_TEXT below
+# states that plus the target-spec table's per-row ratification status
+# (DR-002/DR-005 ratified; only Supply/power DRAFT/OPEN). Both halves of that
+# have to be said, and said the same way in every record this driver writes. ---
 CLAIM_TEXT = (
     "- **Claim**: None by itself -- top-level README target-spec rows are "
     "graded by their ratifying decision record, and per DR-002 (2026-09-16, "
