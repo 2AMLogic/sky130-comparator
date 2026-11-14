@@ -156,7 +156,27 @@ DBU = 1000
 # --- PDK pin (mirrors sim/pdk.json) ------------------------------------------
 PDK_VARIANT = "sky130A"
 PDK_ROOT_DEFAULT = "~/.ciel"  # default_pdk_root in sim/pdk.json
-KLT_PIN = "klayout-tools 0.8.0 (klt 0.8.0), klayout 0.30.12"
+
+# --- Toolchain pin: the ONE source of truth (issue #245) ----------------------
+# The klt / klayout pair every committed layout artifact must be produced
+# with. Consumers, so the pin cannot drift between sites:
+#   - layout/extract_pex.py imports these and REFUSES an off-pin extraction
+#     envelope (extracted resistances are not build-stable);
+#   - scripts/layout-envelope.py imports these to stamp evidence/item2.json;
+#   - scripts/check-toolchain-pin.py gates every `klayout-tools==` /
+#     `klayout==` install line in .github/workflows/t1-signoff.yml against
+#     them (and this composite's rendering, byte for byte, in its selftest).
+# Bump ONLY here (plus docs/environment-setup.md and the regenerated
+# artifacts, re-committed in the same change) -- never per site.
+KLT_VERSION = "0.8.0"
+KLAYOUT_VERSION = "0.30.12"
+#: Composite provenance string stamped into the committed evidence
+#: (the ERC / device-count / LVS coverage reports). Derived, not restated,
+#: so the numbers above cannot disagree with the string the artifacts carry.
+KLT_PIN = (
+    f"klayout-tools {KLT_VERSION} (klt {KLT_VERSION}), "
+    f"klayout {KLAYOUT_VERSION}"
+)
 
 # --- T1 item 4 (LVS) request -------------------------------------------------
 # The reference side is the schematic's own derivation product -- what

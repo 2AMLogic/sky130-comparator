@@ -31,13 +31,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _gate_common import report_cases
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "layout"))
+
+from _gate_common import report_cases  # noqa: E402
+# Versions of the tools that produced the envelope, imported from the
+# generator that owns the pin -- the one source of truth (issue #245).
+from gen_comparator import KLAYOUT_VERSION, KLT_VERSION  # noqa: E402
 
 OUT = "evidence/item2.json"
 GDS = "layout/comparator.gds"
-# Versions of the tools that produced it; the generator pins them.
-KLT_VERSION = "0.8.0"
-KLAYOUT_VERSION = "0.30.12"
 
 
 def sha(data: bytes) -> str:
