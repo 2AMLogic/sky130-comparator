@@ -16,6 +16,17 @@ here via `importlib.util` from its file path instead, the same file
 `run.py` itself resolves paths from (`Path(__file__).resolve()`), so the
 loaded module's own `sys.path.insert(0, SIM_DIR)` for `from harness import
 ...` still works unchanged.
+
+Issue #224 split that driver into sibling modules (`_shared.py`, `regen.py`,
+`offset.py`, `noise.py`, `noise_tran.py`, `reset.py`, `kickback.py`) with
+`run.py` as the CLI over them. `run.py` re-exports every name read off
+`cd_run` below, so every assertion here is unchanged by that move. What did
+have to change is the MONKEYPATCH targets: `run.py`'s re-exports are a
+read-only surface, so a stub must be installed on the module that owns the
+name -- `cd_run._shared` for the ngspice seams `_run` / `_run_many`,
+`cd_run.noise` / `cd_run.noise_tran` for the runners and record writers those
+modules own. Patching `cd_run` itself would rebind the re-export and leave the
+real call site untouched.
 """
 
 from __future__ import annotations
@@ -852,7 +863,7 @@ class TestKickbackSubsetJustification(unittest.TestCase):
 
 class _FakeNgspiceDecks:
     """Deterministic stand-in for one `ngspice` invocation, wired in by
-    monkeypatching `cd_run._run` (issue #100).
+    monkeypatching `cd_run._shared._run` (issue #100).
 
     Every deck's contribution is a pure function of its LOG NAME (and, for
     the decision decks, of the overdrive sign written into the deck's own
@@ -929,10 +940,12 @@ def _stubbed_noise_tran(fake: _FakeNgspiceDecks):
     )
     with contextlib.ExitStack() as stack:
         patch = stack.enter_context
-        patch(unittest.mock.patch.object(cd_run, "_run", fake))
-        patch(unittest.mock.patch.object(cd_run, "run_noise", lambda **kw: preamp))
-        patch(unittest.mock.patch.object(cd_run, "run_latch_noise", lambda **kw: latch))
-        patch(unittest.mock.patch.object(cd_run, "run_trnoise_calibration", lambda **kw: 0.86))
+        patch(unittest.mock.patch.object(cd_run._shared, "_run", fake))
+        patch(unittest.mock.patch.object(cd_run.noise, "run_noise", lambda **kw: preamp))
+        patch(unittest.mock.patch.object(
+            cd_run.noise_tran, "run_latch_noise", lambda **kw: latch))
+        patch(unittest.mock.patch.object(
+            cd_run.noise_tran, "run_trnoise_calibration", lambda **kw: 0.86))
         patch(unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise", lambda: FakePdkInfo()))
         yield
 
@@ -1044,7 +1057,7 @@ class TestNoiseTranResumableCampaign(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(prefix="noise-tran-nokill-") as tmp:
             with _stubbed_noise_tran(_FakeNgspiceDecks()), unittest.mock.patch.object(
-                cd_run, "write_noise_tran_evidence", _fake_writer,
+                cd_run.noise_tran, "write_noise_tran_evidence", _fake_writer,
             ):
                 rc = cd_run.main(argv + ["--resume-dir", tmp, "--chunk-decks", "5"])
             self.assertEqual(rc, cd_run.NOISE_TRAN_INCOMPLETE_EXIT)
@@ -1053,7 +1066,7 @@ class TestNoiseTranResumableCampaign(unittest.TestCase):
             self.assertEqual(len(list((Path(tmp) / "decks").glob("*.json"))), 5)
 
             with _stubbed_noise_tran(_FakeNgspiceDecks()), unittest.mock.patch.object(
-                cd_run, "write_noise_tran_evidence", _fake_writer,
+                cd_run.noise_tran, "write_noise_tran_evidence", _fake_writer,
             ):
                 rc = cd_run.main(argv + ["--resume-dir", tmp])
             self.assertEqual(rc, 0)
@@ -1232,7 +1245,7 @@ class TestRegenSweepPolarity(unittest.TestCase):
         return out
 
     def test_outcomes_follow_the_flip(self):
-        with unittest.mock.patch.object(cd_run, "_run_many", self._fake_run_many):
+        with unittest.mock.patch.object(cd_run._shared, "_run_many", self._fake_run_many):
             with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
                 points = cd_run.run_regen_sweep(quiet=True)
         by_v = {p.vindiff_mv: p for p in points}
@@ -1332,7 +1345,7 @@ class TestOffsetBisectSearch(unittest.TestCase):
         kwargs = {"quiet": True}
         if bracket_start is not None:
             kwargs["bracket_start_mv"] = bracket_start
-        with unittest.mock.patch.object(cd_run, "_run_many", fake_run_many):
+        with unittest.mock.patch.object(cd_run._shared, "_run_many", fake_run_many):
             with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
                 result = cd_run.run_offset_bisect(corner="tt", temp_c=27.0, **kwargs)
         return result, calls
@@ -1405,7 +1418,7 @@ class TestOffsetBisectSearch(unittest.TestCase):
         # A nonzero ngspice exit is a real error, not a floor hit.
         def fake_run_many(jobs, scratch_dir, workers=1):
             raise RuntimeError("ngspice exited 1 running x.spice")
-        with unittest.mock.patch.object(cd_run, "_run_many", fake_run_many):
+        with unittest.mock.patch.object(cd_run._shared, "_run_many", fake_run_many):
             with unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise"):
                 with self.assertRaises(RuntimeError):
                     cd_run.run_offset_bisect(corner="tt", temp_c=27.0, quiet=True)
