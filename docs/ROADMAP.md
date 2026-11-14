@@ -50,29 +50,37 @@ on an execution route for multi-corner campaigns, [#127](https://github.com/2AML
 `sim/comparator-decision/run.py` drives ngspice directly and its campaigns do
 not fit a shared dispatch host. The pilot in PR #212 changed the picture:
 `kickback` was expressed as a `klt sim` request and ran on the batch fleet,
-landing within 0.88 % of the `run.py` baseline
+landing within 0.88 % of the `run.py` baseline — indicative only, since the
+pilot ran on PDK `f6eeac7` while the baseline was minted on `c6d73a35`, so the
+delta cannot separate a PDK-revision effect from a solver one
 (`sim/comparator-decision/records/klt-pilot-kickback-20261106.md`). The other
 measurements (`regen`, `offset`, `noise`, `reset`) have not been attempted.
 
 ## Now
 
-None of these has an issue yet; each is one pull request and needs no decision.
-Items 1 to 3 extend the PR #212 pilot so #127 can be answered with measurements.
+Each item below is tracked one-to-one by an issue, filed just after this
+snapshot's `main` was taken; none needs a decision and each is one pull request.
+Item 1 has since landed (PR #227 closed [#219](https://github.com/2AMLogic/sky130-comparator/issues/219)), so items 2 to 4 are
+what remains. Items 1 to 3 extend the PR #212 pilot so #127 can be answered
+with measurements.
 
-1. **Pilot `kickback` on the extracted netlist as a `klt sim` request.**
+1. **Pilot `kickback` on the extracted netlist as a `klt sim` request**
+   [#219](https://github.com/2AMLogic/sky130-comparator/issues/219).
    Done when `sim/comparator-decision/klt-pilot/` holds a request, report and
    dated pilot note for the `tt`/27 C point against
    `layout/comparator.pex.spice`, with the delta to the schematic pilot stated.
    This is the first simulated figure on the current 0.35 um layout.
-2. **Pilot `regen` (decision time at 50 mV overdrive) as a `klt sim` request.**
+2. **Pilot `regen` (decision time at 50 mV overdrive) as a `klt sim`
+   request** [#220](https://github.com/2AMLogic/sky130-comparator/issues/220).
    Done when a request, report and pilot note exist for `tt`/27 C and
    `ss`/-40 C on the schematic netlist, with the delta to the current
    `run.py` records for those corners stated, or the
    request that failed and its error output are committed with a linked
    klayout-tools issue.
 3. **Pilot `noise` (the `.noise` analysis on the loop-broken sub-model) as a
-   `klt sim` request.** Same done-criterion as item 2, at `tt`/27 C.
-4. **Bring `manifests/README.md` back in line with the graded report.** It
+   `klt sim` request** [#221](https://github.com/2AMLogic/sky130-comparator/issues/221). Same done-criterion as item 2, at `tt`/27 C.
+4. **Bring `manifests/README.md` back in line with the graded report**
+   [#222](https://github.com/2AMLogic/sky130-comparator/issues/222). It
    still says items 1 and 9 wait on a matching host, that "the other seven
    items" are unmet, and that an item-7 envelope "cannot be produced here at
    all" (klayout-tools#2478 is closed). Done when every per-item statement
@@ -115,8 +123,8 @@ Items 1 to 3 extend the PR #212 pilot so #127 can be answered with measurements.
 
 ## Blocked and waiting
 
-Nothing on the tracker is dispatchable today: every open issue carries
-`loom:blocked` or `loom:operator`. The chain is
+Every issue in the chain below is parked on `loom:blocked` or
+`loom:operator`, so none of that chain is dispatchable today. The chain is
 `#127 (route decision) -> #125, #179 -> #187, #188, #134, #154 -> #3`,
 with #146 -> #184 as a separate, shorter one. Each chain starts at a decision
 recorded as a ranked question on its issue (#127, #146). The four Now items
