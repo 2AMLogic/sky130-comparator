@@ -59,7 +59,12 @@ import posixpath
 import re
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import urlsplit
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _gate_common import report_cases  # noqa: E402
 
 MANIFEST_DIR = "manifests/artifacts/"
 MANIFEST_RE = re.compile(r"^manifests/artifacts/[A-Za-z0-9][A-Za-z0-9._-]*\.manifest\.json$")
@@ -479,17 +484,11 @@ def selftest() -> int:
         ("stray file in manifests/artifacts is refused",
          {**mf(_st_entry()), MANIFEST_DIR + "notes.txt": "x"}, EXIT_INVALID),
     ]
-    bad = 0
+    case_results = []
     for label, files, want in cases:
         got = _st_run(files)
-        ok = got == want
-        bad += not ok
-        print(f"{'ok  ' if ok else 'FAIL'} {label} (exit {got}, want {want})")
-    if bad:
-        print(f"FAIL: {bad} selftest case(s) wrong", file=sys.stderr)
-        return EXIT_INVALID
-    print(f"OK: {len(cases)} selftest case(s)")
-    return EXIT_OK
+        case_results.append((f"{label} (exit {got}, want {want})", got == want))
+    return report_cases(case_results)
 
 
 def main(argv=None) -> int:
