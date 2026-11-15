@@ -408,6 +408,66 @@ class TestJobsPlumbing(unittest.TestCase):
         self.assertIn("--jobs", buf.getvalue())
 
 
+class TestRunManyTsRetryParallelSeam(unittest.TestCase):
+    """Issue #269: `_run_many_ts_retry`'s `workers > 1` branch submitted a
+    bare `_run` -- undefined in `noise_tran.py` ever since the #224 split --
+    so any `--jobs N>1` noise-tran campaign died with a NameError on its
+    first batch; and had it resolved to something, it would have bypassed
+    the `_shared._run` patch seam the module's import comment documents.
+    Both the parallel first pass and the sequential retry loop must
+    dispatch through the seam, like the `workers <= 1` branch already does.
+    """
+
+    @staticmethod
+    def _builds(names):
+        built_ts: dict[str, float] = {}
+
+        def make(name):
+            def build(ts):
+                built_ts[name] = ts
+                return f"deck {name} ts={ts}"
+            return build
+
+        return [(name, make(name)) for name in names], built_ts
+
+    def test_parallel_path_dispatches_through_the_patched_seam(self):
+        builds, built_ts = self._builds([f"po_{i}" for i in range(4)])
+        calls: list[str] = []
+
+        def fake_run(deck_text, scratch_dir, log_name):
+            calls.append(log_name)
+            return f"log {log_name}"
+
+        with unittest.mock.patch.object(cd_run._shared, "_run", fake_run):
+            results = cd_run.noise_tran._run_many_ts_retry(
+                builds, Path("scratch"), workers=2)
+
+        # The patched seam is what ran: every deck went through `fake_run`
+        # (a bare `_run` would raise NameError before any of this) and the
+        # returned logs are the seam's return values.
+        self.assertEqual(sorted(calls), [f"po_{i}" for i in range(4)])
+        self.assertEqual(results, {f"po_{i}": f"log po_{i}" for i in range(4)})
+        # First pass only: every build happened at the default ts.
+        self.assertEqual(set(built_ts.values()), {cd_run.noise_tran.NOISE_TRAN_TS})
+
+    def test_failed_deck_retries_at_the_perturbed_ts_through_the_same_seam(self):
+        builds, built_ts = self._builds(["po_ok", "po_bad"])
+
+        def fake_run(deck_text, scratch_dir, log_name):
+            if log_name == "po_bad" and built_ts["po_bad"] == cd_run.noise_tran.NOISE_TRAN_TS:
+                raise RuntimeError("ngspice timed out")
+            return f"log {log_name}"
+
+        with unittest.mock.patch.object(cd_run._shared, "_run", fake_run):
+            results = cd_run.noise_tran._run_many_ts_retry(
+                builds, Path("scratch"), workers=2)
+
+        self.assertEqual(
+            built_ts["po_bad"], cd_run.noise_tran.NOISE_TRAN_RETRY_TS,
+            "the failed deck was not retried at the perturbed ts")
+        self.assertEqual(results, {"po_ok": "log po_ok", "po_bad": "log po_bad"})
+
+
 class TestDutProvenance(unittest.TestCase):
     """`--dut schematic|extracted` -- the post-layout swap (issue #57).
 
@@ -1043,6 +1103,22 @@ class TestNoiseTranResumableCampaign(unittest.TestCase):
         # The cross-check really was measurable, so this compared the full
         # record shape and not just its degenerate branch.
         self.assertEqual(chunked.sigma_decision_mv, chunked.sigma_decision_mv)
+
+    def test_a_jobs_2_campaign_matches_a_jobs_1_run_at_the_same_n(self):
+        # Issue #269: the Monte Carlo batches route through
+        # `_run_many_ts_retry(batch, scratch_dir, jobs)`, whose parallel
+        # branch used to raise NameError on the first batch for any
+        # `--jobs N>1`. A jobs=2 campaign must complete and produce the
+        # same record the sequential default produces -- which decks ran
+        # in which thread must not change what a deck contributes.
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            serial = self._campaign()
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            parallel = self._campaign(jobs=2)
+        self.assertEqual(self._record_inputs(serial), self._record_inputs(parallel))
+        self.assertEqual(
+            cd_run.two_statistics_line(serial), cd_run.two_statistics_line(parallel),
+        )
 
     def test_an_interrupted_chunk_writes_no_record_and_leaves_a_resumable_dir(self):
         argv = [

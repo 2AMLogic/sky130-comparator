@@ -199,7 +199,7 @@ def _run_many_ts_retry(builds, scratch_dir: Path, workers: int = 1) -> dict[str,
                 failed.append((name, build))
     else:
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(_run, build(NOISE_TRAN_TS), scratch_dir, name): (name, build)
+            futures = {pool.submit(_shared._run, build(NOISE_TRAN_TS), scratch_dir, name): (name, build)
                        for name, build in builds}
             for future in futures:
                 name, build = futures[future]
@@ -230,7 +230,7 @@ def _trnoise_calibration_deck(na: float, ts: float) -> str:
         f"tran {ts:g} {npts * ts:g}",
         "let m = mean(v(n1))",
         "let s = sqrt(mean((v(n1)-m)*(v(n1)-m)))",
-        f"echo cal_std=$&s",
+        "echo cal_std=$&s",
         ".endc",
         ".end",
     ]) + "\n"
@@ -1335,7 +1335,7 @@ def write_noise_tran_evidence(
             f"{point['minus_ones']}/{m} | {point['unresolved']} | {pair_shown} |"
         )
     a(
-        f"\nInverse-variance-weighted decision sigma: "
+        "\nInverse-variance-weighted decision sigma: "
         + (
             f"**{result.sigma_decision_mv:.4f} mV**"
             if result.sigma_decision_mv == result.sigma_decision_mv else
