@@ -33,7 +33,6 @@ import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 import noise  # noqa: E402  -- `noise.run_noise` is a patch seam
 from _shared import (  # noqa: E402
     CLAIM_TEXT,
-    EXPERIMENT_DIR,
     NOISE_FSTART_HZ,
     NOISE_FSTOP_HZ,
     PEX_LATCH_FRAGMENT,
@@ -43,6 +42,7 @@ from _shared import (  # noqa: E402
     TERMINAL_GATE,
     VCM,
     VDD,
+    _begin_dut_record,
     _clock_stimulus,
     _deck_preamble,
     _dut_device_line,
@@ -1215,17 +1215,13 @@ def two_statistics_line(result: NoiseTranResult) -> str:
 def write_noise_tran_evidence(
     result: NoiseTranResult, note: str = "", supersedes: str = "",
 ) -> Path:
-    info = pdk.resolve()
-    netlist_text = _noise_tran_pickoff_deck(
-        info, result.corner, result.temp_c, 0.0, 10000,
-        result.na_input, result.na_gate, "noise_tran_pickoff",
+    info, record_id, netlist_sha, record_path, runs_dir = _begin_dut_record(
+        "corners",
+        netlist_text_fn=lambda info: _noise_tran_pickoff_deck(
+            info, result.corner, result.temp_c, 0.0, 10000,
+            result.na_input, result.na_gate, "noise_tran_pickoff",
+        ),
     )
-    resv = evidence.reserve_record(EXPERIMENT_DIR, ("corners",))
-    record_id = resv.record_id
-    netlist_sha = evidence.sha256_text(netlist_text)
-    evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
-    record_path = resv.record_path
-    runs_dir = resv.log_dirs["corners"]
     for name in ("latch_noise", "injcal_input", "injcal_gate"):
         if name in result.logs:
             evidence.write_new_text(runs_dir / f"{name}.log", result.logs[name])

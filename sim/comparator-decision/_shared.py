@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -828,22 +829,41 @@ def _resolve_pdk_line(info: pdk.PdkInfo) -> str:
     return f"{info.variant} @ {pdk.resolved_commit(info)}"
 
 
-def _begin_dut_record(subdir: str) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
+def _begin_dut_record(
+    subdir: str,
+    netlist_text_fn: Callable[[pdk.PdkInfo], str] | None = None,
+) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
     """Shared head, the counterpart of `_finalize_record` below: resolve the
-    PDK, mint a record id, hash + snapshot the DUT fragment, and create the
+    PDK, mint a record id, hash + snapshot the DUT netlist, and create the
     per-record log directory the caller drops its raw ngspice logs into.
 
+    `netlist_text_fn` selects what the snapshot hashes. None (the default)
+    snapshots the committed DUT fragment file -- what the five sub-commands
+    that simulate that fragment verbatim want. A callable is handed the
+    `info` this seam resolves (so this stays the single `pdk.resolve()`)
+    and its returned deck text is snapshotted instead -- what the two
+    reduced-sub-model records (`noise`, and `noise-tran`'s pick-off) need,
+    because the deck those records ran is not the committed fragment, and
+    snapshotting anything else would misstate the netlist the record's
+    numbers come from.
+
     Returns `(info, record_id, netlist_sha, record_path, logs_dir)`, where
-    `logs_dir` is `<EXPERIMENT_DIR>/<subdir>/<record_id>` -- `subdir` is the
-    one thing that varies across callers today (`"corners"` for the
-    deterministic sweeps, `"mc-draws"` for the Monte Carlo runner)."""
+    `logs_dir` is `<EXPERIMENT_DIR>/<subdir>/<record_id>` -- `subdir` is
+    `"corners"` for the deterministic sweeps, `"mc-draws"` for the Monte
+    Carlo runner, and `netlist_text_fn` is the other axis callers vary
+    along."""
     info = pdk.resolve()
     # Atomic, exclusive reservation of the whole namespace (issue #144):
     # never reuses an existing record id / log directory / snapshot.
     resv = evidence.reserve_record(EXPERIMENT_DIR, (subdir,))
     record_id = resv.record_id
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    if netlist_text_fn is None:
+        netlist_sha = evidence.sha256_file(_dut_fragment())
+        evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    else:
+        netlist_text = netlist_text_fn(info)
+        netlist_sha = evidence.sha256_text(netlist_text)
+        evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
     record_path = resv.record_path
     logs_dir = resv.log_dirs[subdir]
     return info, record_id, netlist_sha, record_path, logs_dir

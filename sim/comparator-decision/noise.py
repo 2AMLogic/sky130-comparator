@@ -21,12 +21,12 @@ if _EXPERIMENT_DIR not in sys.path:
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
     CLAIM_TEXT,
-    EXPERIMENT_DIR,
     NOISE_FSTART_HZ,
     NOISE_FSTOP_HZ,
     PEX_PREAMP_FRAGMENT,
     VCM,
     VDD,
+    _begin_dut_record,
     _deck_preamble,
     _dut_device_line,
     _finalize_record,
@@ -204,14 +204,10 @@ def run_noise(corner: str = "tt", temp_c: float = 27.0, quiet: bool = False) -> 
 
 
 def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = "") -> Path:
-    info = pdk.resolve()
-    netlist_text = _noise_deck(info, result.corner, result.temp_c)
-    resv = evidence.reserve_record(EXPERIMENT_DIR, ("corners",))
-    record_id = resv.record_id
-    netlist_sha = evidence.sha256_text(netlist_text)
-    evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
-    record_path = resv.record_path
-    runs_dir = resv.log_dirs["corners"]
+    info, record_id, netlist_sha, record_path, runs_dir = _begin_dut_record(
+        "corners",
+        netlist_text_fn=lambda info: _noise_deck(info, result.corner, result.temp_c),
+    )
     evidence.write_new_text(runs_dir / "noise.log", result.log_text)
 
     lines: list[str] = []
