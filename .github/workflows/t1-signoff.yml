@@ -107,8 +107,9 @@ jobs:
 
       # T1 item 2's artifact-anchored envelope (issue #186). The manifest pins
       # evidence/item2.json's input hash, so `gate` above already goes red
-      # when layout/comparator.gds moves; this step says which file drifted
-      # and proves (selftest) that an edited member changes the digest.
+      # when layout/comparator.gds moves; this step names the stale envelope
+      # and proves (selftest) that editing the bound GDS changes
+      # provenance.input.content_hash.
       - name: Layout-envelope selftest + currency check (hermetic)
         run: |
           python3 scripts/layout-envelope.py --selftest
