@@ -358,7 +358,27 @@ moves this measurement by 5 % at `ss`/-40 C, which is the library the
 `kickback` pilot's request happened to name. Tool gap filed as
 [`klayout-tools#5651`](https://github.com/2AMLogic/klayout-tools/issues/5651).
 
-`offset`, `noise` and `reset` have not
+Issue #221's pilot
+([`records/klt-pilot-noise-20261115.md`](records/klt-pilot-noise-20261115.md))
+then did the same for **`noise`**, the first route through an analysis whose
+results are ngspice **plot scalars** rather than `.meas` values (ngspice has
+no `.MEASURE NOISE`, and `klt` rejects a `.meas noise` card outright). The
+request grades anyway: the netlist body carries its own `.control` block that
+runs the `.noise` analysis and prints the derived scalars in harvestable
+`name = value` form (`let` aliases for the op nodes, `sqrt(2)` doubling done
+in-deck), and DR-002's 1 mV target rides on the request as a graded
+`limits.max`. One corner (`tt`/27 C), `status: "pass"`: input-referred noise
+**0.4034 mV rms single-ended, 0.5704 mV rms differential**, op points
+0.1794 V / 1.1772 V -- every figure the baseline stores
+(record `20260922-065534-e084b55`) reproduced to its displayed precision, on
+ngspice-47 and PDK `f6eeac7`, with no visible revision confounder at this
+corner. The request names the `libs.tech/combined` library per the regen
+finding above. Known cost: the analysis runs **twice** per corner (body block
++ klt's own), because the route has no pre/post-analysis command hook --
+filed with the um-metre preflight false positive as
+[`klayout-tools#5802`](https://github.com/2AMLogic/klayout-tools/issues/5802).
+
+`offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
 of what #64 did, not a statement that the fleet is unusable. Choosing the
 execution route is #127's decision.
