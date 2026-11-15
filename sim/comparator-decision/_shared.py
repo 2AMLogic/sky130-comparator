@@ -699,6 +699,65 @@ def post_layout_delta_lines(
     return out
 
 
+# --- Deck preamble + stimulus templates (issue #237).
+#
+# Nine deck builders opened with the same `.lib/.temp/.param/Vdd` block, six
+# carried the same `Vclk CLK 0 PULSE(...)` line, and four the same
+# `Vinp`/`Vinn` differential pair -- nine copies of the preamble across six
+# files after #224's split, which is exactly the state in which a
+# stimulus-shape change gets made in five places and missed in the sixth.
+# These three helpers are the single copies. The contract is byte-identity:
+# every deck built through them is textually identical to its pre-#237
+# inline copy, which sim/tests/test_comparator_decision.py's verbatim deck
+# assertions and #237's pre/post dump guard directly.
+
+def _deck_preamble(
+    info: pdk.PdkInfo, corner: str, temp_c: float, title: str, *,
+    params: str = "", rndseed: int | None = None,
+) -> list[str]:
+    """The `.lib/.temp/.param/Vdd` head every DUT deck opens with.
+
+    `title` is the deck's own first `*` comment line (deck-specific, kept at
+    the call site). `params` is any extra `.param` assignment appended to
+    the vdd line -- e.g. the latch-noise deck's ` vcmo = ...` tail, leading
+    space included. `rndseed`, when given, emits `.option rndseed=` between
+    the `.param` line and the blank line ahead of `Vdd`, the exact position
+    the seeded decks already used. `_trnoise_calibration_deck` deliberately
+    does not route through this: it is PDK-free by design."""
+    lines = [
+        title,
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}{params}",
+    ]
+    if rndseed is not None:
+        lines.append(f".option rndseed={rndseed}")
+    lines += ["", "Vdd VDD 0 dc {vdd_val}"]
+    return lines
+
+
+def _clock_stimulus(evaluate_ns: float, period_ns: float) -> str:
+    """The `Vclk CLK 0 PULSE(...)` line six deck builders share: RESET_NS of
+    reset, a RESET_TR_NS-ramped edge at each transition, `evaluate_ns` of
+    evaluate phase, one `period_ns` cycle."""
+    return (
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{evaluate_ns}n {period_ns}n)"
+    )
+
+
+def _input_split_stimulus(vindiff_v: float) -> list[str]:
+    """The ideal differential input pair four deck builders share:
+    `vindiff_v` split symmetrically around VCM. The two noise-tran decks
+    append their `TRNOISE(...)` tails as explicit call-site lines rather
+    than growing this a flag, and `reset`/`noise`'s common-mode `{VCM}`
+    bias pair is a different stimulus, not a variant of it."""
+    return [
+        f"Vinp VINP 0 dc {VCM + vindiff_v / 2}",
+        f"Vinn VINN 0 dc {VCM - vindiff_v / 2}",
+    ]
+
+
 def _dut_lines() -> str:
     return _dut_fragment().read_text()
 

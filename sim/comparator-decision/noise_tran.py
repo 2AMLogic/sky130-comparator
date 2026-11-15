@@ -43,6 +43,8 @@ from _shared import (  # noqa: E402
     TERMINAL_GATE,
     VCM,
     VDD,
+    _clock_stimulus,
+    _deck_preamble,
     _dut_device_line,
     _dut_fragment,
     _dut_lines,
@@ -326,13 +328,12 @@ def _latch_noise_deck(
     preamp's own static output common mode with CLKT at VDD."""
     block, (gate_p, gate_n) = _latch_front_end_block()
     return "\n".join([
-        f"* comparator-decision latch front-end gate-referred noise -- "
-        f"corner={corner} temp={temp_c}C gate_cm={gate_cm_v:.4f}V (issue #41)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD} vcmo = {gate_cm_v:.6f}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision latch front-end gate-referred noise -- "
+            f"corner={corner} temp={temp_c}C gate_cm={gate_cm_v:.4f}V (issue #41)",
+            params=f" vcmo = {gate_cm_v:.6f}",
+        ),
         "Vclkfix CLKT 0 dc {vdd_val}",
         f"Vstp {gate_p} 0 dc {{vcmo}} AC 1",
         f"Vstn {gate_n} 0 dc {{vcmo}}",
@@ -419,16 +420,13 @@ def _noise_tran_pickoff_deck(
     evaluate_ns = PICKOFF_TSTOP_NS - RESET_NS - RESET_TR_NS
     period_ns = RESET_NS + RESET_TR_NS + evaluate_ns + 10.0
     lines = [
-        f"* comparator-decision noise-tran pick-off -- vindiff={vindiff_mv}mV "
-        f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        f".option rndseed={seed}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
-        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
-        f"{evaluate_ns}n {period_ns}n)",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision noise-tran pick-off -- vindiff={vindiff_mv}mV "
+            f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
+            rndseed=seed,
+        ),
+        _clock_stimulus(evaluate_ns, period_ns),
         f"Vinp VINP 0 dc {VCM + vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
         f"Vinn VINN 0 dc {VCM - vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
         "",
@@ -461,16 +459,13 @@ def _noise_tran_decision_deck(
     vindiff_v = vindiff_mv / 1000.0
     period_ns = RESET_NS + RESET_TR_NS + NOISE_TRAN_EVALUATE_NS + 10.0
     lines = [
-        f"* comparator-decision noise-tran decision -- vindiff={vindiff_mv}mV "
-        f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        f".option rndseed={seed}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
-        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
-        f"{NOISE_TRAN_EVALUATE_NS}n {period_ns}n)",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision noise-tran decision -- vindiff={vindiff_mv}mV "
+            f"seed={seed} corner={corner} temp={temp_c}C (issue #41)",
+            rndseed=seed,
+        ),
+        _clock_stimulus(NOISE_TRAN_EVALUATE_NS, period_ns),
         f"Vinp VINP 0 dc {VCM + vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
         f"Vinn VINN 0 dc {VCM - vindiff_v / 2} TRNOISE({na_input:g} {ts:g} 0 0)",
         "",

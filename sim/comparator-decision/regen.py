@@ -27,8 +27,11 @@ from _shared import (  # noqa: E402
     VCM,
     VDD,
     _begin_dut_record,
+    _clock_stimulus,
+    _deck_preamble,
     _dut_lines,
     _finalize_record,
+    _input_split_stimulus,
     netlist_provenance,
     post_layout_delta_lines,
 )
@@ -47,17 +50,13 @@ def _regen_deck(
     vindiff_v = vindiff_mv / 1000.0
     period_ns = RESET_NS + RESET_TR_NS + EVALUATE_NS + 10.0
     lines = [
-        f"* comparator-decision regen-time sweep -- vindiff={vindiff_mv}mV "
-        f"corner={corner} temp={temp_c}C (issue #9)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
-        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
-        f"{EVALUATE_NS}n {period_ns}n)",
-        f"Vinp VINP 0 dc {VCM + vindiff_v / 2}",
-        f"Vinn VINN 0 dc {VCM - vindiff_v / 2}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision regen-time sweep -- vindiff={vindiff_mv}mV "
+            f"corner={corner} temp={temp_c}C (issue #9)",
+        ),
+        _clock_stimulus(EVALUATE_NS, period_ns),
+        *_input_split_stimulus(vindiff_v),
         "",
         _dut_lines(),
         "",

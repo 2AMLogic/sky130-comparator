@@ -26,6 +26,7 @@ from _shared import (  # noqa: E402
     VCM,
     VDD,
     _begin_dut_record,
+    _deck_preamble,
     _dut_device_line,
     _dut_devices,
     _dut_lines,
@@ -163,13 +164,11 @@ def _reset_device_block(variant: str) -> str:
 
 def _reset_deck(info: pdk.PdkInfo, corner: str, temp_c: float, variant: str, log_name: str) -> str:
     lines = [
-        f"* comparator-decision reset-integrity check -- variant={variant} "
-        f"corner={corner} temp={temp_c}C supply={VDD}V (issue #24)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision reset-integrity check -- variant={variant} "
+            f"corner={corner} temp={temp_c}C supply={VDD}V (issue #24)",
+        ),
         "* CLK held LOW for the entire window: reset asserted, never released.",
         "Vclk CLK 0 dc 0",
         f"Vinp VINP 0 dc {VCM}",

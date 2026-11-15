@@ -27,6 +27,7 @@ from _shared import (  # noqa: E402
     PEX_PREAMP_FRAGMENT,
     VCM,
     VDD,
+    _deck_preamble,
     _dut_device_line,
     _finalize_record,
     post_layout_delta_lines,
@@ -134,13 +135,11 @@ def _noise_sub_model_lines() -> list[str]:
 def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
     note = VBIAS_NOTE_PEX if _shared.dut_provenance() == "extracted" else VBIAS_NOTE
     lines = [
-        f"* comparator-decision input-referred noise ({note}) "
-        f"corner={corner} temp={temp_c}C supply={VDD}V (issue #9)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision input-referred noise ({note}) "
+            f"corner={corner} temp={temp_c}C supply={VDD}V (issue #9)",
+        ),
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
