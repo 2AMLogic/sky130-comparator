@@ -5,14 +5,14 @@ Ported (issue #8) from 2AMLogic/sky130-sar-adc's sim/harness/corners.py
 same PDK (sky130), same OAT-grid convention.
 
 Deliberately does NOT hardcode a supply nominal or a pass/fail threshold
-anywhere in this module -- this repo's target-spec table (top-level
-README) is DRAFT (see spec/README.md) and CLAUDE.md forbids encoding an
-unratified spec value as a pass/fail threshold. A testbench manifest
-(tb.json) must supply its own nominal_supply_v, process corners,
-temperatures, and supply tolerance; this module only supplies PDK-derived
-helpers (mismatch-corner lookup, corner-id formatting, supply-point
-spreading), which are properties of the PDK and of repo convention, not of
-this block's own spec.
+anywhere in this module -- this is a generic harness module, so a
+testbench manifest (tb.json) must supply its own nominal_supply_v,
+process corners, temperatures, and supply tolerance; per CLAUDE.md,
+agents do not relax the ratified spec to make results pass, so any
+pass/fail line belongs to the manifest, not to a shared harness default.
+This module only supplies PDK-derived helpers (mismatch-corner lookup,
+corner-id formatting, supply-point spreading), which are properties of
+the PDK and of repo convention, not of this block's own spec.
 """
 
 from __future__ import annotations
