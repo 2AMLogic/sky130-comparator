@@ -257,6 +257,6 @@ matrix), not leakage — the record states this.
   target-spec table (top-level `README.md`) is ratified per-row — DR-002
   (Offset sigma, Input-referred noise, Kickback) and DR-005 (Decision time
   vs. overdrive) — with only Supply/power still DRAFT/OPEN and no
-  ratified bound. The DR-001/DR-003-era records predate ratification and
-  quote the rows only as design intent; DR-004-era and later records
-  grade against the ratified bounds.
+  ratified bound. Records written before DR-002's merge (2026-09-16)
+  predate ratification and quote the rows only as design intent; records
+  from DR-002 onward grade against the ratified bounds.

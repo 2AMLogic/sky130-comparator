@@ -176,13 +176,20 @@ the two generations apart:
 - `schematic-derived (design/comparator.sch -> ./design/netlist.sh -> ...)`
   -- this repo's own design (issue #24 onward).
 
-**These two generations predate the table's ratification**: the target-spec
-table (top-level README) is ratified per-row -- DR-002 (Offset sigma,
-Input-referred noise, Kickback) and DR-005 (Decision time vs. overdrive);
-only Supply/power is DRAFT/OPEN with no ratified bound. When these records
-were written the rows were DRAFT, so they quote the rows only as the design
-intent the sizing pass aimed at; the top-level README now cites them as part
-of the ratified rows' measured basis, and the grading in this directory
+**The ratification line is DR-002's merge (2026-09-16), and it cuts through
+the schematic-derived generation rather than between the two provenances.**
+The target-spec table (top-level README) is ratified per-row -- DR-002
+(Offset sigma, Input-referred noise, Kickback) and DR-005 (Decision time
+vs. overdrive); only Supply/power is DRAFT/OPEN with no ratified bound.
+The placeholder records and the first schematic-derived campaign
+(2026-09-16, tree `52eb9b2`, plus the same day's `f1eb978` kickback record
+-- written earlier that same day, hours before DR-002 merged) predate
+ratification and quote the rows only as the design intent the sizing pass
+aimed at; it is those schematic-derived records the top-level README cites
+as part of the ratified rows' measured basis. Schematic-derived records
+from DR-002 onward state the per-row ratified status in their own `Claim`
+field (and, where a target-spec row is measured directly, a `Ratified
+bound comparison` section). Either way, the grading in this directory
 happens in the drivers' verdict output (`clears` / `DOES NOT clear` from
 `offset`/`noise`/`noise_tran`, `MEETS` / `DOES NOT yet meet` from
 `kickback`) against the ratified bound constants.
@@ -596,10 +603,11 @@ pinned toolchain (`sim/toolchain.json`) and PDK (`sim/pdk.json`). The
 target-spec table (top-level README) is ratified per-row -- DR-002 (Offset
 sigma, Input-referred noise, Kickback) and DR-005 (Decision time vs.
 overdrive); only Supply/power is DRAFT/OPEN with no ratified bound. The
-52eb9b2-era records below predate those decision records and quote the rows
-as the design intent the sizing pass aimed at; the later DR-004/DR-005-era
-records grade against the ratified bounds in the drivers' verdict output
-(`clears` / `DOES NOT clear`, `MEETS` / `DOES NOT yet meet`).
+52eb9b2-era records below predate DR-002's merge (later that same day,
+2026-09-16) and quote the rows as the design intent the sizing pass aimed
+at; records from DR-002 onward grade against the ratified bounds in the
+drivers' verdict output (`clears` / `DOES NOT clear`, `MEETS` /
+`DOES NOT yet meet`).
 
 - `reset` -- `records/20260916-004042-52eb9b2.md`: reset-integrity negative
   control + positive control, 5 PVT points each (tt/27C, ss/-40C, ss/125C,
@@ -653,10 +661,11 @@ standing comparison: it collects this directory's first campaign
 `f1eb978` record), written before the target-spec table (top-level README)
 was ratified per-row -- DR-002 (Offset sigma, Input-referred noise,
 Kickback) and DR-005 (Decision time vs. overdrive); only Supply/power is
-still DRAFT/OPEN. Its Kickback, Offset and Decision-time figures are
-**superseded**: DR-004's preamplifier topology re-measured kickback at
-1.89 / 1.86 / 1.77 mV at the three graded PVT anchors, offset stdev at
-1.7857 mV (`tt_mm`, N=16), and decision time at 0.4025 ns @ 50 mV
+still DRAFT/OPEN. Its Kickback, Offset, Input-referred-noise and
+Decision-time figures are **superseded**: DR-004's preamplifier topology
+re-measured kickback at 1.89 / 1.86 / 1.77 mV at the three graded PVT
+anchors, offset stdev at 1.7857 mV (`tt_mm`, N=16), input-referred noise
+at 0.5704 mV rms (`tt`/27C), and decision time at 0.4025 ns @ 50 mV
 (`tt`/27C); DR-005 then extended the campaign to all seven graded corners.
 The Target/Stretch columns are unchanged by ratification (no numeric bound
 moved) -- for current numbers and per-row status see the top-level README's
