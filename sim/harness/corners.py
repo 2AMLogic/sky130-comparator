@@ -62,8 +62,8 @@ def corner_matrix_summary_line(
     sim/README.md's one-at-a-time convention. (sky130-sar-adc, the repo
     this module is ported from, shares this exact line across several of
     its own ADC-specific experiment drivers; this repo has none of those
-    yet, but the line format is unchanged so a future comparator-decision-
-    style driver here reads identically.) Callers still do their own
+    yet, but the line format is unchanged, so records written through this
+    helper stay comparable with that repo's.) Callers still do their own
     sorted-unique extraction of the axis values (the input *shapes* differ
     per site -- dicts vs. dataclass attributes) and pass the resulting
     lists in here; only the final formatted string is centralized."""

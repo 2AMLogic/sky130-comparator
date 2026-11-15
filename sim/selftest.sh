@@ -19,11 +19,17 @@
 # sim/selftest.sh (commit b80c144efbf467a586f728726cabb25c1eb5a1f2), which
 # itself ports the structure from 2AMLogic/gf180-sar-adc's sim/selftest.sh
 # (commit f613571aee5b80eff1eea37bdce9dfc88c5cf396), per CLAUDE.md's
-# "Harness bootstrap" instruction. This repo has no comparator schematic
-# yet, so the EXPERIMENTS list here is the two harness-proof circuits from
-# issue #8 (harness-corner-smoke, mc-smoke), not a real testbench suite --
-# see sim/README.md "Harness self-test experiments" for why, and for what
-# a future comparator testbench adds.
+# "Harness bootstrap" instruction. Stages 3-4 below run only the two
+# harness-proof circuits from issue #8 (harness-corner-smoke, mc-smoke):
+# they are the regression for the *harness's own* PVT/MC plumbing, and
+# stay deliberately independent of whichever DUT
+# sim/comparator-decision/ exercises -- a statement about those two
+# stages, not about this repo's scope. The comparator-decision driver
+# (which since issue #24 exercises this repo's own design/comparator.sch)
+# has its own tests, run here in stage 1 by unittest discover over
+# sim/tests/; its live sims are recorded evidence under that experiment's
+# records/, not a selftest stage. See sim/README.md "Harness self-test
+# experiments" for the full argument.
 #
 # Timing note: each ngspice invocation against the sky130 combined model
 # library costs roughly 15-20s on the reference toolchain (model-library
