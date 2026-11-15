@@ -39,8 +39,12 @@ is DRAFT / OPEN with no measurement behind it ([#134](https://github.com/2AMLogi
 
 - Every committed post-layout record was measured on the earlier 0.42 um
   resistor layout extracted under klt 0.6.0. The current layout draws 0.35 um
-  and is extracted under 0.8.0 (PRs #205, #208). No simulation metric has been
-  re-measured on it: [#125](https://github.com/2AMLogic/sky130-comparator/issues/125).
+  and is extracted under 0.8.0 (PRs #205, #208). No *recorded* metric has been
+  re-measured on it; the first simulated figure on the current extraction is
+  the [#219](https://github.com/2AMLogic/sky130-comparator/issues/219) pilot
+  (`sim/comparator-decision/records/klt-pilot-kickback-pex-20261114.md`), which
+  neither closes [#125](https://github.com/2AMLogic/sky130-comparator/issues/125)
+  nor changes a spec row.
 - The PDK pin moved to open_pdks `f6eeac7` (PR #180), but the reference
   records and `sim/characterization-report.md` still stand on `c6d73a35`:
   [#179](https://github.com/2AMLogic/sky130-comparator/issues/179).
@@ -73,7 +77,7 @@ document is a dated snapshot and does not track later landings.
    Done when `sim/comparator-decision/klt-pilot/` holds a request, report and
    dated pilot note for the `tt`/27 C point against
    `layout/comparator.pex.spice`, with the delta to the schematic pilot stated.
-   This is the first simulated figure on the current 0.35 um layout.
+   At this snapshot, no simulated figure existed on the current 0.35 um layout.
 2. **Pilot `regen` (decision time at 50 mV overdrive) as a `klt sim`
    request** [#220](https://github.com/2AMLogic/sky130-comparator/issues/220).
    Done when a request, report and pilot note exist for `tt`/27 C and
