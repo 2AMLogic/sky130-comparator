@@ -402,6 +402,31 @@ def netlist_provenance() -> str:
     )
 
 
+def _record_header(
+    record_id: str, *,
+    heading: str = "Record",
+    provenance: str | None = None,
+) -> list[str]:
+    """The five lines every record opens with (issue #237): the `#` heading,
+    a blank line, the Record ID bullet, the claim line, and the netlist
+    provenance bullet.
+
+    `heading` is the words between `#` and the record id, so the Monte
+    Carlo record's `# Monte Carlo record ...` heading is that parameter
+    rather than a silent divergence from the default. `provenance`, when
+    given, replaces `netlist_provenance()` -- `noise`'s reduced-sub-model
+    record describes a differently-derived netlist and inlines its own
+    bullet, and that is this parameter too, so the remaining callers share
+    one provenance line by construction."""
+    return [
+        f"# {heading} {record_id}",
+        "",
+        f"- **Record ID**: {record_id}",
+        CLAIM_TEXT,
+        provenance if provenance is not None else netlist_provenance(),
+    ]
+
+
 # --- Schematic-level anchors the post-layout re-runs are differenced against
 # (issue #57 acceptance criteria: "each post-layout record documents its
 # schematic-level counterpart record path AND the numeric delta -- not just

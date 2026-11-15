@@ -20,7 +20,6 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     RESET_GND_TIE_MOVES,
     RESET_SCHEMATIC_COUNTERPART,
     VCM,
@@ -31,8 +30,8 @@ from _shared import (  # noqa: E402
     _dut_devices,
     _dut_lines,
     _finalize_record,
+    _record_header,
     _retie_star_legs,
-    netlist_provenance,
 )
 from harness import evidence, pdk, toolchain  # noqa: E402
 
@@ -313,11 +312,7 @@ def write_reset_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(
         "- **Corner matrix run**: "
         + ", ".join(f"{c}/{t}C" for c, t in corner_set)

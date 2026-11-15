@@ -20,7 +20,6 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     NOISE_FSTART_HZ,
     NOISE_FSTOP_HZ,
     PEX_PREAMP_FRAGMENT,
@@ -30,6 +29,7 @@ from _shared import (  # noqa: E402
     _deck_preamble,
     _dut_device_line,
     _finalize_record,
+    _record_header,
     post_layout_delta_lines,
 )
 from harness import evidence, pdk  # noqa: E402
@@ -212,12 +212,9 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(
-        (
+    lines += _record_header(
+        record_id,
+        provenance=(
             "- **Netlist provenance**: POST-LAYOUT / EXTRACTED, reduced "
             "sub-model -- the preamp partition of the extracted netlist "
             "(`layout/comparator.pex-preamp.spice`, from `layout/comparator.gds` "
@@ -233,7 +230,7 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
             "(itself generated from `design/comparator.sch` by `./design/netlist.sh`); "
             "everything past the preamp outputs is the loop break; "
             "see Methodology for what that omits."
-        )
+        ),
     )
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(

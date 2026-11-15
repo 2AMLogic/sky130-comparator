@@ -22,7 +22,6 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     RESET_NS,
     RESET_TR_NS,
     VCM,
@@ -33,8 +32,8 @@ from _shared import (  # noqa: E402
     _dut_lines,
     _finalize_record,
     _input_split_stimulus,
+    _record_header,
     kickback_subset_justification,
-    netlist_provenance,
     post_layout_delta_lines,
 )
 from regen import (  # noqa: E402
@@ -243,11 +242,7 @@ def write_kickback_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(
         f"- **Corner matrix run**: process=['{loaded.corner}'], "
         f"temperature_c=[{loaded.temp_c}], supply_v=[{VDD}] (1 PVT point, "

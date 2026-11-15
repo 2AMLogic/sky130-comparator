@@ -32,7 +32,6 @@ if _EXPERIMENT_DIR not in sys.path:
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 import noise  # noqa: E402  -- `noise.run_noise` is a patch seam
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     NOISE_FSTART_HZ,
     NOISE_FSTOP_HZ,
     PEX_LATCH_FRAGMENT,
@@ -49,9 +48,9 @@ from _shared import (  # noqa: E402
     _dut_fragment,
     _dut_lines,
     _finalize_record,
+    _record_header,
     _retie_star_legs,
     dut_provenance,
-    netlist_provenance,
     post_layout_delta_lines,
 )
 from noise import (  # noqa: E402
@@ -1228,11 +1227,7 @@ def write_noise_tran_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(
         f"- **Noise methodology**: `tran-noise-mc` (issue #41), REGENERATION-"

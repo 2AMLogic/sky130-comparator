@@ -26,7 +26,6 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     DECIDE_THRESHOLD_V,
     OFFSET_STRETCH_MV,
     OFFSET_TARGET_MV,
@@ -41,7 +40,7 @@ from _shared import (  # noqa: E402
     _dut_lines,
     _finalize_record,
     _input_split_stimulus,
-    netlist_provenance,
+    _record_header,
     post_layout_delta_lines,
 )
 from regen import (  # noqa: E402
@@ -209,11 +208,7 @@ def write_offset_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Monte Carlo record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id, heading="Monte Carlo record")
     rel_se_pct = 100.0 / (2 * (result.n - 1)) ** 0.5 if result.n > 1 else float("inf")
     a(
         f"- **Statistical convention**: mismatch corner `{result.mismatch_corner}`, "
@@ -615,11 +610,7 @@ def write_offset_bisect_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(
         f"- **Corner matrix run**: process=['{result.corner}'], "
         f"temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 PVT point -- "

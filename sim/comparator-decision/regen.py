@@ -20,7 +20,6 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     DECIDE_THRESHOLD_V,
     RESET_NS,
     RESET_TR_NS,
@@ -32,7 +31,7 @@ from _shared import (  # noqa: E402
     _dut_lines,
     _finalize_record,
     _input_split_stimulus,
-    netlist_provenance,
+    _record_header,
     post_layout_delta_lines,
 )
 from harness import evidence, pdk, toolchain  # noqa: E402
@@ -171,11 +170,7 @@ def write_regen_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(
         f"- **Corner matrix run**: process=['{corner}'], temperature_c=[{temp_c}], "
         f"supply_v=[{VDD}] (1 PVT point -- **subset-corner justification**: "
