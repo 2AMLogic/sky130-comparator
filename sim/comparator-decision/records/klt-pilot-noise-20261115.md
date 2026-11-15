@@ -4,8 +4,8 @@ Not a ratified record: no `Record ID`, no new graded corner set beyond the one
 pilot corner. It answers one question for #127: **can `run.py noise`'s ngspice
 `.noise` analysis and its integrated-noise read-out be expressed as a `klt sim`
 request, and does the fleet reproduce `run.py`'s number?** Answer: **yes to
-both** -- but not through `.meas` cards, and with one workaround whose cost is
-named below rather than hidden.
+both** -- but not through `.meas` cards, and via a body-`.control`-block
+construction whose cost is named below rather than hidden.
 
 Follows the `kickback` pilot (`klt-pilot-kickback-20261106.md`, issue #211) and
 the `regen` pilot (`klt-pilot-regen-20261114.md`, issue #220); same file-naming
@@ -59,17 +59,19 @@ the evidence that would re-grade the row anyway.
   / repo `d69e3ec`. `.lib`/`.temp` are omitted (`klt` writes its own per
   corner); the body deliberately carries **no `.end`** (`klt` appends the deck
   tail after its own control block).
-- **The body carries its own `.control` block** -- the route's one workaround,
-  detailed under "How the read-out works" below. `option sparse` appears both
-  there and in `options.ngspice_init` (belt and braces; see the solver check).
+- **The body carries its own `.control` block** -- this pilot's one workaround
+  (a construction choice, not a route necessity; see "How the read-out works"
+  below). `option sparse` appears both there and in `options.ngspice_init`
+  (belt and braces; see the solver check).
 - Measurements: six entries whose `spice` fields are **inert `*` comments**,
-  deliberately. `klt` requires `name` and `spice` on every entry and emits
-  `spice` verbatim into the deck above its control block
-  (`_validate_meas_card` ignores non-`.meas` lines, so a comment passes
-  validation and does nothing); the values come from the body block's
-  `print`s, harvested from the log. **This is the non-obvious part of the
-  request**: a reader expecting the `spice` field to produce the value will
-  find the deck carrying six comment lines and no measurement cards at all.
+  deliberately. A `measurements[]` entry takes a `name` plus exactly one
+  declared form, of which `spice` (emitted verbatim into the deck above klt's
+  control block; `_validate_meas_card` ignores non-`.meas` lines, so a comment
+  passes validation and does nothing) is only one -- the values here come from
+  the body block's `print`s, harvested from the log. **This is the non-obvious
+  part of the request**: a reader expecting the `spice` field to produce the
+  value will find the deck carrying six comment lines and no measurement
+  cards at all.
 - Report `klt-pilot/report-noise.json`; batch receipt, per-unit `corner.cir`
   and `.spiceinit` under `klt-pilot/out-noise/`; committed pre-submit dry run
   `klt-pilot/dry-run-noise.json` (its resolved `netlist` matches the request's
@@ -93,20 +95,31 @@ it with `let`/`print` expressions in the body's control block instead:
 | --- | --- |
 | 1. Parse v(TAILP), v(OUTP1), v(OUTN1) from the `op` print | `let op_tailp = v(TAILP)` (+ outp1/outn1), then `print op_tailp op_outp1 op_outn1`. The **`let` alias is required**: the log harvester's `_MEAS_VALUE_RE` only matches `name = value`, and a printed `v(tailp) = ...` carries parentheses that never match -- without the alias the op nodes come back missing and the corner grades error. |
 | 2. Parse `inoise_total` | The body block runs `noise v(outp1,outn1) Vinp dec 20 1000 1e+09 20` itself, then `print inoise_total onoise_total` -- the analysis's own plot scalars, in harvestable `name = value` form. |
-| 3. Multiply by `sqrt(2)` for the differential estimate | Done **in-deck**, before printing: `let inoise_diff_mv = inoise_total*sqrt(2)*1000`. `klt` has no derived/expression measurement, so the unit conversion and the diff-pair doubling cannot be stated in the request. |
+| 3. Multiply by `sqrt(2)` for the differential estimate | Done **in-deck**, before printing: `let inoise_diff_mv = inoise_total*sqrt(2)*1000`. A choice of this pilot's construction, not a tool limit: current `klt` states it in the request itself via `measurements[].expr` (e.g. `{"name": "inoise_diff_mv", "expr": "inoise_total*sqrt(2)*1000"}`), which klt lowers into a `let`/`print` pair inside its *own* control block -- under `kind: "noise"` the `noise1` spectra are aliased into the current plot so bare spectrum names resolve, and the totals (`inoise_total`/`onoise_total`) are bare to begin with (klayout-tools #2893); a native `measurements[].noise` form (#2938) states spot and band-integrated noise values directly. Whether the fleet runner's `klt` **0.9.0** accepts `expr` entries was **not tested**. |
 | 4. Compare against DR-002's 1.0 mV target / 0.6 mV stretch | The target becomes a **graded limit on the request itself**: `inoise_diff_mv` `limits.max: 1.0` (report `margin: 0.429552`, `coverage.nothing_checked: false`). The stretch 0.6 is not expressible as a second bound in this schema and is stated in this note instead. |
 
 So: `klt` grades **printed scalars**, not `.meas` values, on this route.
 
-**Route cost, stated rather than hidden**: the `.noise` analysis runs **twice
-per corner** -- once in the body's control block (which must run the analysis
-to make the scalars exist; a print-only body block runs before klt's analysis
-and warns "vector inoise_total is not available"), then again in klt's own
-control block. The committed log shows exactly that: three solver
-initializations (`op`, body `noise`, klt `noise`). Cost here ~2 s of fleet
-time (corner runtime 3.448 s in-corner, 12 s job elapsed). A pre/post-analysis
-command hook or a derived-measurement field in the request would eliminate the
-duplicate run and move step 3 into the request; filed as friction below.
+**Cost of this pilot's construction, stated rather than hidden** (a cost of
+the chosen body-block route, not of `klt sim` itself): the `.noise` analysis
+runs **twice per corner** -- once in the body's control block (which must run
+the analysis to make the scalars exist; a print-only body block runs before
+klt's analysis and warns "vector inoise_total is not available"), then again
+in klt's own control block. The committed run's log shows exactly that:
+three solver initializations (`op`, body `noise`, klt `noise`). Cost here ~2 s
+of fleet time (corner runtime 3.448 s in-corner, 12 s job elapsed). An
+`expr`-form request would fold step 3 into klt's own control block and drop
+the duplicate analysis on a runner that supports it: current `klt`
+(0.9.3.dev3+gd5d57daf9a14, the version installed here at check time) does,
+and even ships an `expr_runner_may_predate` diagnostic for exactly the
+runner-too-old case (klayout-tools #4097). But this pilot's fleet runner was
+`klt` **0.9.0** (Provenance below), and whether 0.9.0 accepts `expr` entries
+was **not measured** -- this note claims nothing about which measurement
+forms older runners accept. The three `op_*` node voltages are a separate
+matter and may genuinely still need the in-body `op` run: a noise result plot
+carries no node voltages, and whether an `expr` like `v(TAILP)` resolves
+under `kind: "noise"` was likewise not tested -- so a residual body block may
+remain justified even on a runner that accepts `expr` noise entries.
 
 ## The model library axis
 
@@ -172,21 +185,32 @@ positive**: `status` stays `valid`, the fleet run passes,
 `diagnostic_counts.corners_with_diagnostics` is 0, and ngspice never aborts
 on a model bin. It appears in `dry-run-noise.json` and not in
 `report-noise.json` (diagnostics `[]`). The sizing is the schematic's, taken
-verbatim from the fragment -- not "fixed" here. Filed with the rest of the
-route friction.
+verbatim from the fragment -- not "fixed" here. Filed as the surviving half
+of the friction below.
 
-## Friction filed
+## Friction filed -- and its outcome
 
 [`2AMLogic/klayout-tools#5802`](https://github.com/2AMLogic/klayout-tools/issues/5802)
 -- two generic gaps in one filing, described without this design's details:
 (a) no request hook for a pre- or post-analysis control command and no
-derived/expression measurement, so an analysis whose result is a plot scalar
-rather than a `.meas` value can only be graded by smuggling a duplicate
-analysis plus `print`s into the netlist body's control block, paying for the
-analysis twice; (b) `model_bin_range_preflight` misreading a PDK's
-micrometre `W=`/`L=` as metres and emitting a spurious at/above-bin-range
-warning. AC 6's "not expressible" branch did **not** fire: the measurement
-is expressible, via the workaround above.
+derived/expression measurement; (b) `model_bin_range_preflight` misreading a
+PDK's micrometre `W=`/`L=` as metres and emitting a spurious
+at/above-bin-range warning.
+
+**Outcome (2026-11-15): gap (a) was a false premise, and #5802 now says so
+itself.** A Curator rescope of the issue found `measurements[].expr` already
+states derived expressions in the request (with #2893's noise-plot aliasing),
+and the native `measurements[].noise` form (#2938) covers spot and
+band-integrated values; the issue's scope is now gap (b) alone -- the
+um-metre preflight misread, real and reproduced. The premise originated in
+this issue's own curation (#221's "Verified corrections" block asserted, as
+measured fact at the then-installed `klt`, that nothing in the request's own
+fields could produce the read-out), and the pilot implemented it faithfully.
+A canary friction filing being falsified by the tool it probed is itself a
+legitimate canary finding, recorded here; what this note no longer does is
+assert the refuted absence. AC 6's "not expressible" branch did **not** fire:
+the measurement is expressible -- directly in the request at current `klt`,
+via the body block on the klt-0.9.0 runner this pilot used.
 
 ## Caveats
 

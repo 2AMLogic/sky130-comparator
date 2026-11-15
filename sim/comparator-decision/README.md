@@ -374,9 +374,16 @@ in-deck), and DR-002's 1 mV target rides on the request as a graded
 ngspice-47 and PDK `f6eeac7`, with no visible revision confounder at this
 corner. The request names the `libs.tech/combined` library per the regen
 finding above. Known cost: the analysis runs **twice** per corner (body block
-+ klt's own), because the route has no pre/post-analysis command hook --
-filed with the um-metre preflight false positive as
-[`klayout-tools#5802`](https://github.com/2AMLogic/klayout-tools/issues/5802).
++ klt's own) -- a cost of this pilot's body-block construction, not of the
+route: current `klt` states the derived scalars in the request itself
+(`measurements[].expr`; a native `measurements[].noise` form exists too,
+klayout-tools #2938), though whether the fleet's klt-0.9.0 runner accepts
+`expr` entries was not tested. The real tool gap this pilot hit -- the
+`model_bin_range_preflight` um-metre false positive -- is filed as
+[`klayout-tools#5802`](https://github.com/2AMLogic/klayout-tools/issues/5802)
+(rescoped 2026-11-15: the issue's original control-hook/derived-measurement
+half was a false premise -- `expr` already covers it -- and is no longer part
+of its scope).
 
 `offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
