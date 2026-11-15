@@ -84,11 +84,11 @@ document is a dated snapshot and does not track later landings.
 3. **Pilot `noise` (the `.noise` analysis on the loop-broken sub-model) as a
    `klt sim` request** [#221](https://github.com/2AMLogic/sky130-comparator/issues/221). Same done-criterion as item 2, at `tt`/27 C.
 4. **Bring `manifests/README.md` back in line with the graded report**
-   [#222](https://github.com/2AMLogic/sky130-comparator/issues/222). It
-   still says items 1 and 9 wait on a matching host, that "the other seven
-   items" are unmet, and that an item-7 envelope "cannot be produced here at
-   all" (klayout-tools#2478 is closed). Done when every per-item statement
-   agrees with `manifests/t1-signoff-report.json` and
+   [#222](https://github.com/2AMLogic/sky130-comparator/issues/222). At this
+   snapshot it said items 1 and 9 wait on a matching host, that "the other
+   seven items" are unmet, and that an item-7 envelope "cannot be produced
+   here at all" (klayout-tools#2478 is closed). Done when every per-item
+   statement agrees with `manifests/t1-signoff-report.json` and
    `python3 scripts/check-t1-signoff.py gate` still passes.
 
 ## Next
