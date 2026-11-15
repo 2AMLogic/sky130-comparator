@@ -176,17 +176,9 @@ LVS_TOP = "gen_compose_0"
 # ``reference.device_map`` binds one to the other.  The object form is
 # required because this is a 3-terminal resistor, not a 4-terminal MOS.
 #
-# ``length_param``/``width_param`` deliberately name a parameter no call site
-# carries, which makes the conversion carry *no* geometry for this class.  That
-# is not a convenience: klt 0.6.0's subckt-call conversion rejects a call that
-# supplies one of L/W without the other ("both 'L' and 'W' must be given
-# together"), and a fixed-width wrapper structurally cannot supply W -- so
-# without this the compare does not run at all.  It is verdict-neutral, and
-# ``layout/README.md`` -> "LVS signoff" records the negative control that
-# proves it: KLayout compares only a resistor's *primary* parameter R (which
-# this reference form excludes as a documented ``0`` placeholder), never the
-# secondary L/W.  A reference carrying a deliberately absurd resistor width
-# still grades ``match``.
+# Through klt 0.6.0 this mapping instead pointed at a parameter no call
+# site carried, so the compare carried no resistor geometry; see
+# ``layout/README.md`` -> "LVS signoff" (#123).
 LVS_RESISTOR_WRAPPER = "sky130_fd_pr__res_high_po_0p35"
 #: The width the wrapper name bakes in (``..._0p35``), um.
 LVS_RESISTOR_WRAPPER_WIDTH_UM = 0.35
