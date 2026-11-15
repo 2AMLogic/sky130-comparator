@@ -51,7 +51,7 @@ LVS_TOP = "gen_compose_0"
 #
 # Through klt 0.6.0 this mapping instead pointed at a parameter no call
 # site carried, so the compare carried no resistor geometry; see
-# ``layout/README.md`` -> "LVS signoff" (#123).
+# ``layout/README.md`` -> "LVS: run, committed, and cited for T1 item 4" (#123).
 LVS_RESISTOR_WRAPPER = "sky130_fd_pr__res_high_po_0p35"
 #: The width the wrapper name bakes in (``..._0p35``), um.
 LVS_RESISTOR_WRAPPER_WIDTH_UM = 0.35
@@ -104,8 +104,7 @@ LVS_REQUEST = {
 #
 # The supply-spec run is the *structural* half only.  What it is NOT is a claim
 # about the antenna verdict it also carries, or about T1 item 4 -- see
-# layout/README.md -> "ERC: supply-spec run, committed -- and why T1 item 11 is
-# still not claimed".
+# layout/README.md -> "ERC: supply-spec run, committed".
 ERC_SPEC_PATH = "layout/erc-spec.json"
 ERC_REPORT_PATH = "layout/erc-report.json"
 ERC_PROBE_PATH = "layout/erc-coverage-probe.json"
@@ -705,8 +704,7 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
     **The envelope is cited for T1 item 11 together with
     ``layout/lvs-report.json``** (issue #123), the item's LVS half, which is
     only an independent statement now that item 4 is itself supported -- see
-    layout/README.md -> "ERC: supply-spec run, committed -- and why T1 item 11
-    is claimed".
+    layout/README.md -> "ERC: supply-spec run, committed".
 
     Four guards, each refusing to commit a run that would not support the claim
     the README makes:
