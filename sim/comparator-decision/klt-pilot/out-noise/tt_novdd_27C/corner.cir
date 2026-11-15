@@ -1,0 +1,16 @@
+* klt sim -- generated corner deck, do not edit
+.lib /opt/pdk/sky130A/libs.tech/combined/sky130.lib.spice tt
+.include /var/tmp/eda-job-klt-sim-7c39f1adc6ba/inputs/netlist.cir
+.temp 27
+* op point v(TAILP), printed by the body control block
+* op point v(OUTP1)
+* op point v(OUTN1)
+* single-ended input-referred rms, referred through Vinp
+* output-referred rms at v(OUTP1,OUTN1)
+* differential estimate = sqrt(2) x single-ended (diff-pair doubling)
+.control
+save all
+noise v(outp1,outn1) Vinp dec 20 1000 1e+09 20
+quit
+.endc
+.end

@@ -1,0 +1,17 @@
+{
+  "netlist": "noise-body.spice",
+  "engine": "ngspice",
+  "models": {"pdk": "sky130A", "lib": "libs.tech/combined/sky130.lib.spice"},
+  "corners": {"process": ["tt"], "temperature_c": [27]},
+  "batch": {"runner_version_check": "warn", "capacity_wait_s": 600},
+  "analysis": {"kind": "noise", "args": "v(outp1,outn1) Vinp dec 20 1000 1e+09 20"},
+  "measurements": [
+    {"name": "op_tailp",      "spice": "* op point v(TAILP), printed by the body control block", "unit": "V"},
+    {"name": "op_outp1",      "spice": "* op point v(OUTP1)", "unit": "V"},
+    {"name": "op_outn1",      "spice": "* op point v(OUTN1)", "unit": "V"},
+    {"name": "inoise_total",  "spice": "* single-ended input-referred rms, referred through Vinp", "unit": "V"},
+    {"name": "onoise_total",  "spice": "* output-referred rms at v(OUTP1,OUTN1)", "unit": "V"},
+    {"name": "inoise_diff_mv","spice": "* differential estimate = sqrt(2) x single-ended (diff-pair doubling)", "unit": "mV", "limits": {"max": 1.0}}
+  ],
+  "options": {"timeout_s": 600, "keep_artifacts": true, "ngspice_init": ["set measureprec=12", "set numdgt=12", "option sparse"]}
+}
