@@ -176,10 +176,16 @@ the two generations apart:
 - `schematic-derived (design/comparator.sch -> ./design/netlist.sh -> ...)`
   -- this repo's own design (issue #24 onward).
 
-**Neither generation substantiates any row of the top-level README's
-target-spec table**, because that table is DRAFT and unratified. Records
-written since issue #24 do quote the DRAFT rows, but only as the design
-intent the sizing pass aimed at -- never as a pass/fail grade.
+**These two generations predate the table's ratification**: the target-spec
+table (top-level README) is ratified per-row -- DR-002 (Offset sigma,
+Input-referred noise, Kickback) and DR-005 (Decision time vs. overdrive);
+only Supply/power is DRAFT/OPEN with no ratified bound. When these records
+were written the rows were DRAFT, so they quote the rows only as the design
+intent the sizing pass aimed at; the top-level README now cites them as part
+of the ratified rows' measured basis, and the grading in this directory
+happens in the drivers' verdict output (`clears` / `DOES NOT clear` from
+`offset`/`noise`/`noise_tran`, `MEETS` / `DOES NOT yet meet` from
+`kickback`) against the ratified bound constants.
 
 ### Post-layout (extracted) DUT -- `--dut extracted`
 
@@ -586,9 +592,14 @@ currency, **not** that any bound is met) is stated in
 characterization report".
 
 Records against **this repo's own design** (`design/comparator.sch`), on the
-pinned toolchain (`sim/toolchain.json`) and PDK (`sim/pdk.json`). DRAFT
-target-spec rows are quoted for orientation only -- the table is unratified,
-so nothing below is a pass/fail grade.
+pinned toolchain (`sim/toolchain.json`) and PDK (`sim/pdk.json`). The
+target-spec table (top-level README) is ratified per-row -- DR-002 (Offset
+sigma, Input-referred noise, Kickback) and DR-005 (Decision time vs.
+overdrive); only Supply/power is DRAFT/OPEN with no ratified bound. The
+52eb9b2-era records below predate those decision records and quote the rows
+as the design intent the sizing pass aimed at; the later DR-004/DR-005-era
+records grade against the ratified bounds in the drivers' verdict output
+(`clears` / `DOES NOT clear`, `MEETS` / `DOES NOT yet meet`).
 
 - `reset` -- `records/20260916-004042-52eb9b2.md`: reset-integrity negative
   control + positive control, 5 PVT points each (tt/27C, ss/-40C, ss/125C,
@@ -636,10 +647,22 @@ so nothing below is a pass/fail grade.
   coupling from the internal precharged nodes (`DIP`/`DIN`) through the
   input pair's own gate-drain capacitance at the reset->evaluate edge.
 
-For orientation against the **DRAFT, unratified** target-spec table (not a
-grade -- that table sets no binding bound until ratified):
+The table below is a **dated historical-measurement summary**, not the
+standing comparison: it collects this directory's first campaign
+(2026-09-16, tree `52eb9b2` -- the kickback row from the same day's
+`f1eb978` record), written before the target-spec table (top-level README)
+was ratified per-row -- DR-002 (Offset sigma, Input-referred noise,
+Kickback) and DR-005 (Decision time vs. overdrive); only Supply/power is
+still DRAFT/OPEN. Its Kickback, Offset and Decision-time figures are
+**superseded**: DR-004's preamplifier topology re-measured kickback at
+1.89 / 1.86 / 1.77 mV at the three graded PVT anchors, offset stdev at
+1.7857 mV (`tt_mm`, N=16), and decision time at 0.4025 ns @ 50 mV
+(`tt`/27C); DR-005 then extended the campaign to all seven graded corners.
+The Target/Stretch columns are unchanged by ratification (no numeric bound
+moved) -- for current numbers and per-row status see the top-level README's
+target-spec table.
 
-| DRAFT row | Target | Stretch | Measured here |
+| Row | Target | Stretch | Measured here |
 |---|---|---|---|
 | Offset sigma (3 sigma, input-referred) | <= 15 mV | <= 8 mV | 6.06 mV @ `tt_mm`/27C, N=16 |
 | Input-referred noise (differential) | <= 1.0 mV rms | <= 0.6 mV rms | 0.4466 mV rms @ tt/27C |
@@ -647,13 +670,14 @@ grade -- that table sets no binding bound until ratified):
 | Kickback | <= 5 mV | <= 2 mV | 144.60 mV @ tt/27C, 1 kOhm source, 50 mV overdrive (well above both bounds) |
 | Supply / power | <= 50 uW | <= 20 uW | **not measured** -- no clock-rate assumption ratified |
 
-Only one row now has no measurement at all, and every row that does is a
-single-corner (or five-corner, for `reset`) result against a table that has
-not been ratified. Nothing here closes the gap issue #3's T1 item 5 names:
-a full PVT corner campaign against a *ratified* spec -- and the kickback
-figure above is new information that the DRAFT bound itself may need
-revisiting once ratification is considered, not a design defect this
-issue's scope asks to fix.
+At campaign time only Supply/power had no measurement at all, and every
+other row was a single-corner (or five-corner, for `reset`) result against
+a then-DRAFT table. Nothing in this campaign closed the gap issue #3's T1
+item 5 names -- the full PVT corner campaign against the ratified spec has
+since landed (DR-005, all seven graded corners) -- and the kickback figure
+was bound-relevant information, not a design defect to fix in that issue's
+scope: DR-002 ratified the bound unchanged, and compliance came from the
+DR-003/DR-004 design passes rather than from revising the bound.
 
 ### DR-004 records (issue #34 -- static preamplifier + StrongARM latch)
 
