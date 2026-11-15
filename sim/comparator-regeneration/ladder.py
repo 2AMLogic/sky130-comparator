@@ -11,7 +11,8 @@ fans a grid out to the batch fleet.
         writes OUT_DIR/{tb_regeneration.spice,request-<axis>.json}
     python3 sim/comparator-regeneration/ladder.py grade  RESPONSE.json [--expect-fail]
         grades a `klt sim --format json` response against ladder.json's
-        checks plus the per-axis spread floors klt sim cannot express;
+        checks plus the per-axis spread floors/ceilings klt sim cannot
+        express (the shared harness evaluators, corners.py);
         also REPORTS the reverse ladder (never scored). With --reverse it
         grades the reverse checks only (the reverse negative control)
 
@@ -24,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import statistics
 import sys
 from pathlib import Path
 
@@ -33,6 +33,14 @@ SIM_DIR = HERE.parent
 MANIFEST = HERE / "testbench" / "ladder.json"
 DUT_FRAGMENT = SIM_DIR / "comparator-decision" / "testbench" / "comparator_core.spice"
 SPICEINIT = SIM_DIR / "spiceinit"
+
+if str(SIM_DIR) not in sys.path:
+    # `harness` is a package under sim/, reached through sys.path -- the
+    # same convention sim/comparator-decision/_shared.py documents for
+    # hyphenated-directory siblings.
+    sys.path.insert(0, str(SIM_DIR))
+
+from harness import corners as corners_mod  # noqa: E402
 
 RUNGS = (("a", 50e-3), ("b", 1e-3), ("c", 0.1e-3))
 T_FLIP_NS = 25  # input flips in the reset gap (clk low 20.1-40 ns): settled before strobe 2
@@ -152,8 +160,7 @@ def build_requests(netlist_name: str = "tb_regeneration.spice", reverse: bool = 
       graded-hot   ff sf fs @ 125C, 1.8 V   (together the six DR-005 corners)
     """
     m = load_manifest()
-    v, tol = m["nominal_supply_v"], m["supply_tolerance"]
-    lo, hi = round(v * (1 - tol), 6), round(v * (1 + tol), 6)
+    supply_points = corners_mod.supply_points(m["nominal_supply_v"], m["supply_tolerance"])
     meas: list[dict] = []
     # raw .meas cards first (reported, ungraded), then the derived names as
     # `.meas ... param=` cards so ngspice computes them in the same pass.
@@ -190,23 +197,17 @@ def build_requests(netlist_name: str = "tb_regeneration.spice", reverse: bool = 
             r["exclude"] = exclude
         return r
 
+    nominal = m["nominal_supply_v"]
     return {
-        "process": req(m["process_corners"], [27], [v]),
-        "temperature": req(["tt"], m["temperatures_c"], [v]),
-        "supply": req(["tt"], [27], [lo, v, hi]),
-        "graded-cold": req(["ss", "sf", "fs"], [-40], [v]),
-        "graded-hot": req(["ff", "sf", "fs"], [125], [v]),
+        "process": req(m["process_corners"], [27], [nominal]),
+        "temperature": req(["tt"], m["temperatures_c"], [nominal]),
+        "supply": req(["tt"], [27], supply_points),
+        "graded-cold": req(["ss", "sf", "fs"], [-40], [nominal]),
+        "graded-hot": req(["ff", "sf", "fs"], [125], [nominal]),
     }
 
 
 # ---- grading ---------------------------------------------------------------
-
-def _spread_pct(values: list[float]) -> float:
-    if not values:
-        return 0.0
-    mean = abs(statistics.fmean(values)) or 1e-30
-    return abs(max(values) - min(values)) / mean * 100.0
-
 
 def _points(response: dict) -> list[dict]:
     pts = []
@@ -218,15 +219,23 @@ def _points(response: dict) -> list[dict]:
     return pts
 
 
-def axis_spreads(points: list[dict], names: list[str], nominal_v: float) -> dict:
-    """One-at-a-time spreads about the tt/27C/nominal baseline (same
-    definition as sim/harness/runner.py)."""
+def axis_spreads(points: list[dict], names: list[str], manifest: dict) -> dict:
+    """One-at-a-time spreads about the baseline corner, selected from the
+    manifest exactly as sim/harness/runner.py selects it ("tt"/27 C when
+    present, else the first-listed value on that axis; nominal supply) --
+    the two benches agree on what "baseline" means (issue #235). The
+    metric itself is the shared corners.spread_pct."""
+    processes, temps = manifest["process_corners"], manifest["temperatures_c"]
+    baseline_process = "tt" if "tt" in processes else processes[0]
+    baseline_temp = 27 if 27 in temps else temps[0]
+    nominal_v = manifest["nominal_supply_v"]
+
     def sl(name, **fixed):
         return [p["vals"][name] for p in points
                 if all(p[k] == v for k, v in fixed.items()) and p["vals"].get(name) is not None]
-    return {n: {"process": _spread_pct(sl(n, temp=27.0, supply=nominal_v)),
-                "temperature": _spread_pct(sl(n, process="tt", supply=nominal_v)),
-                "supply": _spread_pct(sl(n, process="tt", temp=27.0))} for n in names}
+    return {n: {"process": corners_mod.spread_pct(sl(n, temp=baseline_temp, supply=nominal_v)),
+                "temperature": corners_mod.spread_pct(sl(n, process=baseline_process, supply=nominal_v)),
+                "supply": corners_mod.spread_pct(sl(n, process=baseline_process, temp=baseline_temp))} for n in names}
 
 
 def merge_responses(responses: list[dict]) -> dict:
@@ -242,26 +251,24 @@ def merge_responses(responses: list[dict]) -> dict:
 def grade(response: dict, manifest: dict | None = None) -> list[str]:
     """Return a list of failure strings (empty == PASS). Per-point min/max
     come from the manifest (klt sim also grades them; re-checked here so a
-    saved response can be graded offline), plus the spread floors."""
+    saved response can be graded offline), plus the per-axis spread
+    floors AND ceilings -- both through the shared harness evaluators
+    (corners.py, issue #235; the local copy graded floors only and so
+    silently ignored a ratified ceiling)."""
     m = manifest or load_manifest()
     pts = _points(response)
     fails: list[str] = []
-    spreads = axis_spreads(pts, list(m["measure"]), m["nominal_supply_v"])
+    spreads = axis_spreads(pts, list(m["measure"]), m)
     for p in pts:
         for name, chk in m["checks"].items():
             val = p["vals"].get(name)
             if val is None or val != val:
                 fails.append(f"{p['id']}: {name}: no value")
                 continue
-            if "min" in chk and val < chk["min"]:
-                fails.append(f"{p['id']}: {name}={val:.6g} < min {chk['min']}")
-            if "max" in chk and val > chk["max"]:
-                fails.append(f"{p['id']}: {name}={val:.6g} > max {chk['max']}")
+            fails.extend(f"{p['id']}: {x}"
+                         for x in corners_mod.min_max_failures(name, chk, val))
     for name, chk in m["checks"].items():
-        for axis, floor in chk.get("min_spread_pct_by_axis", {}).items():
-            s = spreads[name][axis]
-            if s < floor:
-                fails.append(f"{name}: {axis}-axis spread {s:.4g}% below floor {floor}%")
+        fails.extend(corners_mod.spread_failures(name, chk, spreads.get(name, {})))
     return fails
 
 
@@ -279,10 +286,8 @@ def grade_reverse(response: dict, manifest: dict | None = None) -> list[str]:
             if val is None or val != val:
                 fails.append(f"{p['id']}: {name}: no value")
                 continue
-            if "min" in chk and val < chk["min"]:
-                fails.append(f"{p['id']}: {name}={val:.6g} < min {chk['min']}")
-            if "max" in chk and val > chk["max"]:
-                fails.append(f"{p['id']}: {name}={val:.6g} > max {chk['max']}")
+            fails.extend(f"{p['id']}: {x}"
+                         for x in corners_mod.min_max_failures(name, chk, val))
     return fails
 
 
