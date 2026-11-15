@@ -60,9 +60,11 @@ delta cannot separate a PDK-revision effect from a solver one
 (`sim/comparator-decision/records/klt-pilot-kickback-20261106.md`). `regen`,
 piloted since on both `tt`/27 C and `ss`/-40 C, needed no such caveat: its
 delta is fully decomposed per corner
-(`sim/comparator-decision/records/klt-pilot-regen-20261114.md`). The
-remaining measurements, `offset`, `noise` and `reset`, have not been
-attempted.
+(`sim/comparator-decision/records/klt-pilot-regen-20261114.md`). `noise`
+has since been piloted at `tt`/novdd/27 C and reproduced the `run.py`
+baseline to its stored precision with no visible PDK/ngspice-revision
+confounder (`sim/comparator-decision/records/klt-pilot-noise-20261115.md`).
+`offset` and `reset` remain unattempted.
 
 ## Now
 
