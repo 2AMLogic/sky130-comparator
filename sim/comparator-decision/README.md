@@ -24,6 +24,36 @@ conventions (`testbench/`, `netlist-snapshots/`, `corners/`, `mc-draws/`,
 `records/`) this experiment follows; this file covers only what is specific
 to `comparator-decision/`.
 
+## Driver module layout
+
+The driver is one module per experiment over a shared preamble (issue #224
+split it out of a single 4331-line `run.py`; it follows the same module-split
+convention `sim/README.md` records for `sim/harness/`):
+
+| Module | Owns |
+|---|---|
+| [`run.py`](run.py) | the CLI (`main()`), and a read-only re-export of the flat attribute surface the unit suite reads |
+| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`) and the evidence-record head/tail |
+| [`regen.py`](regen.py) | `regen` |
+| [`offset.py`](offset.py) | `offset` and `offset-bisect` (they share the `_pickoff_*` machinery) |
+| [`noise.py`](noise.py) | `noise` |
+| [`noise_tran.py`](noise_tran.py) | `noise-tran`, and its chunked/resumable campaign driver (issue #100) |
+| [`reset.py`](reset.py) | `reset` |
+| [`kickback.py`](kickback.py) | `kickback` |
+
+Every invocation is still `python3 sim/comparator-decision/run.py <mode>`, and
+every record is still written by `run.py <mode>` — the split moved code, not
+behaviour. `sim/comparator-decision/` is not a legal Python package name, so
+`run.py` is loaded by path and the siblings reach each other through
+`sys.path`, exactly as the driver has always reached `sim/harness/`;
+`_shared.py`'s docstring documents that convention.
+
+The split is verified by construction rather than by assertion: the unit suite
+(`sim/tests/test_comparator_decision.py`, 220 tests) is unchanged except for
+six monkeypatch *targets*, and every deck builder's emitted text plus the
+record-prose helpers were dumped before and after the move, at both DUT
+provenances and three corners, and diffed byte for byte.
+
 ## Provenance
 
 The `regen` / `offset` / `noise` **measurement methodology** implemented by
@@ -210,7 +240,7 @@ answer — a post-layout record that had quietly measured the schematic DUT
 would be worse than no record — and issue #65 answers them rather than
 guessing. The rules live next to the code that implements them (the
 POST-LAYOUT DECK SURGERY note in
-[`run.py`](run.py)) and are pinned by
+[`_shared.py`](_shared.py)) and are pinned by
 `sim/tests/test_comparator_decision.py::TestPostLayoutTerminalMoves`:
 
 1. **Which device, when the layout drew one schematic device as several.**
@@ -305,7 +335,30 @@ then showed the route also carries an **extracted** DUT -- both legs ran on the
 fleet with the DUT included from `layout/comparator.pex.spice`, which each
 report's `netlist_closure` records at `scope: "repo"`, giving `loaded`
 2.2747 mV and `ideal` 0.0000 mV on the current 0.35 um / klt 0.8.0 geometry
-(indicative only: ngspice-47 vs #211's ngspice-46). `regen`, `offset`, `noise` and `reset` have not
+(indicative only: ngspice-47 vs #211's ngspice-46).
+
+Issue #220's pilot
+([`records/klt-pilot-regen-20261114.md`](records/klt-pilot-regen-20261114.md))
+then did the same for **`regen`**, which feeds the ratified Decision-time row.
+A route exists for it too, and needs no change to the circuit body: a
+`measurements[].crossings` entry takes a vector *expression* as its `signal`,
+so `v(OUTP) - v(OUTN)` crossing `0.5*VDD` is expressible directly against an
+unmodified `_regen_deck`. One request, two corners, `status: "pass"`, zero
+diagnostics: decision time at 50 mV is **0.401379 ns** at `tt`/27 C
+(baseline 0.4025 ns, record `20260922-070800-e084b55`) and **0.352366 ns** at
+`ss`/-40 C (baseline 0.3575 ns, record `20260922-071313-e084b55`). Unlike the
+`kickback` pilot the delta is **decomposed, not indicative**: `run.py`'s rule
+re-measured on the current environment reproduces the `tt` baseline exactly,
+so the -0.278 % there is entirely the methodology difference (`klt sim`
+interpolates the crossing; `run.py` takes the first sample at or after it, so
+its answer is quantized to the 5 ps output grid). The pilot also found that
+the two model libraries sky130A ships are **not** interchangeable --
+`libs.tech/ngspice` instead of the `libs.tech/combined` that `run.py` uses
+moves this measurement by 5 % at `ss`/-40 C, which is the library the
+`kickback` pilot's request happened to name. Tool gap filed as
+[`klayout-tools#5651`](https://github.com/2AMLogic/klayout-tools/issues/5651).
+
+`offset`, `noise` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
 of what #64 did, not a statement that the fleet is unusable. Choosing the
 execution route is #127's decision.

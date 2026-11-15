@@ -10,7 +10,7 @@ full CLI and sim/README.md for the evidence-record format (recorded seed,
 N, and the deterministic negative control) this writes.
 
 This is the piece the comparator's offset-sigma target-spec row needs
-(see the top-level README's target-spec table, DRAFT) -- offset is a
+(see the top-level README's target-spec table) -- offset is a
 statistical row, not a corner point (spec/porting-plan.md). This pass
 (issue #8) proves the mechanism against a harness-proof circuit
 (sim/mc-smoke/); a future comparator testbench manifest reuses this

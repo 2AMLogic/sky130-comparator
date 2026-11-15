@@ -1,0 +1,9 @@
+* regen pilot body -- circuit body for klt sim (issue #220); mirrors run.py _regen_deck at vindiff=+50mV
+.param vdd_val = 1.8
+Vdd VDD 0 dc {vdd_val}
+Vclk CLK 0 PULSE(0 {vdd_val} 5n 0.1n 0.1n 40n 55.1n)
+Vinp VINP 0 dc 0.925
+Vinn VINN 0 dc 0.875
+Bdiff DIFF 0 V = v(OUTP)-v(OUTN)
+Rdiff DIFF 0 1T
+.include ../testbench/comparator_core.spice

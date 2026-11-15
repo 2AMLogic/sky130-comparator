@@ -1,0 +1,12 @@
+* klt sim -- generated corner deck, do not edit
+.lib /opt/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice tt
+.include /var/tmp/eda-job-klt-sim-c991b3a2facc/inputs/netlist.cir
+.temp 27
+.meas tran t_dec_right WHEN v(DIFF)=0.9 CROSS=1 TD=5.1n
+.meas tran t_dec_wrong WHEN v(DIFF)=-0.9 CROSS=1 TD=5.1n
+.control
+save all
+tran 0.005n 45.1n
+quit
+.endc
+.end

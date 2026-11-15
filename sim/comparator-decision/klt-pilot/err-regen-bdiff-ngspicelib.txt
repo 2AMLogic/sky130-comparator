@@ -1,0 +1,8 @@
+klt: warning: 2 installs provide PDK variant 'sky130A'; read /home/ubuntu/.ciel (search root: ~/.ciel), skipped /home/ubuntu/.volare (search root: ~/.volare). Resolution is first-match-wins, so a pinned open_pdks build may not be the one this client read -- set $PDK_ROOT to choose which install this client resolves (the only client-side pin backend 'batch' accepts); the runner reads its own install, selected by models.pdk.
+klt: batch job klt-sim-c991b3a2facc submitting to s3://<bucket>/jobs/klt-sim-c991b3a2facc
+klt sim: batch job klt-sim-c991b3a2facc: submitted
+klt sim: batch job klt-sim-c991b3a2facc launched; re-attach with `klt sim <request> --backend batch --attach klt-sim-c991b3a2facc`
+klt sim: batch job klt-sim-c991b3a2facc state=no status.json yet elapsed=1s
+klt sim: batch job klt-sim-c991b3a2facc: running
+klt sim: batch job klt-sim-c991b3a2facc state=running elapsed=31s
+klt sim: batch job klt-sim-c991b3a2facc: done

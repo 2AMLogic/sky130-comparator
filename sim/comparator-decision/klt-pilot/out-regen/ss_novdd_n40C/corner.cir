@@ -1,0 +1,15 @@
+* klt sim -- generated corner deck, do not edit
+.lib /opt/pdk/sky130A/libs.tech/combined/sky130.lib.spice ss
+.include /var/tmp/eda-job-klt-sim-c4def0fed8b8/inputs/netlist.cir
+.temp -40
+.control
+save all
+set filetype=ascii
+tran 0.005n 45.1n
+let __klt_xing_0 = v(OUTP) - v(OUTN)
+write /var/tmp/eda-job-klt-sim-c4def0fed8b8/outputs/artifacts/ss_novdd_n40C/crossings_0.raw __klt_xing_0
+let __klt_xing_1 = v(OUTP) - v(OUTN)
+write /var/tmp/eda-job-klt-sim-c4def0fed8b8/outputs/artifacts/ss_novdd_n40C/crossings_1.raw __klt_xing_1
+quit
+.endc
+.end

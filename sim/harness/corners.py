@@ -5,14 +5,14 @@ Ported (issue #8) from 2AMLogic/sky130-sar-adc's sim/harness/corners.py
 same PDK (sky130), same OAT-grid convention.
 
 Deliberately does NOT hardcode a supply nominal or a pass/fail threshold
-anywhere in this module -- this repo's target-spec table (top-level
-README) is DRAFT (see spec/README.md) and CLAUDE.md forbids encoding an
-unratified spec value as a pass/fail threshold. A testbench manifest
-(tb.json) must supply its own nominal_supply_v, process corners,
-temperatures, and supply tolerance; this module only supplies PDK-derived
-helpers (mismatch-corner lookup, corner-id formatting, supply-point
-spreading), which are properties of the PDK and of repo convention, not of
-this block's own spec.
+anywhere in this module -- this is a generic harness module, so a
+testbench manifest (tb.json) must supply its own nominal_supply_v,
+process corners, temperatures, and supply tolerance; per CLAUDE.md,
+agents do not relax the ratified spec to make results pass, so any
+pass/fail line belongs to the manifest, not to a shared harness default.
+This module only supplies PDK-derived helpers (mismatch-corner lookup,
+corner-id formatting, supply-point spreading), which are properties of
+the PDK and of repo convention, not of this block's own spec.
 """
 
 from __future__ import annotations
@@ -62,8 +62,8 @@ def corner_matrix_summary_line(
     sim/README.md's one-at-a-time convention. (sky130-sar-adc, the repo
     this module is ported from, shares this exact line across several of
     its own ADC-specific experiment drivers; this repo has none of those
-    yet, but the line format is unchanged so a future comparator-decision-
-    style driver here reads identically.) Callers still do their own
+    yet, but the line format is unchanged, so records written through this
+    helper stay comparable with that repo's.) Callers still do their own
     sorted-unique extraction of the axis values (the input *shapes* differ
     per site -- dicts vs. dataclass attributes) and pass the resulting
     lists in here; only the final formatted string is centralized."""

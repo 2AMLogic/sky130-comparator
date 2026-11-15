@@ -7,7 +7,7 @@ Ported (issue #8) from 2AMLogic/sky130-sar-adc's sim/harness/mc_runner.py
 (commit b80c144efbf467a586f728726cabb25c1eb5a1f2) -- unchanged logic.
 
 This repo's own statistical evidence row (offset sigma -- see the
-top-level README's target-spec table, DRAFT) is, per
+top-level README's target-spec table) is, per
 spec/porting-plan.md, a Monte Carlo distribution, not a single point, and
 needs: a recorded seed, a sample count, and a negative control that
 proves the pipeline can tell "real statistical variation" apart from

@@ -17,9 +17,19 @@ move.
 
 ## The current verdict, honestly
 
-**6 of 11 T1 items are `met`: item 2 "Layout", item 3 "DRC clean", item 4 "LVS
-clean", item 8 "Characterization report", item 10 "Repo hygiene" and item 11
-"Power delivery (structural)". T1 is not awarded and no catalog tier is claimed.**
+**T1 is not awarded and no catalog tier is claimed. Three rows are open —
+item 5 "Full corner verification vs a ratified spec", item 6 "Statistical
+claims carry Monte Carlo evidence" and item 7 "Post-layout verification", each
+`unmet` with `reason: no_evidence`. Every other T1 item is `met`: item 1
+"Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
+item 8 "Characterization report", item 9 "Testbenches shipped", item 10 "Repo
+hygiene" and item 11 "Power delivery (structural)".**
+
+The count of record is the report's own `t1_met_count`/`t1_item_count`; this
+file states the per-item verdicts but deliberately does not restate the tally
+as a figure, for the same reason `manifests/integrator-view.json`'s
+`maturity_rung_basis` carries none (issue #50) — a hard-coded count here has no
+gate behind it, and the one that used to be here drifted (issue #222).
 
 **Item 2, "Layout"** (issue #186) is cited from `evidence/item2.json`, a
 `"kind": "generic"` envelope with `"t1_item": 2` that pins
@@ -32,7 +42,9 @@ reproduces those bytes; klt does not run the generator, so CI does
 envelope with `python3 scripts/layout-envelope.py --write`. **What it does not
 bind:** the generator and request documents. The docs describe a
 `provenance.input.paths` set binding (klayout-tools#3044), but the pinned
-klt 0.7.0 renders it `unanchored_evidence`, so the envelope binds the GDS alone
+klt renders it `unanchored_evidence` — the committed envelope, produced at the
+current pin, still carries a single `provenance.input.path` — so it binds the
+GDS alone
 and edits to `gen_comparator.py` surface through the CI regeneration check,
 not through the grade. Like item 8's, the `pass` is a claimant assertion; the
 tool-checked layout evidence is items 3, 4 and 11.
@@ -48,17 +60,32 @@ same change that edits any of them**. Negative control (scratch copy, one
 byte appended to `LICENSE`): `--check` went `match` (exit 0) to `drifted`
 (exit 3).
 
-**Items 1 and 9 — inventories committed, envelopes still waiting on a matching
-host** (issues #186, #189). klt 0.8.0 ships `klt signoff --attest N --inventory
-attest/itemN.json`, but items 1 and 9 must be attested on a host whose
-toolchain matches `sim/toolchain.json` (ngspice 46, xschem 3.4.7). The dispatch
-host has ngspice 42 / xschem 3.4.4, where each fails one command check
-(`design/netlist.sh --check` reports STALE; `sim/selftest.sh --quick` refuses
-the drifted toolchain), and the toolchain pin is not relaxed to make them pass
-(host gap: #146). Until `evidence/item1.json` and `evidence/item9.json` exist
-those rows stay `unmet`/`no_evidence`. When attesting them, update
-`attest/item9.json`'s `tools.klt` (still `0.7.0`; unrelated to the #204 envelope re-measurement) and re-check its `pins`
-against `sim/pdk.json` / `sim/toolchain.json`; a re-pin shows up as `--check`
+**Items 1 and 9 — attested** (issues #186, #189). Item 1, "Design sources",
+is cited from `evidence/item1.json`, the envelope `klt signoff --attest 1
+--inventory attest/item1.json -o evidence/item1.json` produces (4/4 checks,
+klt 0.8.0); item 9, "Testbenches shipped", from `evidence/item9.json`, produced
+the same way with `--attest 9 --inventory attest/item9.json` (32/32 checks,
+klt 0.8.0). The manifest cites each with its inventory's hash
+(`sha256:5802a001…` and `sha256:fb6b6f2e…`), and CI re-runs both commands with
+`--check`, which exits 3 (`drifted`) when an inventoried file changes. Item 1's
+envelope hashes `design/comparator.sch`, `design/netlist.sh` and
+`sim/comparator-decision/testbench/comparator_core.spice`; item 9's hashes 29
+`sim/**` paths — so **re-attest in the same change that edits any of them**.
+
+Unlike item 10's, these two envelopes are not pure file hashing: item 1 carries
+a `command` freshness check (`bash design/netlist.sh --check`, which re-netlists
+through xschem), and item 9 a `cold_start` command check (`bash
+sim/selftest.sh --quick`) plus `pin` checks over `sim/pdk.json` /
+`sim/toolchain.json`. Both were produced on a matching host and every such
+check **passed** — item 9's two `pin` checks record `pins.pdk` (sky130A) and
+`pins.tools` (ngspice 46, xschem 3.4.7, klayout 0.30.12, with the klt version
+at `pins.tools.klt` = `0.8.0`; there is no top-level `tools` key), and both
+command checks exited 0. That is why CI re-checks them in the jobs carrying
+those tools (item 9 in `harness-selftest`, item 1 in `item1-netlist-check`,
+which needs xschem) while item 10's PDK-free re-check runs in the signoff job. The worker-toolchain gap
+(#146, open) therefore constrains **where** these two can be re-checked, not
+whether the rows are `met`; the toolchain pin is not relaxed to make a check
+pass. A re-pin of `attest/item9.json`'s `pins.tools` shows up as `--check`
 drift.
 
 **Item 3, "DRC clean"** (issue #46), cited from
@@ -116,13 +143,23 @@ Item 7 is *kind-restricted*: for an `analog` partition `klt signoff` accepts
 with `reason: "wrong_kind"` no matter how much post-layout work stands behind
 it. `klt pex` in turn can only be driven by `klt sim` **request JSON**
 testbenches, whose `measurements[]` entries are verbatim `.meas` cards — and
-none of this bench's five measurements is expressible as a `.meas` card (see
-`sim/comparator-decision/README.md` → "Why not `klt pex`?"). So the envelope
-item 7 wants cannot be produced here at all. Filed generically per
-`CLAUDE.md`'s friction protocol as
-[2AMLogic/klayout-tools#2478](https://github.com/2AMLogic/klayout-tools/issues/2478);
-the row stays `unmet`/`no_evidence` rather than being decorated with a
-citation of the wrong kind.
+none of this bench's five measurements was expressible as a `.meas` card (see
+`sim/comparator-decision/README.md` → "Why not `klt pex`?"), so the envelope
+item 7 wants could not be produced here at all. That gap was filed generically
+per `CLAUDE.md`'s friction protocol as
+[2AMLogic/klayout-tools#2478](https://github.com/2AMLogic/klayout-tools/issues/2478),
+and upstream **has since closed it as completed**: `klt pex` grew a
+`--measure-command`, so caller-side post-processing no longer puts the envelope
+out of reach.
+
+What blocks the row today is this repo's own work, in order: **#125**
+re-measures the post-layout campaigns at the 0.35 µm geometry (the committed
+records predate the re-draw and are stale until re-measured), and then **#187**
+re-cites item 7 through `klt pex --measure-command` against those fresh
+numbers. Both are open and `loom:blocked`, and #187 is the increment that
+carries the re-citation — not this file. Until it lands the row stays
+`unmet`/`no_evidence` rather than being decorated with a citation of the wrong
+kind.
 
 **Item 11 ("Power delivery (structural)")** is cited as the compound entry
 `layout/erc-report.json` + `layout/lvs-report.json`. The ERC half is clean:
@@ -143,13 +180,14 @@ over-claiming; the limit is stated, not removed. Item 11 is the structural
 supply question only (IR drop/EM are `klt power`, outside it). See
 [`layout/README.md`](../layout/README.md) → "Why item 11 is cited".
 
-The other seven items render `unmet` with `reason: no_evidence`: apart from
-item 7's ungradeable post-layout envelope above (re-citation is the next
-separate increment, not done here; the post-layout records predate the
-0.35 µm re-draw and are stale until re-measured), no PEX citation exists, and this repo's
+The three open items — 5, 6 and 7 — render `unmet` with
+`reason: no_evidence`: apart from item 7's post-layout envelope above (awaiting
+#125 then #187, as described there), no PEX citation exists, and this repo's
 `sim/` harness records evidence as append-only Markdown records, not
 `klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
-honestly for them yet. Item 8 is the one exception to that last clause, and
+honestly for items 5 and 6 yet. Making those two gradeable — `klt sim` and
+`klt yield` envelopes over the ratified spec rows — is **#188** (open,
+`loom:blocked`). Item 8 is the one exception to that last clause, and
 only because the checklist makes it one: it is the sole T1 item whose grading
 table accepts a hand-assembled record through the opt-in `generic` envelope
 (see its section below). Those `unmet` rows are the correct result per issue
@@ -160,22 +198,26 @@ graded on "some passing envelope was cited" when this was first written;
 they are now graded on artifact-anchored envelopes — see the item 2 and
 items 1/9/10 paragraphs above).
 
-Rows are `klt`-graded verdicts, not repo-content claims. Items 1
-(schematic `design/comparator.sch` + `design/netlist.sh`) and 9
-(`sim/comparator-decision` testbenches) have committed content, but the
-grade is about a *check behind a citation*, and no `klt --attest` envelope
-backs them yet — the `unmet`/`no_evidence` row is the accurate mechanical
-statement (inventories are committed under `attest/`; see above). The historical per-item prose context lives in
-tracker issue #3's edit history and `## Verified corrections`.
+Rows are `klt`-graded verdicts, not repo-content claims: the grade is about a
+*check behind a citation*, never about whether the repo contains the artifact.
+Items 1 (schematic `design/comparator.sch` + `design/netlist.sh`) and 9
+(`sim/comparator-decision` testbenches) are the worked example — their content
+was committed long before either row graded `met`, and both stayed
+`unmet`/`no_evidence` until the `klt signoff --attest` envelopes described above
+actually backed them. Items 5 and 6 are where that distinction still bites
+today: the `sim/` records exist, but no gradeable envelope cites them (#188).
+The historical per-item prose context lives in tracker issue #3's edit history
+and `## Verified corrections`.
 
 Item 11's row is present and graded, as issue #31 requires, and the
 grading-build disclosure agrees with the doc: as of the pinned klt,
 `build_t1_item_count` (11) **equals** the vendored
 doc's item count (11) — klt 0.6.0 carries item 11's grading rules, so the
 compound ERC/LVS citation described above is gradeable today (verified: it
-renders `met` against a scratch manifest), and no klt upgrade is a
-prerequisite for it. What holds the row at `unmet` is the citation decision
-above, not the grader. (Under the previous 0.5.0
+renders `met` against a scratch manifest), and no klt upgrade was a
+prerequisite for it. What had held the row back was the citation decision
+described above, never the grader — and that citation now stands, so the row
+grades `met`. (Under the previous 0.5.0
 pin the build knew only 10 of the 11, and `scripts/check-t1-signoff.py`
 carried a warning for that case; the check remains, it simply no longer
 fires.) The report also records the grading build itself — `build.version`,
