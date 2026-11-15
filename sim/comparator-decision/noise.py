@@ -20,15 +20,16 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
-    EXPERIMENT_DIR,
     NOISE_FSTART_HZ,
     NOISE_FSTOP_HZ,
     PEX_PREAMP_FRAGMENT,
     VCM,
     VDD,
+    _begin_dut_record,
+    _deck_preamble,
     _dut_device_line,
     _finalize_record,
+    _record_header,
     post_layout_delta_lines,
 )
 from harness import evidence, pdk  # noqa: E402
@@ -134,13 +135,11 @@ def _noise_sub_model_lines() -> list[str]:
 def _noise_deck(info: pdk.PdkInfo, corner: str, temp_c: float) -> str:
     note = VBIAS_NOTE_PEX if _shared.dut_provenance() == "extracted" else VBIAS_NOTE
     lines = [
-        f"* comparator-decision input-referred noise ({note}) "
-        f"corner={corner} temp={temp_c}C supply={VDD}V (issue #9)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision input-referred noise ({note}) "
+            f"corner={corner} temp={temp_c}C supply={VDD}V (issue #9)",
+        ),
         f"Vinp VINP 0 dc {VCM} AC 1",
         f"Vinn VINN 0 dc {VCM}",
         "",
@@ -205,24 +204,17 @@ def run_noise(corner: str = "tt", temp_c: float = 27.0, quiet: bool = False) -> 
 
 
 def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = "") -> Path:
-    info = pdk.resolve()
-    netlist_text = _noise_deck(info, result.corner, result.temp_c)
-    resv = evidence.reserve_record(EXPERIMENT_DIR, ("corners",))
-    record_id = resv.record_id
-    netlist_sha = evidence.sha256_text(netlist_text)
-    evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
-    record_path = resv.record_path
-    runs_dir = resv.log_dirs["corners"]
+    info, record_id, netlist_sha, record_path, runs_dir = _begin_dut_record(
+        "corners",
+        netlist_text_fn=lambda info: _noise_deck(info, result.corner, result.temp_c),
+    )
     evidence.write_new_text(runs_dir / "noise.log", result.log_text)
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(
-        (
+    lines += _record_header(
+        record_id,
+        provenance=(
             "- **Netlist provenance**: POST-LAYOUT / EXTRACTED, reduced "
             "sub-model -- the preamp partition of the extracted netlist "
             "(`layout/comparator.pex-preamp.spice`, from `layout/comparator.gds` "
@@ -238,7 +230,7 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
             "(itself generated from `design/comparator.sch` by `./design/netlist.sh`); "
             "everything past the preamp outputs is the loop break; "
             "see Methodology for what that omits."
-        )
+        ),
     )
     a(f"- **Corner matrix run**: process=['{result.corner}'], temperature_c=[{result.temp_c}], supply_v=[{VDD}] (1 point)")
     a(

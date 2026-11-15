@@ -122,11 +122,14 @@ changes every downstream number.
 `run_extraction()` therefore ASSERTS the pin (`PINNED_KLT_VERSION` /
 `PINNED_KLAYOUT_VERSION` below) and refuses to write anything off it, and
 `--check` re-asserts it against the committed envelope as well. The pins are
-the same ones `docs/environment-setup.md` records and both
-`.github/workflows/t1-signoff.yml` jobs install; bumping them is deliberate
-and goes in one change, exactly as that workflow's own header prescribes:
-bump the doc + both CI installs + these constants, re-run the regeneration,
-and commit the refreshed artifacts together.
+the same ones `docs/environment-setup.md` records and every
+`klayout-tools==` / `klayout==` install line in
+`.github/workflows/t1-signoff.yml` installs (one per job; each line is gated
+against the constants by `scripts/check-toolchain-pin.py`). Bumping them is
+deliberate and goes in one change: bump the constants in
+`layout/gen_comparator.py` -- their single source of truth -- plus the doc
+and the CI installs, re-run the regeneration, and commit the refreshed
+artifacts together.
 
 If the host `klt` is off-pin -- which it may legitimately be; host tooling is
 provisioned fleet-wide and must not be changed to suit this repo -- run this
@@ -154,6 +157,15 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+# The pin's one source of truth is the generator (issue #245); these aliases
+# keep the assertion-side names this module's prose and error messages use.
+# The path insert makes the import work under any loader -- this module is
+# also exec'd by file path (sim/tests/test_extract_pex.py), which does not
+# put layout/ on sys.path the way `python3 layout/extract_pex.py` does.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gen_comparator import KLAYOUT_VERSION as PINNED_KLAYOUT_VERSION
+from gen_comparator import KLT_VERSION as PINNED_KLT_VERSION
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LAYOUT_DIR = REPO_ROOT / "layout"
 
@@ -174,13 +186,15 @@ TOP_CELL = "gen_compose_0"
 PDK_VARIANT = "sky130A"
 
 # The toolchain this repo pins for every committed layout envelope --
-# `docs/environment-setup.md` "Signoff tooling (klt)", and both jobs of
-# `.github/workflows/t1-signoff.yml`. Asserted rather than merely recorded,
-# because the extracted resistances are not stable across builds (see the
-# module docstring). Bump these only together with the doc and both CI
-# installs, in the same change that re-commits the regenerated artifacts.
-PINNED_KLT_VERSION = "0.8.0"
-PINNED_KLAYOUT_VERSION = "0.30.12"
+# `docs/environment-setup.md` "Signoff tooling (klt)", and every
+# `klayout-tools==` / `klayout==` install line in
+# `.github/workflows/t1-signoff.yml` (one per job; the lines are gated
+# against the generator's constants by `scripts/check-toolchain-pin.py`).
+# Asserted rather than merely recorded, because the extracted resistances
+# are not stable across builds (see the module docstring). The two values
+# are imported from `layout/gen_comparator.py`, the pin's single source of
+# truth: bump them there, together with the doc and the CI installs, in the
+# same change that re-commits the regenerated artifacts.
 
 PIN_HINT = (
     "Run against a throwaway environment rather than changing host tooling:\n"
