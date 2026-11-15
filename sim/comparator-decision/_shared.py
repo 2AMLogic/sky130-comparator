@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -401,6 +402,31 @@ def netlist_provenance() -> str:
     )
 
 
+def _record_header(
+    record_id: str, *,
+    heading: str = "Record",
+    provenance: str | None = None,
+) -> list[str]:
+    """The five lines every record opens with (issue #237): the `#` heading,
+    a blank line, the Record ID bullet, the claim line, and the netlist
+    provenance bullet.
+
+    `heading` is the words between `#` and the record id, so the Monte
+    Carlo record's `# Monte Carlo record ...` heading is that parameter
+    rather than a silent divergence from the default. `provenance`, when
+    given, replaces `netlist_provenance()` -- `noise`'s reduced-sub-model
+    record describes a differently-derived netlist and inlines its own
+    bullet, and that is this parameter too, so the remaining callers share
+    one provenance line by construction."""
+    return [
+        f"# {heading} {record_id}",
+        "",
+        f"- **Record ID**: {record_id}",
+        CLAIM_TEXT,
+        provenance if provenance is not None else netlist_provenance(),
+    ]
+
+
 # --- Schematic-level anchors the post-layout re-runs are differenced against
 # (issue #57 acceptance criteria: "each post-layout record documents its
 # schematic-level counterpart record path AND the numeric delta -- not just
@@ -699,6 +725,65 @@ def post_layout_delta_lines(
     return out
 
 
+# --- Deck preamble + stimulus templates (issue #237).
+#
+# Nine deck builders opened with the same `.lib/.temp/.param/Vdd` block, six
+# carried the same `Vclk CLK 0 PULSE(...)` line, and four the same
+# `Vinp`/`Vinn` differential pair -- nine copies of the preamble across six
+# files after #224's split, which is exactly the state in which a
+# stimulus-shape change gets made in five places and missed in the sixth.
+# These three helpers are the single copies. The contract is byte-identity:
+# every deck built through them is textually identical to its pre-#237
+# inline copy, which sim/tests/test_comparator_decision.py's verbatim deck
+# assertions and #237's pre/post dump guard directly.
+
+def _deck_preamble(
+    info: pdk.PdkInfo, corner: str, temp_c: float, title: str, *,
+    params: str = "", rndseed: int | None = None,
+) -> list[str]:
+    """The `.lib/.temp/.param/Vdd` head every DUT deck opens with.
+
+    `title` is the deck's own first `*` comment line (deck-specific, kept at
+    the call site). `params` is any extra `.param` assignment appended to
+    the vdd line -- e.g. the latch-noise deck's ` vcmo = ...` tail, leading
+    space included. `rndseed`, when given, emits `.option rndseed=` between
+    the `.param` line and the blank line ahead of `Vdd`, the exact position
+    the seeded decks already used. `_trnoise_calibration_deck` deliberately
+    does not route through this: it is PDK-free by design."""
+    lines = [
+        title,
+        f".lib {info.ngspice_lib} {corner}",
+        f".temp {temp_c}",
+        f".param vdd_val = {VDD}{params}",
+    ]
+    if rndseed is not None:
+        lines.append(f".option rndseed={rndseed}")
+    lines += ["", "Vdd VDD 0 dc {vdd_val}"]
+    return lines
+
+
+def _clock_stimulus(evaluate_ns: float, period_ns: float) -> str:
+    """The `Vclk CLK 0 PULSE(...)` line six deck builders share: RESET_NS of
+    reset, a RESET_TR_NS-ramped edge at each transition, `evaluate_ns` of
+    evaluate phase, one `period_ns` cycle."""
+    return (
+        f"Vclk CLK 0 PULSE(0 {{vdd_val}} {RESET_NS}n {RESET_TR_NS}n {RESET_TR_NS}n "
+        f"{evaluate_ns}n {period_ns}n)"
+    )
+
+
+def _input_split_stimulus(vindiff_v: float) -> list[str]:
+    """The ideal differential input pair four deck builders share:
+    `vindiff_v` split symmetrically around VCM. The two noise-tran decks
+    append their `TRNOISE(...)` tails as explicit call-site lines rather
+    than growing this a flag, and `reset`/`noise`'s common-mode `{VCM}`
+    bias pair is a different stimulus, not a variant of it."""
+    return [
+        f"Vinp VINP 0 dc {VCM + vindiff_v / 2}",
+        f"Vinn VINN 0 dc {VCM - vindiff_v / 2}",
+    ]
+
+
 def _dut_lines() -> str:
     return _dut_fragment().read_text()
 
@@ -769,22 +854,41 @@ def _resolve_pdk_line(info: pdk.PdkInfo) -> str:
     return f"{info.variant} @ {pdk.resolved_commit(info)}"
 
 
-def _begin_dut_record(subdir: str) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
+def _begin_dut_record(
+    subdir: str,
+    netlist_text_fn: Callable[[pdk.PdkInfo], str] | None = None,
+) -> tuple[pdk.PdkInfo, str, str, Path, Path]:
     """Shared head, the counterpart of `_finalize_record` below: resolve the
-    PDK, mint a record id, hash + snapshot the DUT fragment, and create the
+    PDK, mint a record id, hash + snapshot the DUT netlist, and create the
     per-record log directory the caller drops its raw ngspice logs into.
 
+    `netlist_text_fn` selects what the snapshot hashes. None (the default)
+    snapshots the committed DUT fragment file -- what the five sub-commands
+    that simulate that fragment verbatim want. A callable is handed the
+    `info` this seam resolves (so this stays the single `pdk.resolve()`)
+    and its returned deck text is snapshotted instead -- what the two
+    reduced-sub-model records (`noise`, and `noise-tran`'s pick-off) need,
+    because the deck those records ran is not the committed fragment, and
+    snapshotting anything else would misstate the netlist the record's
+    numbers come from.
+
     Returns `(info, record_id, netlist_sha, record_path, logs_dir)`, where
-    `logs_dir` is `<EXPERIMENT_DIR>/<subdir>/<record_id>` -- `subdir` is the
-    one thing that varies across callers today (`"corners"` for the
-    deterministic sweeps, `"mc-draws"` for the Monte Carlo runner)."""
+    `logs_dir` is `<EXPERIMENT_DIR>/<subdir>/<record_id>` -- `subdir` is
+    `"corners"` for the deterministic sweeps, `"mc-draws"` for the Monte
+    Carlo runner, and `netlist_text_fn` is the other axis callers vary
+    along."""
     info = pdk.resolve()
     # Atomic, exclusive reservation of the whole namespace (issue #144):
     # never reuses an existing record id / log directory / snapshot.
     resv = evidence.reserve_record(EXPERIMENT_DIR, (subdir,))
     record_id = resv.record_id
-    netlist_sha = evidence.sha256_file(_dut_fragment())
-    evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    if netlist_text_fn is None:
+        netlist_sha = evidence.sha256_file(_dut_fragment())
+        evidence.write_netlist_snapshot(EXPERIMENT_DIR, record_id, _dut_fragment())
+    else:
+        netlist_text = netlist_text_fn(info)
+        netlist_sha = evidence.sha256_text(netlist_text)
+        evidence.write_netlist_snapshot_text(EXPERIMENT_DIR, record_id, netlist_text)
     record_path = resv.record_path
     logs_dir = resv.log_dirs[subdir]
     return info, record_id, netlist_sha, record_path, logs_dir
