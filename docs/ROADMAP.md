@@ -42,7 +42,7 @@ is DRAFT / OPEN with no measurement behind it ([#134](https://github.com/2AMLogi
   and is extracted under 0.8.0 (PRs #205, #208). No simulation metric has been
   re-measured on it: [#125](https://github.com/2AMLogic/sky130-comparator/issues/125).
 - The PDK pin moved to open_pdks `f6eeac7` (PR #180), but the reference
-  records and `sim/characterization-report.md` still stand on `c6d73a3`:
+  records and `sim/characterization-report.md` still stand on `c6d73a35`:
   [#179](https://github.com/2AMLogic/sky130-comparator/issues/179).
 
 **The one thing holding all of it.** #125, #179 and everything behind them wait
@@ -53,16 +53,20 @@ not fit a shared dispatch host. The pilot in PR #212 changed the picture:
 landing within 0.88 % of the `run.py` baseline — indicative only, since the
 pilot ran on PDK `f6eeac7` while the baseline was minted on `c6d73a35`, so the
 delta cannot separate a PDK-revision effect from a solver one
-(`sim/comparator-decision/records/klt-pilot-kickback-20261106.md`). The other
-measurements (`regen`, `offset`, `noise`, `reset`) have not been attempted.
+(`sim/comparator-decision/records/klt-pilot-kickback-20261106.md`). `regen`,
+piloted since on both `tt`/27 C and `ss`/-40 C, needed no such caveat: its
+delta is fully decomposed per corner
+(`sim/comparator-decision/records/klt-pilot-regen-20261114.md`). The
+remaining measurements, `offset`, `noise` and `reset`, have not been
+attempted.
 
 ## Now
 
 Each item below is tracked one-to-one by an issue, filed just after this
-snapshot's `main` was taken; none needs a decision and each is one pull request.
-Item 1 has since landed (PR #227 closed [#219](https://github.com/2AMLogic/sky130-comparator/issues/219)), so items 2 to 4 are
-what remains. Items 1 to 3 extend the PR #212 pilot so #127 can be answered
-with measurements.
+snapshot's `main` was taken; none needs a decision and each is one pull
+request. Items 1 to 3 extend the PR #212 pilot so #127 can be answered
+with measurements. Live state is each item's issue, not this list: this
+document is a dated snapshot and does not track later landings.
 
 1. **Pilot `kickback` on the extracted netlist as a `klt sim` request**
    [#219](https://github.com/2AMLogic/sky130-comparator/issues/219).
@@ -127,8 +131,8 @@ Every issue in the chain below is parked on `loom:blocked` or
 `loom:operator`, so none of that chain is dispatchable today. The chain is
 `#127 (route decision) -> #125, #179 -> #187, #188, #134, #154 -> #3`,
 with #146 -> #184 as a separate, shorter one. Each chain starts at a decision
-recorded as a ranked question on its issue (#127, #146). The four Now items
-are the work that can start without either.
+recorded as a ranked question on its issue (#127, #146). Work that can start
+without either chain is tracked in the `## Now` issues above.
 
 ## Not planned
 
