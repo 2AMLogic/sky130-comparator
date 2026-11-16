@@ -6,6 +6,11 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-15
+
+- **PR #258**: docs(sim): retire the stale 'target-spec DRAFT' status claims from five live modules
+- **Issue #246** (closed): Retire the stale 'target-spec table is DRAFT' claim from five live modules — four rows are ratified and the same files grade against them
+
 ### 2026-11-14
 
 - **PR #238**: refactor(sim): split the comparator-decision driver into sibling experiment modules
