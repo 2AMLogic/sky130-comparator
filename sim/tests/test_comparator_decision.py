@@ -31,6 +31,7 @@ real call site untouched.
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import dataclasses
 import hashlib
@@ -38,6 +39,7 @@ import importlib.util
 import io
 import json
 import math
+import re
 import sys
 import tempfile
 import unittest
@@ -919,6 +921,90 @@ class TestKickbackSubsetJustification(unittest.TestCase):
                 self.assertNotIn("20260916-060139-f1eb978", text)
                 # ...and names the corner it actually ran.
                 self.assertIn(f"{corner}/{temp_c:g}C", text)
+
+
+class TestSubsetCornerCampaignReason(unittest.TestCase):
+    """Issue #284: `offset.py` and `regen.py` printed -- into the
+    `Corner matrix run` field of every record they emit -- a clause saying
+    the full ratified PVT campaign was "blocked on the top-level README
+    target-spec table's ratification", and `reset.py` said the matrix
+    "stays blocked on target-spec ratification". Four of the table's five
+    rows are RATIFIED (DR-002 / DR-005), so all three clauses were false,
+    and `sim/` records are append-only evidence: every new record
+    re-published the claim #246 / PR #258 retired (that pass swept the
+    string "target-spec table is DRAFT", which shares no substring with
+    these wordings, so all three sites survived it). The restatement keeps
+    "remains open work" -- T1 item 5 is `unmet`/`no_evidence` -- and re-cuts
+    only the reason: coverage and gradeability, not ratification."""
+
+    RETIRED_CLAIM_RE = re.compile(
+        r"blocked on (the top-level README )?target-spec"
+        r"|stays blocked on target-spec"
+        r"|blocked\s+on.{0,120}?ratification"
+    )
+
+    @staticmethod
+    def _string_constants(path):
+        """Every string literal in one module, with adjacent implicit
+        concatenations joined (an f-string run arrives as one `JoinedStr`
+        whose `Constant` parts concatenate in order), whitespace collapsed.
+
+        The join is the point: offset.py and regen.py split the retired
+        clause across source lines ("... blocked on the top-level README "
+        "target-spec table's ratification ..."), so a per-literal match
+        would inherit exactly the blind spot that let #258's sweep skip
+        them (issue #284, Champion note 1)."""
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        inside_joined = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                inside_joined.update(id(child) for child in ast.walk(node))
+        texts = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                texts.append("".join(
+                    part.value for part in node.values
+                    if isinstance(part, ast.Constant)
+                    and isinstance(part.value, str)
+                ))
+            elif (isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and id(node) not in inside_joined):
+                texts.append(node.value)
+        return [" ".join(t.split()) for t in texts]
+
+    def test_helper_restates_reason_without_retired_claim(self):
+        text = " ".join(cd_run.subset_corner_campaign_reason().split())
+        self.assertNotRegex(text, self.RETIRED_CLAIM_RE)
+        # ...and still says the campaign remains open work ("remains open
+        # work" must survive the edit: T1 item 5 is `unmet`/`no_evidence`).
+        self.assertIn("remain open work", text)
+        # the correct reason, and only that: coverage + item-5 gradeability
+        self.assertIn("Supply/power", text)
+        self.assertIn("no ratified bound", text)
+        self.assertIn("no measurement", text)
+        self.assertIn("item 5", text)
+        self.assertIn("issue #188", text)
+
+    def test_reset_keeps_its_own_justification_and_restates_the_reason(self):
+        texts = self._string_constants(
+            SIM_DIR / "comparator-decision" / "reset.py")
+        clause = [t for t in texts if "full ratified PVT matrix" in t]
+        self.assertEqual(
+            len(clause), 1,
+            "reset.py's subset-corner justification moved or vanished",
+        )
+        self.assertNotRegex(clause[0], self.RETIRED_CLAIM_RE)
+        self.assertIn("remains open work", clause[0])
+
+    def test_no_live_module_reintroduces_the_retired_claim(self):
+        for path in sorted((SIM_DIR / "comparator-decision").glob("*.py")):
+            for text in self._string_constants(path):
+                self.assertNotRegex(
+                    text, self.RETIRED_CLAIM_RE,
+                    msg=f"{path.name} re-asserts the retired claim "
+                    f"(issue #284): {text!r}",
+                )
 
 
 class _FakeNgspiceDecks:

@@ -33,6 +33,7 @@ from _shared import (  # noqa: E402
     _input_split_stimulus,
     _record_header,
     post_layout_delta_lines,
+    subset_corner_campaign_reason,
 )
 from harness import evidence, pdk, toolchain  # noqa: E402
 
@@ -173,12 +174,9 @@ def write_regen_evidence(
     lines += _record_header(record_id)
     a(
         f"- **Corner matrix run**: process=['{corner}'], temperature_c=[{temp_c}], "
-        f"supply_v=[{VDD}] (1 PVT point -- **subset-corner justification**: "
-        "single-point characterization of this repo's own design at the stated "
-        "corner, per issue #24's acceptance criteria; a full ratified PVT "
-        "corner sweep and Monte Carlo campaign remain open work, blocked on "
-        "the top-level README target-spec table's ratification -- see issue #3 "
-        "item 5 and DR-001's 'A full PVT sweep' open item)"
+        f"supply_v=[{VDD}] (1 PVT point -- "
+        + subset_corner_campaign_reason()
+        + ")"
     )
     a(
         f"- **Stimulus**: single reset({RESET_NS}ns, CLK=0)->evaluate(CLK={VDD}V) "
