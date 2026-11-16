@@ -755,7 +755,9 @@ two things: this ERC run, and `layout/lvs-report.json` — which must itself pas
 declared supply to a reference-side net (`_lvs_reference_carries_supplies`).
 The grader returns `met` for the compound citation (`erc-coverage-probe.json` →
 `signoff_if_cited`: `item_11_status: "met"`; the generator fails if a future klt
-changes that).
+changes that). That block records the item-11 verdict only — the T1 met-count
+of record is `manifests/t1-signoff-report.json`, re-checked by
+`scripts/check-t1-signoff.py gate` on every CI run.
 
 The earlier decision to withhold item 11 rested on one fact: its LVS half
 carries no information beyond "item 4's envelope reports `match`", because

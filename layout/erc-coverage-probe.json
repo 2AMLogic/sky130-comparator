@@ -236,15 +236,13 @@
     }
   ],
   "signoff_if_cited": {
-    "method": "klt signoff --manifest <scratch copy of manifests/sky130-comparator.json with an item-11 citation of layout/erc-report.json + layout/lvs-report.json> --tiers-doc manifests/design-evidence-tiers.md. The committed manifest is NOT modified: this row records what the grader says for the citation the committed manifest carries (or would carry), so the item-11 verdict is a re-runnable measurement. The reasoning is in layout/README.md -> 'Why item 11 is cited'.",
+    "method": "klt signoff --manifest <scratch copy of manifests/sky130-comparator.json with an item-11 citation of layout/erc-report.json + layout/lvs-report.json> --tiers-doc manifests/design-evidence-tiers.md. The committed manifest is NOT modified: this row records what the grader says for the citation the committed manifest carries (or would carry), so the item-11 verdict is a re-runnable measurement. The reasoning is in layout/README.md -> 'Why item 11 is cited'. The T1 met-count of record lives in manifests/t1-signoff-report.json, gated by scripts/check-t1-signoff.py gate, and is deliberately NOT restated here.",
     "cited_parts": [
       "layout/erc-report.json",
       "layout/lvs-report.json"
     ],
     "item_11_status": "met",
     "item_11_reason": null,
-    "t1_met_count_if_cited": 3,
-    "t1_item_count": 11,
     "supply_nets_graded": [
       "VDD",
       "GND"
