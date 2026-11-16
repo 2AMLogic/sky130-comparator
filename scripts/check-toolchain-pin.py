@@ -50,9 +50,12 @@ envelope set, because `evidence/` is this repo's product rather than an
 optional one.
 
 The scan is deliberately job-count-agnostic -- the files are scanned line
-by line with `#`-comment lines skipped, so a job added later is covered
-without touching this gate (occurrence counts are reported, never
-asserted).
+by line, so a job added later is covered without touching this gate
+(occurrence counts are reported, never asserted). `#`-comment lines are
+skipped in the workflow (comment prose may mention a pin without pinning
+it) but scanned in the docs, where a `#` line is a shell comment inside an
+illustrative code block whose hash is a load-bearing restatement of the
+pin (docs/environment-setup.md:184-185).
 
 `selftest` is hermetic (stdlib file reads only, no klt, no PDK, no
 network): it proves the composite `KLT_PIN` derivation still renders the
@@ -128,17 +131,24 @@ PATTERNS = {
 }
 
 
-def scan_text(text: str) -> dict[str, list[tuple[int, str]]]:
+def scan_text(text: str,
+              skip_comments: bool = True) -> dict[str, list[tuple[int, str]]]:
     """Every occurrence of each pattern, as {name: [(lineno, value), ...]}.
 
     Line-by-line on purpose (issues #245, #275): no job parsing, no
     occurrence-count assumption, so jobs added later are covered for free.
-    `#`-comment lines are skipped: comment prose may mention a pin without
-    pinning it.
+    `skip_comments=True` (the workflow) skips `#`-comment lines: YAML
+    comment prose may mention a pin without pinning it. `False` (the docs)
+    scans them too: a leading `#` there is a shell comment inside an
+    illustrative code block, and the hashes such lines show (the
+    `ls -la ~/.ciel` output at docs/environment-setup.md:184-185) are
+    load-bearing restatements of the pin, not prose about it -- skipping
+    them would let a re-pin that updates the prose lines ship a stale
+    hash undetected.
     """
     found: dict[str, list[tuple[int, str]]] = {name: [] for name in PATTERNS}
     for lineno, line in enumerate(text.splitlines(), start=1):
-        if line.lstrip().startswith("#"):
+        if skip_comments and line.lstrip().startswith("#"):
             continue  # comment prose may mention the pin without pinning it
         for name, rex in PATTERNS.items():
             found[name].extend((lineno, m.group(1)) for m in rex.finditer(line))
@@ -251,17 +261,22 @@ def check_install_command(pdk: dict, ciel_version: str | None,
 
 def check_pdk_text(text: str, name: str, ciel_version: str | None,
                    commit: str | None, hash_contested: bool = False,
-                   require_present: bool = True) -> dict[str, list[tuple[int, str]]]:
+                   require_present: bool = True,
+                   skip_comments: bool = True
+                   ) -> dict[str, list[tuple[int, str]]]:
     """ciel== / open_pdks-hash occurrences in one file vs sim/pdk.json.
 
     `require_present` is True for the workflow (a vanished pin there means
     CI installs or enables an unpinned PDK) and False for the docs (this
-    gate checks disagreement, not doc layout). `hash_contested` (the
-    check_authority disagreement) suppresses the per-occurrence hash
-    comparisons -- the authority failure already fails the gate and says
-    so. Returns the scan so the caller can report counts.
+    gate checks disagreement, not doc layout). `skip_comments` is True for
+    the workflow (YAML `#` prose may mention a pin without pinning it) and
+    False for the docs, where a `#` line is a shell comment inside an
+    illustrative code block whose hash is a load-bearing restatement.
+    `hash_contested` (the check_authority disagreement) suppresses the
+    per-occurrence hash comparisons -- the authority failure already fails
+    the gate and says so. Returns the scan so the caller can report counts.
     """
-    found = scan_text(text)
+    found = scan_text(text, skip_comments=skip_comments)
     ciel, hashes = found["ciel"], found["open_pdks"]
     if require_present:
         if not ciel:
@@ -368,7 +383,8 @@ def run_gate(args: argparse.Namespace) -> int:
         fail(f"docs not found: {repo / DOCS}")
         return 1
     docs_found = check_pdk_text(docs_text, str(DOCS), ciel_version, commit,
-                                hash_contested, require_present=False)
+                                hash_contested, require_present=False,
+                                skip_comments=False)
 
     if not FAILURES:
         authority = f"ciel_version {ciel_version}"
@@ -456,11 +472,13 @@ def run_selftest(args: argparse.Namespace) -> int:
         ciel, commit = pdk_doc.get("ciel_version"), pdk_doc.get("open_pdks_commit")
 
         def check_pdk(name, expect_fail, text, *, cv=ciel, cm=commit,
-                      contested=False, require_present=True):
+                      contested=False, require_present=True,
+                      skip_comments=True):
             reset()
             check_pdk_text(text, "fx-pdk", cv, cm,
                            hash_contested=contested,
-                           require_present=require_present)
+                           require_present=require_present,
+                           skip_comments=skip_comments)
             case_results.append((name, (len(FAILURES) > 0) == expect_fail))
 
         if not isinstance(ciel, str) or not isinstance(commit, str):
@@ -519,6 +537,26 @@ def run_selftest(args: argparse.Namespace) -> int:
                       True, sha256_line
                       + f"ciel enable --pdk-family sky130 -l sky130_fd_pr "
                         f"{other_hash}\n", require_present=False)
+
+            # A `#` line in docs is a shell comment inside an illustrative
+            # code block, and the hash it shows (the `ls -la ~/.ciel`
+            # output at docs/environment-setup.md:184-185) is a
+            # load-bearing restatement of the pin -- the docs scan
+            # (skip_comments=False) must read it, while the workflow scan
+            # keeps skipping its YAML prose comments (case above).
+            check_pdk("rejects a drifted hash on a `#` docs line (shell "
+                      "comment, not prose)",
+                      True, f"ciel enable --pdk-family sky130 -l sky130_fd_pr "
+                            f"{commit}\n"
+                            f"# sky130A -> ciel/sky130/versions/"
+                            f"{other_hash}/sky130A\n",
+                      require_present=False, skip_comments=False)
+            check_pdk("accepts a matching hash on a `#` docs line",
+                      False, f"ciel enable --pdk-family sky130 -l "
+                             f"sky130_fd_pr {commit}\n"
+                             f"# sky130A -> ciel/sky130/versions/"
+                             f"{commit}/sky130A\n",
+                      require_present=False, skip_comments=False)
 
             # Authority semantics, in isolation.
             reset()
