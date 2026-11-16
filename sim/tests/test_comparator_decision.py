@@ -1268,9 +1268,13 @@ class TestRatificationProseMatchesReadmeTable(unittest.TestCase):
         mutated = self._flip_leading_status(
             self.README.read_text(encoding="utf-8"),
             draft_rows[0], "RATIFIED")
-        with self.assertRaises(AssertionError):
-            self._assert_prose_agrees_with(
-                self._readme_row_statuses(mutated))
+        # The parse runs OUTSIDE the assertRaises block: the parser
+        # itself raises AssertionError on an unrecognized status token,
+        # and letting that satisfy the block would prove nothing about
+        # the guard biting.
+        mutated_statuses = self._readme_row_statuses(mutated)
+        with self.assertRaisesRegex(AssertionError, "issue #290"):
+            self._assert_prose_agrees_with(mutated_statuses)
 
     def test_guard_bites_when_a_ratified_row_flips_to_draft(self):
         """Negative case, on a mutated COPY of the table: flipping a
@@ -1284,9 +1288,12 @@ class TestRatificationProseMatchesReadmeTable(unittest.TestCase):
         mutated = self._flip_leading_status(
             self.README.read_text(encoding="utf-8"),
             ratified_rows[0], "DRAFT / OPEN")
-        with self.assertRaises(AssertionError):
-            self._assert_prose_agrees_with(
-                self._readme_row_statuses(mutated))
+        # Same hoist as the draft->RATIFIED case: only the cross-check
+        # may raise inside the block, so a parse failure of the mutated
+        # copy cannot satisfy the test.
+        mutated_statuses = self._readme_row_statuses(mutated)
+        with self.assertRaisesRegex(AssertionError, "issue #290"):
+            self._assert_prose_agrees_with(mutated_statuses)
 
 
 class _FakeNgspiceDecks:
