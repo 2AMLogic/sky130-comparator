@@ -99,6 +99,22 @@ jobs:
           python3 scripts/check-toolchain-pin.py selftest
           python3 scripts/check-toolchain-pin.py gate
 
+      # A committed klt sim request's models.lib vs sim/pdk.json's
+      # ngspice_lib (issue #282). sim/pdk.json is the reproducibility pin
+      # for every record under sim/, but nothing held a committed request
+      # to it -- the mismatch class #244 found in four requests, measured
+      # at +5.12 % on regen decision time at ss/-40 C, after PR #228's
+      # written guidance was missed by the PEX pilot. The gate selects
+      # structurally (top-level models object with a lib key), so it
+      # covers any pilot added under sim/ without touching this step.
+      # Deliberate library-A/B controls are allowlisted in the gate's
+      # DELIBERATE_MISMATCHES, which is itself rot-checked. Hermetic:
+      # no klt, no PDK.
+      - name: Models-lib pin gate selftest + gate (requests vs sim/pdk.json)
+        run: |
+          python3 scripts/check-models-lib-pin.py selftest
+          python3 scripts/check-models-lib-pin.py gate
+
       - name: Gate selftest (hermetic; proves the rot detector bites)
         run: python3 scripts/check-t1-signoff.py selftest
 

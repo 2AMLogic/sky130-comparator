@@ -385,6 +385,20 @@ klayout-tools #2938), though whether the fleet's klt-0.9.0 runner accepts
 half was a false premise -- `expr` already covers it -- and is no longer part
 of its scope).
 
+What PR #228 wrote as guidance ("any later pilot copies `combined`") -- and
+that was missed twice, by the four `kickback`/`pex` requests of #244 and by
+the PEX pilot landing concurrently with that guidance -- is now mechanical:
+[`scripts/check-models-lib-pin.py`](../../scripts/check-models-lib-pin.py)
+selects every `sim/**/*.json` whose payload carries a top-level `models`
+object with a `lib` key and fails CI when that `lib` differs from
+`sim/pdk.json`'s `ngspice_lib` (issue #282). The five committed mismatches
+-- the regen `bdiff-ngspicelib` A/B control on purpose, the four #244
+requests grandfathered because the reports beside them pin the hash of the
+library that actually ran -- sit in the gate's `DELIBERATE_MISMATCHES` map,
+rot-checked by the gate itself: a new deliberate-control request that names
+the other library must be added there, with a reason, in the PR that
+introduces it.
+
 `offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
 of what #64 did, not a statement that the fleet is unusable. Choosing the
