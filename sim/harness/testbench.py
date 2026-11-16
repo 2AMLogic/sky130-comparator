@@ -41,7 +41,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import pdk
+from . import corners, pdk
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 
@@ -82,6 +82,9 @@ def load_experiment(experiment: str) -> Manifest:
 def load(tb_json_path: Path) -> Manifest:
     with tb_json_path.open() as f:
         raw = json.load(f)
+    corners.validate_spread_checks(
+        f"{tb_json_path} [checks]", raw["measure"], raw.get("checks", {})
+    )
     experiment_dir = tb_json_path.parent.parent  # .../<experiment>/testbench/tb.json
     fragment = tb_json_path.parent / raw["netlist_fragment"]
     if not fragment.is_file():

@@ -385,6 +385,17 @@ klayout-tools #2938), though whether the fleet's klt-0.9.0 runner accepts
 half was a false premise -- `expr` already covers it -- and is no longer part
 of its scope).
 
+Issue #244 then **quantified** that library on the `kickback`/PEX operating
+point
+([`records/klt-pilot-library-effect-20261115.md`](records/klt-pilot-library-effect-20261115.md)):
+the four pilot requests re-run as `*-combinedlib` variants (one changed key
+each, all four legs one `--batch-set` invocation) moved the worst-node
+kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
+`tt`/27 C. On the grading library the schematic pilot reproduces the
+`run.py` baseline exactly (1.8902 mV), so the kickback note's -0.88 % delta
+was **entirely the library**; the PEX note's -15.0 % delta becomes -14.33 %,
+so the library is a sized seventh confounder there, not the explanation.
+
 `offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
 of what #64 did, not a statement that the fleet is unusable. Choosing the
