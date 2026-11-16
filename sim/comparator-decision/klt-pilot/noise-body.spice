@@ -1,0 +1,34 @@
+* noise pilot body -- circuit body for klt sim (issue #221); frozen snapshot of run.py _noise_deck
+* (loop-broken DR-004 preamp sub-model, device lines re-emitted verbatim from
+* testbench/comparator_core.spice by _noise_sub_model_lines). Snapshot taken at
+* fragment commit bead5d5 (testbench/comparator_core.spice) / repo d69e3ec,
+* tt / 27 C. Regenerate from _noise_deck if the fragment moves; do not hand-edit.
+* The .lib/.temp cards run.py emits are omitted -- klt sim writes its own per corner.
+* The body carries its own .control block (no .end -- klt appends deck tail):
+* ngspice's .noise result is a plot scalar, not a .meas value, so the analysis is
+* run here and the derived scalars printed in klt-harvestable "name = value" form.
+* Cost: the .noise analysis runs twice per corner (this block, then klt's own).
+.param vdd_val = 1.8
+Vdd VDD 0 dc {vdd_val}
+Vinp VINP 0 dc 0.9 AC 1
+Vinn VINN 0 dc 0.9
+
+XM_PTAIL TAILP VDD GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=0.8 nf=1 ad=0.232 as=0.232 pd=2.18 ps=2.18 nrd=0.3625 nrs=0.3625 sa=0 sb=0 sd=0 mult=1 m=1
+XM_PINN OUTN1 VINN TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13 nf=1 ad=3.77 as=3.77 pd=26.58 ps=26.58 nrd=0.0223076923076923 nrs=0.0223076923076923 sa=0 sb=0 sd=0 mult=1 m=1
+XM_PINP OUTP1 VINP TAILP GND sky130_fd_pr__nfet_01v8 L=0.5 W=13 nf=1 ad=3.77 as=3.77 pd=26.58 ps=26.58 nrd=0.0223076923076923 nrs=0.0223076923076923 sa=0 sb=0 sd=0 mult=1 m=1
+XR_LP OUTN1 VDD GND sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XR_LN OUTP1 VDD GND sky130_fd_pr__res_high_po_0p35 L=22 mult=1 m=1
+XM_C1P GND OUTP1 GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1 ad=11.6 as=11.6 pd=80.58 ps=80.58 nrd=0.00725 nrs=0.00725 sa=0 sb=0 sd=0 mult=1 m=1
+XM_C1N GND OUTN1 GND GND sky130_fd_pr__nfet_01v8 L=0.5 W=40 nf=1 ad=11.6 as=11.6 pd=80.58 ps=80.58 nrd=0.00725 nrs=0.00725 sa=0 sb=0 sd=0 mult=1 m=1
+
+.control
+option sparse
+op
+let op_tailp = v(TAILP)
+let op_outp1 = v(OUTP1)
+let op_outn1 = v(OUTN1)
+print op_tailp op_outp1 op_outn1
+noise v(outp1,outn1) Vinp dec 20 1000 1e+09 20
+let inoise_diff_mv = inoise_total*sqrt(2)*1000
+print inoise_total onoise_total inoise_diff_mv
+.endc
