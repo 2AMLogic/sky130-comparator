@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "requests": [
+    {
+      "index": 0,
+      "request": "sim/comparator-decision/klt-pilot/kickback-request-loaded-ngspice47.json",
+      "dir": "sim/comparator-decision/klt-pilot/out-ngspice47/kickback-request-loaded-ngspice47",
+      "status": "pass",
+      "job_id": "klt-sim-1bcd79aae93b",
+      "job_ids": [
+        "klt-sim-1bcd79aae93b"
+      ],
+      "attempts": 1
+    }
+  ]
+}

@@ -392,9 +392,19 @@ the four pilot requests re-run as `*-combinedlib` variants (one changed key
 each, all four legs one `--batch-set` invocation) moved the worst-node
 kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
 `tt`/27 C. On the grading library the schematic pilot reproduces the
-`run.py` baseline exactly (1.8902 mV), so the kickback note's -0.88 % delta
-was **entirely the library**; the PEX note's -15.0 % delta becomes -14.33 %,
-so the library is a sized seventh confounder there, not the explanation.
+`run.py` baseline exactly (1.8902 mV); the PEX note's -15.0 % delta becomes
+-14.33 %, so the library is a sized seventh confounder there, not the
+explanation. A follow-up leg made the schematic figure single-variable
+([`records/klt-pilot-library-effect-schematic-ngspice47-20261115.md`](records/klt-pilot-library-effect-schematic-ngspice47-20261115.md),
+issue #283: the committed `ngspice`-lib schematic request re-run on
+ngspice-47, `models.lib` held fixed): the library alone is worth **+0.53 %**
+on the schematic worst-node peak (vs +0.81 % extracted) and the
+ngspice-46 -> 47 solver bump is **+0.35 %** -- outside the < 0.03 % bound the
+note above had inferred for it from the pilot-vs-baseline residual (that
+residual was measured on `combined`-library decks; the bump shows on the
+`ngspice`-lib deck). So the kickback note's -0.88 % delta was **dominated by
+the library (+0.53 % of the +0.89 % bundle), not entirely it**; the library
+remains its largest single term and nothing in it was the circuit.
 
 `offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
