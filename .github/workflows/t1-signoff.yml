@@ -175,7 +175,8 @@ jobs:
       # time (issue #270) instead of only after merge in the push-only
       # harness-selftest job -- which is kept, because only its PDK-equipped
       # copy can fail on toolchain-pin drift. Item 1 (design/netlist.sh
-      # --check needs xschem) has no CI step yet, see the PR for issue #189.
+      # --check needs xschem) is re-checked in the item1-netlist-check job
+      # below, which builds the pinned xschem 3.4.7 (PR #215).
       - name: Re-check the item-10 attestation envelope
         run: klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json
 
