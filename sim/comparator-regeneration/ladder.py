@@ -48,7 +48,15 @@ DUT_PORTS = "CLK VDD GND VINP VINN OUTP OUTN"
 
 
 def load_manifest() -> dict:
-    return json.loads(MANIFEST.read_text())
+    m = json.loads(MANIFEST.read_text())
+    corners_mod.validate_spread_checks(
+        f"{MANIFEST} [checks]", m["measure"], m.get("checks", {}))
+    rev = m.get("reverse_ladder")
+    if rev:
+        corners_mod.validate_spread_checks(
+            f"{MANIFEST} [reverse_ladder.checks]",
+            rev.get("measure", {}), rev.get("checks", {}))
+    return m
 
 
 def _fmt(x: float) -> str:
