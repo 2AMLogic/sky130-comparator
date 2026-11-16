@@ -1007,6 +1007,288 @@ class TestSubsetCornerCampaignReason(unittest.TestCase):
                 )
 
 
+class TestRatificationProseMatchesReadmeTable(unittest.TestCase):
+    """Issue #290: the comparator-decision drivers hardcode the top-level
+    README target-spec table's per-row ratification status into the text
+    they write into append-only `sim/comparator-decision/records/`
+    evidence, and nothing failed if the table's statuses drifted -- the
+    same silent-falsification failure mode the #246 / #258 / #284 chain
+    fixed for the retired "blocked on ratification" claim (whose guard,
+    `TestSubsetCornerCampaignReason`, keys on the retired *wording*, not
+    on the *status facts* the replacement prose asserts).
+
+    The seven live sites, all correct against the committed table today:
+
+    - `_shared.CLAIM_TEXT` -- names Offset sigma, Input-referred noise,
+      and Kickback RATIFIED (DR-002), Decision time vs. overdrive
+      RATIFIED (DR-005), Supply/power the one DRAFT/OPEN row;
+    - `_shared.subset_corner_campaign_reason()` -- "four of the ... five
+      rows are RATIFIED ...", Supply/power "the one DRAFT/OPEN row";
+    - `reset.py`'s corner-matrix clause -- Supply/power "still
+      DRAFT/OPEN", "the table's other four rows are RATIFIED";
+    - `offset.py`, `noise.py`, `noise_tran.py`, `kickback.py` -- one
+      "Ratified bound comparison" line each, claiming its own row
+      RATIFIED.
+
+    This test parses each table row's leading bold status token
+    (`**RATIFIED**` vs `**DRAFT / OPEN**`; trailing qualifiers such as
+    the noise row's RE-OPENED/RE-CLOSED history and Kickback's
+    COMPLIANT clause are ignored) and asserts the prose agrees: the
+    multi-row sites name exactly the table's RATIFIED row set and its
+    DRAFT/OPEN row set, and each per-row site's row is RATIFIED in the
+    table. A future status change -- Supply/power ratified by a DR, or
+    a DR-006-style re-open of a RATIFIED row -- now fails here instead
+    of silently falsifying every record written afterwards. The
+    negative tests mutate a COPY of the table text (never the README)
+    to prove the guard bites.
+
+    Test-only change: no README, record, or decision-record content is
+    modified (issue #290's acceptance criteria)."""
+
+    README = SIM_DIR.parent / "README.md"
+
+    # Table row name -> the name the driver prose uses for it (the prose
+    # writes "Supply/power" without spaces; the table's cell is
+    # "Supply / power").
+    ROW_NAMES = {
+        "Offset sigma": "Offset sigma",
+        "Input-referred noise": "Input-referred noise",
+        "Decision time vs. overdrive": "Decision time vs. overdrive",
+        "Kickback": "Kickback",
+        "Supply / power": "Supply/power",
+    }
+
+    # CLAIM_TEXT's status clauses, as (regex over the whitespace-collapsed
+    # text, status asserted, table rows the clause names). A pattern
+    # failing to match means the wording drifted and this test's row
+    # bookkeeping must be re-cut alongside it.
+    CLAIM_TEXT_CLAUSES = (
+        (r"the Offset sigma, Input-referred noise, and Kickback rows "
+         r"are RATIFIED",
+         "RATIFIED", ("Offset sigma", "Input-referred noise", "Kickback")),
+        (r"Decision time vs\. overdrive is RATIFIED",
+         "RATIFIED", ("Decision time vs. overdrive",)),
+        (r"only Supply/power stays DRAFT/OPEN",
+         "DRAFT/OPEN", ("Supply / power",)),
+    )
+
+    # subset_corner_campaign_reason()'s status clauses, same shape.
+    SUBSET_REASON_CLAUSES = (
+        (r"four of the target-spec table's five rows are RATIFIED "
+         r"\(DR-002: Offset sigma, Input-referred noise, Kickback; "
+         r"DR-005: Decision time vs\. overdrive\)",
+         "RATIFIED", ("Offset sigma", "Input-referred noise", "Kickback",
+                      "Decision time vs. overdrive")),
+        (r"Supply/power coverage \(the one DRAFT/OPEN row",
+         "DRAFT/OPEN", ("Supply / power",)),
+    )
+
+    # reset.py's clause is a complement claim: Supply/power DRAFT/OPEN,
+    # every OTHER table row RATIFIED -- checked as such below.
+    RESET_CLAUSE_PATTERNS = (
+        r"the target-spec table's Supply/power row is still DRAFT/OPEN",
+        r"the table's other four rows are RATIFIED \(DR-002, DR-005\)",
+    )
+
+    # Per-row "Ratified bound comparison" sites: (module file, table row).
+    PER_ROW_SITES = (
+        ("offset.py", "Offset sigma"),
+        ("noise.py", "Input-referred noise"),
+        ("noise_tran.py", "Input-referred noise"),
+        ("kickback.py", "Kickback"),
+    )
+
+    def _readme_row_statuses(self, readme_text=None):
+        """Parse README.md's target-spec table into
+        {row name: "RATIFIED" | "DRAFT / OPEN"} from each row's leading
+        bold status token. `readme_text` lets the negative tests parse a
+        mutated copy instead of the committed file."""
+        if readme_text is None:
+            readme_text = self.README.read_text(encoding="utf-8")
+        statuses = {}
+        in_table = False
+        for line in readme_text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                if in_table:
+                    break  # the table ended; stop scanning
+                continue
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if cells[:2] == ["Parameter", "Status"]:
+                in_table = True
+                continue
+            if not in_table:
+                continue
+            if all(set(c) <= set("-: ") for c in cells):
+                continue  # the |---|---| separator row
+            m = re.match(r"\*\*(RATIFIED|DRAFT / OPEN)\b", cells[1])
+            self.assertIsNotNone(
+                m,
+                f"unrecognized leading status token in the target-spec "
+                f"table's {cells[0]!r} row: {cells[1]!r} -- the prose "
+                f"sites and this parser must move together (issue #290)",
+            )
+            statuses[cells[0]] = m.group(1)
+        return statuses
+
+    def _assert_prose_agrees_with(self, statuses):
+        """Cross-check the seven hardcoded status claims against the
+        parsed table. Raises AssertionError on any disagreement, so the
+        negative tests can drive it with mutated table copies."""
+        prose_ratified = {
+            self.ROW_NAMES[r] for r, s in statuses.items() if s == "RATIFIED"}
+        prose_draft = {
+            self.ROW_NAMES[r] for r, s in statuses.items()
+            if s == "DRAFT / OPEN"}
+
+        # (a) the three multi-row sites must name exactly the table's
+        # RATIFIED row set and its DRAFT/OPEN row set.
+        for text, clauses, what in (
+            (" ".join(cd_run._shared.CLAIM_TEXT.split()),
+             self.CLAIM_TEXT_CLAUSES, "_shared.CLAIM_TEXT"),
+            (" ".join(cd_run.subset_corner_campaign_reason().split()),
+             self.SUBSET_REASON_CLAUSES,
+             "_shared.subset_corner_campaign_reason()"),
+        ):
+            claimed_ratified, claimed_draft = set(), set()
+            for pattern, status, rows in clauses:
+                self.assertRegex(
+                    text, pattern,
+                    f"{what}'s status wording drifted; re-cut it and this "
+                    f"test's row bookkeeping together (issue #290): "
+                    f"expected {pattern!r}",
+                )
+                (claimed_ratified if status == "RATIFIED"
+                 else claimed_draft).update(
+                     self.ROW_NAMES[r] for r in rows)
+            self.assertEqual(
+                claimed_ratified, prose_ratified,
+                f"{what} claims {sorted(claimed_ratified)} RATIFIED "
+                f"but the table says {sorted(prose_ratified)} "
+                f"(issue #290)",
+            )
+            self.assertEqual(
+                claimed_draft, prose_draft,
+                f"{what} claims {sorted(claimed_draft)} DRAFT/OPEN "
+                f"but the table says {sorted(prose_draft)} "
+                f"(issue #290)",
+            )
+
+        # (b) reset.py's complement claim: its clause must still say
+        # Supply/power "still DRAFT/OPEN" and "the table's other four
+        # rows are RATIFIED", and the table must agree with that
+        # complement -- exactly Supply/power DRAFT/OPEN, every other
+        # row RATIFIED.
+        reset_texts = TestSubsetCornerCampaignReason._string_constants(
+            SIM_DIR / "comparator-decision" / "reset.py")
+        clause = [t for t in reset_texts if "full ratified PVT matrix" in t]
+        self.assertEqual(
+            len(clause), 1,
+            "reset.py's subset-corner clause moved or vanished "
+            "(issue #290)",
+        )
+        for pattern in self.RESET_CLAUSE_PATTERNS:
+            self.assertRegex(
+                clause[0], pattern,
+                "reset.py's corner-matrix status wording drifted; re-cut "
+                f"it and this test together (issue #290): expected "
+                f"{pattern!r}",
+            )
+        self.assertEqual(
+            prose_draft, {"Supply/power"},
+            f"reset.py's clause claims Supply/power as the only "
+            f"DRAFT/OPEN row but the table says {sorted(prose_draft)} "
+            f"(issue #290)",
+        )
+        self.assertEqual(
+            prose_ratified,
+            set(self.ROW_NAMES.values()) - {"Supply/power"},
+            f"reset.py's clause claims the other four rows RATIFIED but "
+            f"the table says {sorted(prose_ratified)} (issue #290)",
+        )
+
+        # (c) each per-row site claims its own row, and the table agrees.
+        for filename, row in self.PER_ROW_SITES:
+            texts = TestSubsetCornerCampaignReason._string_constants(
+                SIM_DIR / "comparator-decision" / filename)
+            self.assertTrue(
+                any(f"the {row} row is RATIFIED" in t for t in texts),
+                f"{filename} no longer states the {row} row's RATIFIED "
+                f"status; re-cut it and this test together (issue #290)",
+            )
+            self.assertEqual(
+                statuses[row], "RATIFIED",
+                f"{filename} still claims the {row} row RATIFIED, but "
+                f"the table now says {statuses[row]!r} (issue #290)",
+            )
+
+    def _flip_leading_status(self, readme_text, row, new_token):
+        """Return a COPY of `readme_text` with `row`'s leading bold
+        status token replaced by `new_token` -- a stand-in for the README
+        change the prose failed to track. The real README is never
+        written (issue #290's acceptance criteria)."""
+        lines = readme_text.splitlines(keepends=True)
+        prefix = f"| {row} |"
+        for i, line in enumerate(lines):
+            if line.startswith(prefix):
+                new_line, n = re.subn(
+                    r"\*\*(?:RATIFIED|DRAFT / OPEN)\b",
+                    f"**{new_token}**", line, count=1)
+                self.assertEqual(
+                    n, 1, f"no leading status token found on {row!r}'s "
+                    f"table row -- the parser and this helper drifted")
+                lines[i] = new_line
+                return "".join(lines)
+        self.fail(f"row {row!r} not found in the table text")
+
+    def test_prose_agrees_with_the_committed_table(self):
+        """The cross-check itself, against the committed README (issue
+        #290 acceptance criterion 3: passes on current main, changing no
+        README/record/DR content)."""
+        statuses = self._readme_row_statuses()
+        self.assertEqual(
+            set(statuses), set(self.ROW_NAMES),
+            "README target-spec table rows were added, removed, or "
+            "renamed -- the prose sites and this test must move together "
+            "(issue #290)",
+        )
+        self._assert_prose_agrees_with(statuses)
+
+    def test_guard_bites_when_a_draft_row_flips_to_ratified(self):
+        """Negative case, on a mutated COPY of the table: flipping the
+        one DRAFT/OPEN row (Supply/power today) to RATIFIED without
+        touching the prose must fail the cross-check (issue #290
+        acceptance criterion 1). This is the DR-ratifies-Supply/power
+        scenario the issue names as the likeliest trigger."""
+        statuses = self._readme_row_statuses()
+        draft_rows = [r for r, s in statuses.items() if s == "DRAFT / OPEN"]
+        self.assertEqual(
+            len(draft_rows), 1,
+            f"expected exactly one DRAFT/OPEN row, got {draft_rows}")
+        mutated = self._flip_leading_status(
+            self.README.read_text(encoding="utf-8"),
+            draft_rows[0], "RATIFIED")
+        with self.assertRaises(AssertionError):
+            self._assert_prose_agrees_with(
+                self._readme_row_statuses(mutated))
+
+    def test_guard_bites_when_a_ratified_row_flips_to_draft(self):
+        """Negative case, on a mutated COPY of the table: flipping a
+        RATIFIED row (Offset sigma today, first in table order) to
+        DRAFT/OPEN without touching the prose must fail the cross-check
+        (issue #290 acceptance criterion 1). This is the DR-006-style
+        re-open scenario the issue names as the other trigger."""
+        statuses = self._readme_row_statuses()
+        ratified_rows = sorted(
+            r for r, s in statuses.items() if s == "RATIFIED")
+        mutated = self._flip_leading_status(
+            self.README.read_text(encoding="utf-8"),
+            ratified_rows[0], "DRAFT / OPEN")
+        with self.assertRaises(AssertionError):
+            self._assert_prose_agrees_with(
+                self._readme_row_statuses(mutated))
+
+
 class _FakeNgspiceDecks:
     """Deterministic stand-in for one `ngspice` invocation, wired in by
     monkeypatching `cd_run._shared._run` (issue #100).
