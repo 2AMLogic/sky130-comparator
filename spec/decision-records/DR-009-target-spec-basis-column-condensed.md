@@ -123,10 +123,21 @@ decision record for this change.
 - **`sim/characterization-report.md` gains a section it did not have**
   (prior-art context), making it the single home for the sky130-sar-adc
   comparison figures.
-- **No gate changes and no gate breaks**: nothing in `scripts/`,
+- **No gate changes; report edits are not gate-free**: nothing in `scripts/`,
   `sim/selftest.sh`, or `.github/workflows/` parses the Basis prose
-  (re-verified on this tree); `sim/selftest.sh --quick` and
-  `scripts/check-integrator-view.py gate` pass on the condensation commit.
+  (re-verified on this tree), so the condensation changes no gate's logic, and
+  `sim/selftest.sh --quick` and `scripts/check-integrator-view.py gate` pass on
+  the condensation commit. But condensing moves campaign results into
+  `sim/characterization-report.md`, whose bytes the freshness pin in
+  `sim/characterization-envelope.json` covers; `evidence/item10.json`'s
+  repo-hygiene attestation covers `README.md` and `spec/README.md`, and its
+  inventory re-runs the envelope-freshness audit as one of its checks.
+  Editing the report therefore requires re-pinning both in the same change
+  (`python3 scripts/characterization-envelope.py --update`, then
+  `klt signoff --attest 10 --inventory attest/item10.json -o evidence/item10.json`,
+  per `manifests/README.md`), and editing `README.md` or `spec/README.md`
+  requires re-attesting item 10 — the recurring maintenance cost this
+  record's convention imposes on every future campaign.
 - **Ratification path**: merging this record's PR ratifies the condensation
   per the standing two-key mechanism; the record is filed **proposed** so the
   hold applies by construction.
