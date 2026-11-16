@@ -537,6 +537,155 @@ class TestRunnerHelpers(unittest.TestCase):
         self.assertIn(toolchain.TIMEOUT_ENV_VAR, str(ctx.exception))
 
 
+class TestSpreadCheckValidation(unittest.TestCase):
+    """Load-time validation of manifest spread checks (issue #274): an
+    unknown spread axis, or a spread-carrying check absent from its
+    block's `measure`, fails at manifest load instead of being silently
+    ungraded at grading time. spread_failures()'s runtime skip is
+    untouched (pinned unchanged by
+    test_spread_failures_skip_axis_without_a_spread above)."""
+
+    def test_rejects_unknown_axis_naming_path_block_check_and_valid_set(self):
+        for key in ("min_spread_pct_by_axis", "max_spread_pct_by_axis"):
+            with self.assertRaises(ValueError) as ctx:
+                corners.validate_spread_checks(
+                    "tb.json [checks]", {"x": "expr"},
+                    {"x": {key: {"tepmreature": 5.0}}},
+                )
+            msg = str(ctx.exception)
+            self.assertIn("tb.json [checks]", msg)   # manifest path + block
+            self.assertIn("'x'", msg)                # check name
+            self.assertIn("'tepmreature'", msg)      # offending key
+            self.assertIn(key, msg)
+            self.assertIn("['process', 'supply', 'temperature']", msg)
+
+    def test_rejects_spread_carrying_check_absent_from_measure(self):
+        with self.assertRaises(ValueError) as ctx:
+            corners.validate_spread_checks(
+                "tb.json [checks]", {"x": "expr"},
+                {"x": {"min": 0.5},
+                 "ghost": {"min_spread_pct_by_axis": {"process": 1.0}}},
+            )
+        msg = str(ctx.exception)
+        self.assertIn("tb.json [checks]", msg)
+        self.assertIn("'ghost'", msg)
+        self.assertIn("'measure'", msg)
+
+    def test_accepts_min_max_min_stdev_and_non_spread_entries(self):
+        # mc-smoke's min_stdev-only check (whose name IS in measure) and a
+        # non-spread check absent from measure must both stay accepted --
+        # the validator is not a whole-schema allowlist (issue #274 AC).
+        corners.validate_spread_checks(
+            "tb.json [checks]",
+            {"vgs_nfet": "v(nbias)", "floored": "v(x)"},
+            {"vgs_nfet": {"min": 0.3, "max": 1.2, "min_stdev": 1e-6},
+             "unmeasured": {"min": 1.0},
+             "floored": {"min": 0.5,
+                         "min_spread_pct_by_axis": {"process": 1.0},
+                         "max_spread_pct_by_axis": {"supply": 40.0}}},
+        )
+
+    def test_accepts_empty_checks_and_empty_spread_blocks(self):
+        corners.validate_spread_checks("tb.json [checks]", {"x": "e"}, {})
+        corners.validate_spread_checks(
+            "tb.json [checks]", {"x": "e"},
+            {"x": {"min_spread_pct_by_axis": {}}},
+        )
+
+    def test_load_rejects_typo_axis_instead_of_grading_nothing(self):
+        # AC (issue #274): a tb.json with a typo'd axis name fails to
+        # LOAD -- the harness must not run and report a passing,
+        # silently-ungraded floor.
+        with tempfile.TemporaryDirectory() as tmp:
+            tb_dir = Path(tmp) / "fake" / "testbench"
+            tb_dir.mkdir(parents=True)
+            (tb_dir / "fake.spice").write_text("R1 vdd 0 1k\n")
+            (tb_dir / "tb.json").write_text(json.dumps({
+                "name": "fake", "netlist_fragment": "fake.spice",
+                "nominal_supply_v": 1.8,
+                "measure": {"v": "v(vdd)"},
+                "checks": {"v": {"min_spread_pct_by_axis":
+                                 {"tepmreature": 5.0}}},
+            }))
+            with self.assertRaises(ValueError) as ctx:
+                testbench.load(tb_dir / "tb.json")
+        self.assertIn("tepmreature", str(ctx.exception))
+        self.assertIn("tb.json", str(ctx.exception))
+
+    def test_committed_tb_manifests_still_load(self):
+        # Guard against an over-strict validator (issue #274 AC): every
+        # committed harness manifest must load unchanged.
+        for exp in ("harness-corner-smoke", "mc-smoke"):
+            manifest = testbench.load(SIM_DIR / exp / "testbench" / "tb.json")
+            self.assertTrue(manifest.measure)
+
+    def test_committed_ladder_manifest_blocks_pass_validation(self):
+        # ladder.json is loaded by ladder.load_manifest(), not
+        # testbench.load() -- so its two blocks are validated directly
+        # here (issue #274 AC); the real load path is pinned by
+        # test_comparator_regeneration.py's load-path tests.
+        raw = json.loads(
+            (SIM_DIR / "comparator-regeneration" / "testbench" / "ladder.json")
+            .read_text()
+        )
+        corners.validate_spread_checks(
+            "ladder.json [checks]", raw["measure"], raw["checks"])
+        rev = raw["reverse_ladder"]
+        corners.validate_spread_checks(
+            "ladder.json [reverse_ladder.checks]", rev["measure"], rev["checks"])
+
+    def test_spread_axes_enum_matches_both_grading_paths(self):
+        """Drift pin (issue #274 AC): SPREAD_AXES -- what
+        validate_spread_checks accepts -- must equal the axis keys both
+        grading paths actually emit, else the enum has drifted from what
+        is graded (an accepted-but-ungraded axis, or a rejected-but-graded
+        one). Neither path needs ngspice here: ladder.axis_spreads is
+        pure dict math over a synthetic response, and runner.run()'s
+        ngspice call is mocked."""
+        from test_comparator_regeneration import ladder
+
+        manifest = {"process_corners": ["tt", "ss"],
+                    "temperatures_c": [27, 125], "nominal_supply_v": 1.8}
+        points = [
+            {"process": "tt", "temp": 27.0, "supply": 1.8, "id": "base",
+             "vals": {"v": 1.0}},
+            {"process": "ss", "temp": 27.0, "supply": 1.8, "id": "ss",
+             "vals": {"v": 2.0}},
+            {"process": "tt", "temp": 125.0, "supply": 1.8, "id": "hot",
+             "vals": {"v": 3.0}},
+        ]
+        ladder_spreads = ladder.axis_spreads(points, ["v"], manifest)
+        self.assertEqual(set(ladder_spreads["v"]), set(corners.SPREAD_AXES))
+        self.assertEqual(set(ladder_spreads["v"]),
+                         {"process", "temperature", "supply"})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fragment = tmp_path / "fake.spice"
+            fragment.write_text("R1 vdd 0 1k\n")
+            manifest = testbench.Manifest(
+                experiment_dir=tmp_path, name="fake", claim="",
+                netlist_fragment=fragment, nominal_supply_v=1.8,
+                supply_tolerance=0.0, temperatures_c=[27, 125],
+                process_corners=["tt", "ss"], measure={"v": "v(vdd)"},
+                checks={},
+            )
+
+            class FakePdkInfo:
+                found = True
+                error = ""
+                ngspice_lib = "/fake/sky130.lib.spice"
+
+            with mock.patch.object(runner.pdk, "resolve",
+                                   return_value=FakePdkInfo()):
+                with mock.patch.object(runner.toolchain, "run_ngspice",
+                                       return_value="v = 1.0\n"):
+                    _, axis_spreads = runner.run(manifest)
+        self.assertEqual(set(axis_spreads["v"]), set(corners.SPREAD_AXES))
+        self.assertEqual(set(axis_spreads["v"]),
+                         {"process", "temperature", "supply"})
+
+
 class TestTestbenchManifest(unittest.TestCase):
     def test_load_manifest_and_build_netlist(self):
         with tempfile.TemporaryDirectory() as tmp:

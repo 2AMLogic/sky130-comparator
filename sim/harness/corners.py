@@ -109,6 +109,41 @@ def spread_failures(
     return failures
 
 
+SPREAD_AXES = frozenset({"process", "temperature", "supply"})
+
+
+def validate_spread_checks(label: str, measure: dict, checks: dict) -> None:
+    """Load-time validation of one manifest block's spread checks (issue
+    #274): raises ValueError for (a) an axis key in
+    min/max_spread_pct_by_axis outside SPREAD_AXES -- a misspelled axis is
+    silently ungraded by spread_failures()'s runtime skip -- and (b) a
+    spread-carrying checks entry whose name is absent from the block's
+    `measure` (no axis spread is ever computed for a name nothing
+    measures, so the entry would be silently ungraded). `label` names the
+    manifest path and block so the error is fixable without reading the
+    source. Only spread-carrying entries are in scope: min/max/min_stdev
+    keys and entries without spread blocks pass untouched, and
+    spread_failures() itself is unchanged."""
+    for name, chk in checks.items():
+        for key in ("min_spread_pct_by_axis", "max_spread_pct_by_axis"):
+            for axis in chk.get(key, {}):
+                if axis not in SPREAD_AXES:
+                    raise ValueError(
+                        f"{label}: check '{name}': unknown axis '{axis}' in "
+                        f"'{key}' -- valid axes are {sorted(SPREAD_AXES)}; "
+                        f"the grader would silently skip it"
+                    )
+        if name not in measure and (
+            "min_spread_pct_by_axis" in chk or "max_spread_pct_by_axis" in chk
+        ):
+            raise ValueError(
+                f"{label}: check '{name}' carries a spread floor/ceiling "
+                f"but is absent from this block's 'measure' -- no axis "
+                f"spread is computed for it, so the check would be "
+                f"silently ungraded"
+            )
+
+
 def corner_matrix_summary_line(
     process_corners: list, temps_c: list, supplies_v: list, n_points: int
 ) -> str:
