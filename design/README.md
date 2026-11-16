@@ -259,4 +259,6 @@ matrix), not leakage — the record states this.
   vs. overdrive) — with only Supply/power still DRAFT/OPEN and no
   ratified bound. Records written before DR-002's merge (2026-09-16)
   predate ratification and quote the rows only as design intent; records
-  from DR-002 onward grade against the ratified bounds.
+  from DR-002 onward state the per-row ratified status in their own
+  `Claim` field (and, where a target-spec row is measured directly, a
+  `Ratified bound comparison` section).

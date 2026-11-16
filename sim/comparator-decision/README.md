@@ -187,9 +187,11 @@ The placeholder records and the first schematic-derived campaign
 ratification and quote the rows only as the design intent the sizing pass
 aimed at; it is those schematic-derived records the top-level README cites
 as part of the ratified rows' measured basis. Schematic-derived records
-from DR-002 onward state the per-row ratified status in their own `Claim`
-field (and, where a target-spec row is measured directly, a `Ratified
-bound comparison` section). Either way, the grading in this directory
+from DR-002 onward -- records carrying a `Record ID`, that is; the three
+pilot notes in `records/` carry neither a `Record ID` nor a `Claim` field
+-- state the per-row ratified status in their own `Claim` field (and,
+where a target-spec row is measured directly, a `Ratified bound
+comparison` section). Either way, the grading in this directory
 happens in the drivers' verdict output (`clears` / `DOES NOT clear` from
 `offset`/`noise`/`noise_tran`, `MEETS` / `DOES NOT yet meet` from
 `kickback`) against the ratified bound constants.
@@ -682,11 +684,12 @@ target-spec table.
 At campaign time only Supply/power had no measurement at all, and every
 other row was a single-corner (or five-corner, for `reset`) result against
 a then-DRAFT table. Nothing in this campaign closed the gap issue #3's T1
-item 5 names -- the full PVT corner campaign against the ratified spec has
-since landed (DR-005, all seven graded corners) -- and the kickback figure
-was bound-relevant information, not a design defect to fix in that issue's
-scope: DR-002 ratified the bound unchanged, and compliance came from the
-DR-003/DR-004 design passes rather than from revising the bound.
+item 5 names -- full corner verification vs a ratified spec -- and item 5
+itself is still `unmet` (`manifests/t1-signoff-report.json`): DR-005 has
+since extended the campaign to all seven graded corners for the four
+ratified rows, but Supply/power has no ratified bound to grade and making
+items 5 and 6 gradeable is #188. The kickback figure was bound-relevant
+information, not a design defect to fix in that issue's scope: DR-002
 
 ### DR-004 records (issue #34 -- static preamplifier + StrongARM latch)
 
