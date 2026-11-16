@@ -187,9 +187,9 @@ The placeholder records and the first schematic-derived campaign
 ratification and quote the rows only as the design intent the sizing pass
 aimed at; it is those schematic-derived records the top-level README cites
 as part of the ratified rows' measured basis. Schematic-derived records
-from DR-002 onward -- records carrying a `Record ID`, that is; the three
-pilot notes in `records/` carry neither a `Record ID` nor a `Claim` field
--- state the per-row ratified status in their own `Claim` field (and,
+from DR-002 onward -- the timestamped records, as distinct from the
+`klt-pilot-*` notes in `records/`, which carry no `Claim` field --
+state the per-row ratified status in their own `Claim` field (and,
 where a target-spec row is measured directly, a `Ratified bound
 comparison` section). Either way, the grading in this directory
 happens in the drivers' verdict output (`clears` / `DOES NOT clear` from
@@ -717,6 +717,8 @@ since extended the campaign to all seven graded corners for the four
 ratified rows, but Supply/power has no ratified bound to grade and making
 items 5 and 6 gradeable is #188. The kickback figure was bound-relevant
 information, not a design defect to fix in that issue's scope: DR-002
+ratified the bound unchanged rather than relaxing it to match the
+measurement.
 
 ### DR-004 records (issue #34 -- static preamplifier + StrongARM latch)
 
