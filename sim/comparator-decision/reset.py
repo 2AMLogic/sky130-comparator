@@ -323,8 +323,12 @@ def write_reset_evidence(
         "Decision 3 cites failed at 3 of 9 corners), so the point set "
         "deliberately spans both temperature extremes against both the slow "
         "and the fast process skew, plus the nominal point; it is not the "
-        "full ratified PVT matrix, which stays blocked on target-spec "
-        "ratification)"
+        "full ratified PVT matrix, which remains open work -- open on "
+        "coverage (the target-spec table's Supply/power row is still "
+        "DRAFT/OPEN: no ratified bound and no measurement) and on T1 "
+        "sign-off item 5 (full corner verification vs a ratified spec) "
+        "not being gradeable yet (issue #188), not on ratification: the "
+        "table's other four rows are RATIFIED (DR-002, DR-005))"
     )
     a(
         f"- **Stimulus**: CLK held at 0V for the whole {RESET_WINDOW_NS}ns window "

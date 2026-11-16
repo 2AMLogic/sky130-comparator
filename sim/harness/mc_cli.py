@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import evidence, evidence_store, mc_runner, testbench
+from . import mc_runner, record, testbench
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,13 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     supply_v = args.supply if args.supply is not None else manifest.nominal_supply_v
 
     if args.record:
-        # Fail closed before spending simulation time (issue #198): the raw
-        # outputs go to the artifact store, never to git.
-        try:
-            evidence_store.preflight(evidence.REPO_ROOT)
-        except evidence_store.StoreError as e:
-            print(f"EVIDENCE CANNOT BE STORED -- nothing run, nothing written: {e}", file=sys.stderr)
-            return 10
+        rc = record.record_preflight()
+        if rc:
+            return rc
 
     result = mc_runner.run(
         manifest,
@@ -77,12 +73,12 @@ def main(argv: list[str] | None = None) -> int:
     pos_ok, pos_failures = mc_runner.positive_control_ok(result, names, manifest.checks)
 
     if args.record:
-        try:
-            record_path = mc_runner.write_evidence(result, note=args.note, supersedes=args.supersedes)
-        except evidence_store.StoreError as e:
-            print(f"EVIDENCE NOT STORED -- nothing committed (fail closed): {e}", file=sys.stderr)
-            return 10
-        print(f"wrote {record_path}")
+        stored = record.store_record_fail_closed(
+            lambda: mc_runner.write_evidence(result, note=args.note, supersedes=args.supersedes)
+        )
+        if isinstance(stored, int):
+            return stored
+        print(f"wrote {stored}")
 
     dists = mc_runner.distributions(result.draws, names)
     if not args.quiet:
