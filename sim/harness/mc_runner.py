@@ -35,7 +35,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import corners as corners_mod
-from . import evidence, evidence_store, measure, pdk, testbench, toolchain
+from . import evidence, measure, pdk, record, testbench, toolchain
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 
@@ -257,37 +257,22 @@ def positive_control_ok(
 
 def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Path:
     manifest = result.manifest
-    experiment_dir = manifest.experiment_dir
     names = list(manifest.measure.keys())
 
     # Raw draw logs go to the artifact store (issue #198), not git; only the
     # manifest and the record are committed.
-    repo_root = evidence.REPO_ROOT
-    rid = evidence_store.free_record_id(repo_root, experiment_dir, result.record_id)
-    if rid != result.record_id:
-        print(f"  record id {result.record_id} was taken; using {rid}")
-        result.record_id = rid
+    info, lines = record.begin_record(result, title="Monte Carlo record")
     blobs = {}
     for i, d in enumerate(result.draws):
         blobs[f"mc-draws/{result.record_id}/draw_{i}_seed{d.seed}.log"] = d.log_text
     for i, d in enumerate(result.negative_control_draws):
         blobs[f"mc-draws/{result.record_id}/negctrl_{i}_seed{d.seed}.log"] = d.log_text
-    blobs[f"netlist-snapshots/{result.record_id}.spice"] = manifest.netlist_fragment.read_text()
-    record_path = experiment_dir / "records" / f"{result.record_id}.md"
 
     dists = distributions(result.draws, names)
     ctrl_ok, ctrl_failures = negative_control_ok(result, names)
     pos_ok, pos_failures = positive_control_ok(result, names, manifest.checks)
 
-    info = pdk.resolve()
-
-    lines: list[str] = []
     a = lines.append
-    a(f"# Monte Carlo record {result.record_id}")
-    a("")
-    a(f"- **Record ID**: {result.record_id}")
-    a(f"- **Claim**: {manifest.claim}")
-    a(f"- **Netlist provenance**: schematic (`{manifest.netlist_fragment.relative_to(evidence.REPO_ROOT)}`)")
     a(
         f"- **Statistical convention**: mismatch corner `{result.mismatch_corner}`, "
         f"N={result.n}, seed={result.seed} (draws use seed, seed+1, ..., seed+N-1), "
@@ -326,17 +311,9 @@ def write_evidence(result: McResult, note: str = "", supersedes: str = "") -> Pa
         d = ctrl_dists[name]
         a(f"| `{name}` | {d.n} | {d.mean:.6g} | {d.stdev:.6g} | {d.minimum:.6g} | {d.maximum:.6g} |")
     a("")
-    lines.extend(evidence.environment_block(
-        pdk_line=f"{info.variant} @ {pdk.resolved_commit(info)}",
-        ngspice_line=toolchain._ngspice_version() or "unknown",
-        netlist_sha256=result.netlist_sha256,
+    return record.finalize_record(
+        result, lines, info=info, blobs=blobs,
+        attribution="sim/monte_carlo.py",
         extra={"MC seed": str(result.seed), "MC N": str(result.n)},
-    ))
-    a("")
-    lines.extend(evidence.footer_lines("sim/monte_carlo.py", supersedes))
-
-    evidence_store.store_run(
-        repo_root=repo_root, experiment_dir=experiment_dir,
-        record_id=result.record_id, blobs=blobs, record_text="\n".join(lines),
+        supersedes=supersedes,
     )
-    return record_path
