@@ -5,7 +5,8 @@
 #   sim/selftest.sh                unit tests + a reduced PVT/MC self-test run
 #                                   (the "check:ci" default -- see below for why)
 #   sim/selftest.sh --full         also runs the full corner grid + a larger MC N
-#   sim/selftest.sh --quick        unit tests + environment check only, no ngspice
+#   sim/selftest.sh --quick        unit tests + the pin-freshness gates +
+#                                   environment check only, no ngspice
 #   sim/selftest.sh --require-pdk  fail (instead of skipping) if the PDK is absent
 #
 # Stage 4 is the one that matters most: --sabotage-corners re-runs
@@ -48,6 +49,9 @@
 set -uo pipefail
 
 SIM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The freshness gates run CI's exact command strings, which are relative to
+# the repository root (scripts/..., attest/..., evidence/...).
+REPO_ROOT="$(cd "${SIM_DIR}/.." && pwd)"
 
 FULL=0
 QUICK=0
@@ -70,9 +74,67 @@ run_mc() {
   python3 "${SIM_DIR}/monte_carlo.py" "$@"
 }
 
-echo "== 1/4 harness unit tests (no PDK required) =="
+# Pin-freshness gates (issue #292). CI's t1-signoff.yml re-hashes the
+# characterization envelope and re-checks the item-10 attestation envelope on
+# every run, but until now nothing local did, so `--quick` (the documented
+# gate, package.json's "test" script) stayed green while CI went red on pin
+# drift -- one round trip per failing step, because the CI job runs under -e.
+# These commands are byte-for-byte the steps CI runs (t1-signoff.yml
+# "Characterization-envelope selftest", "Re-hash the characterization report",
+# "Re-check the item-10 attestation envelope"), so local and CI cannot
+# diverge. Hermetic: no ngspice, no PDK; klt is optional (its absence is a
+# loud SKIP, or a failure under --require-pdk). Every gate runs to completion
+# even when an earlier one failed, so drift in both is reported in one run.
+run_freshness_gates() {
+  local failed=0
+
+  echo "-- freshness gate: characterization envelope (selftest + re-hash) --"
+  if ! (cd "${REPO_ROOT}" && python3 scripts/characterization-envelope.py --selftest); then
+    echo "FAIL: characterization-envelope selftest"
+    failed=1
+  fi
+  if ! (cd "${REPO_ROOT}" && python3 scripts/characterization-envelope.py > /dev/null); then
+    echo "FAIL: characterization-envelope re-hash -- a pinned report or cited"
+    echo "      record drifted (see the envelope's stderr above); re-pin with"
+    echo "      scripts/characterization-envelope.py --update only after checking"
+    echo "      the drift is expected."
+    failed=1
+  fi
+
+  echo
+  echo "-- freshness gate: item-10 attestation envelope --"
+  if command -v klt >/dev/null 2>&1; then
+    if ! (cd "${REPO_ROOT}" && klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json); then
+      echo "FAIL: item-10 attestation envelope re-check -- an inventoried file"
+      echo "      or gate moved since evidence/item10.json was minted (the drift"
+      echo "      list above names which)."
+      failed=1
+    fi
+  else
+    if [ "${REQUIRE_PDK}" -eq 1 ]; then
+      echo "FAIL: item-10 attestation envelope re-check needs klt, which is not"
+      echo "      installed (--require-pdk turns the absence into a failure)."
+      failed=1
+    else
+      echo "SKIP: item-10 attestation (klt not installed)"
+      echo "      The other freshness gates ran; install klt to gate this one"
+      echo "      locally too."
+    fi
+  fi
+
+  return "${failed}"
+}
+
+echo "== 1/4 harness unit tests + pin-freshness gates (no PDK required) =="
 if ! python3 -m unittest discover -s "${SIM_DIR}/tests" -t "${SIM_DIR}/tests"; then
   echo "FAIL: harness unit tests"
+  exit 1
+fi
+
+echo
+if ! run_freshness_gates; then
+  echo
+  echo "FAIL: pin-freshness gate(s) -- see above for which envelope drifted."
   exit 1
 fi
 
@@ -109,9 +171,12 @@ esac
 
 if [ "${QUICK}" -eq 1 ]; then
   echo
-  echo "SKIP: stages 3-4 (--quick: unit tests + environment check only)."
+  echo "SKIP: stages 3-4 (--quick: unit tests + freshness gates + environment"
+  echo "      check only)."
   echo
-  echo "PASS (quick): harness plumbing is present; PVT/MC switching NOT verified."
+  echo "PASS (quick): harness plumbing is present; the pin-freshness gates ran"
+  echo "      (characterization-envelope selftest + re-hash, item-10 attestation"
+  echo "      re-check); PVT/MC switching NOT verified."
   exit 0
 fi
 
