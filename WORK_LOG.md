@@ -6,6 +6,42 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-16
+
+- **PR #287**: fix(sim): restate the PVT campaign open-work reason without the retired ratification claim
+- **PR #277**: fix: dispatch noise_tran's parallel MC batch through the _shared._run seam
+- **PR #256**: Drop untested verify twin of klt artifact verify from check-artifact-manifests
+- **PR #255**: refactor(sim): extract shared record head/tail + fail-closed gates from the harness runners and CLIs
+- **Issue #284** (closed): sim/comparator-decision: offset.py / regen.py / reset.py still write 'blocked on target-spec ratification' into every record preamble
+- **Issue #269** (closed): Fix NameError in noise_tran._run_many_ts_retry parallel path (bare _run left over from the run.py split)
+- **Issue #243** (closed): Drop check-artifact-manifests.py's 'verify' subcommand: an untested, never-run stdlib twin of the pinned klt 0.8.0's 'klt artifact verify'
+- **Issue #240** (closed): sim/harness: write_evidence boilerplate is copied in runner.py and mc_runner.py, and the fail-closed preflight in both CLIs
+
+### 2026-11-15
+
+- **PR #272**: docs(layout): repoint three dead README citation pointers to real headings
+- **PR #267**: docs(manifests): state the honest-null convention by reference, dropping the stale null-field enumeration
+- **PR #265**: fix: drop two klt-pilot dry-run artifacts with wrong netlist provenance
+- **PR #264**: refactor: share the deck preamble, stimulus, seam and record-header templates
+- **PR #263**: pilot(sim): input-referred noise (.noise) as a klt sim request on the batch fleet
+- **PR #258**: docs(sim): retire the stale 'target-spec DRAFT' status claims from five live modules
+- **PR #257**: docs(layout): drop retired klt-0.6.0 LVS rationale its own probe refutes
+- **PR #254**: refactor: single-source the axis-spread grading metric in harness/corners.py
+- **PR #252**: Single-source the klt/klayout toolchain pin in gen_comparator.py
+- **PR #250**: docs(manifests): align README per-item prose with the graded T1 report
+- **PR #247**: docs: rescope selftest.sh header to stages 3-4, dropping the stale 'no comparator schematic yet' claim
+- **Issue #281** (closed): main is red: T1 item-9 attestation envelope stale after harness/corners/runner edits (t1-signoff failing on main)
+- **Issue #260** (closed): Two gen_comparator.py README pointers name headings layout/README.md does not have (:181 "LVS signoff", :234 "still not claimed")
+- **Issue #249** (closed): manifests/README.md calls integrator-view's GDS and area 'not yet produced'; both now carry real values
+- **Issue #246** (closed): Retire the stale 'target-spec table is DRAFT' claim from five live modules — four rows are ratified and the same files grade against them
+- **Issue #245** (closed): Consolidate the klt/klayout toolchain pin: one fact, five Python constants and four CI copies
+- **Issue #242** (closed): Retire sim/selftest.sh's stale 'no comparator schematic yet' header: the sim/README.md section it cites already refutes it
+- **Issue #237** (closed): Collapse the duplicated deck preambles and record headers in sim/comparator-decision/
+- **Issue #236** (closed): Delete gen_comparator.py's retired length_param/width_param LVS rationale — the repo's own negative control refutes it
+- **Issue #235** (closed): Consolidate the duplicated axis-spread metric: ladder.py's copy already ignores max_spread_pct_by_axis and hardcodes the baseline
+- **Issue #222** (closed): manifests/README.md contradicts the graded report: items 1 and 9 are met, and the item-7 gap is closed upstream
+- **Issue #221** (closed): Pilot: input-referred noise (.noise analysis) as a klt sim request
+
 ### 2026-11-14
 
 - **PR #238**: refactor(sim): split the comparator-decision driver into sibling experiment modules

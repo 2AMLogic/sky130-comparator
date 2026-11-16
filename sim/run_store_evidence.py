@@ -95,7 +95,7 @@ def main(argv=None) -> int:
     print(f"  manifest: {manifest.relative_to(REPO_ROOT)}")
     print(f"  summary:  {summary_path.relative_to(REPO_ROOT)}")
     print("commit both; the staged directory can be deleted once "
-          f"`python3 scripts/check-artifact-manifests.py verify {manifest.relative_to(REPO_ROOT)}` "
+          f"`klt artifact verify {manifest.relative_to(REPO_ROOT)}` "
           "passes")
     return 0
 
