@@ -290,9 +290,8 @@ stays where it is, and the append-only rule above is unchanged.
   nothing written under `manifests/` or `sim/<bench>/`. There is no fallback
   that commits the bytes. Staged bytes stay in `sim/.work/` so the run is not
   lost.
-- **Verify.** `klt artifact verify <manifest>` (or `python3
-  scripts/check-artifact-manifests.py verify <manifest>`) fetches every object
-  through the broker and re-hashes it. Needs `$KLT_ARTIFACT_BROKER`.
+- **Verify.** `klt artifact verify <manifest>` fetches every object through
+  the broker and re-hashes it. Needs `$KLT_ARTIFACT_BROKER`.
 - **CI.** `python3 scripts/check-artifact-manifests.py check --tree <sha>`
   (schema, `artifact:` uris only, fails if a stored object's bytes are also
   tracked; `selftest` carries the negative controls). CI cannot reach the

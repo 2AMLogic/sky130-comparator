@@ -76,7 +76,7 @@ jobs:
       # plus a Markdown record. `check` validates the schema (artifact: uris
       # only) and fails if a stored object's bytes are also committed. CI
       # cannot reach the broker, so the bytes are NOT hash-verified here;
-      # `verify` / `klt artifact verify` is the out-of-band step (sim/README.md,
+      # `klt artifact verify` is the out-of-band step (sim/README.md,
       # "Stored evidence"). Stdlib-only; reads the tree via git.
       - name: Stored-evidence manifest gate selftest (hermetic)
         run: python3 scripts/check-artifact-manifests.py selftest
