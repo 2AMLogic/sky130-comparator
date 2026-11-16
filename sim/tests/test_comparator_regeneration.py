@@ -4,11 +4,14 @@ grader. No ngspice; the live sims are recorded evidence (records/)."""
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location(
@@ -163,6 +166,83 @@ class GraderControls(unittest.TestCase):
         m = json.loads(json.dumps(self.m))
         m["checks"]["td_od50_ns"]["min_spread_pct_by_axis"]["tepmreature"] = 5.0
         self.assertEqual(ladder.grade(_response(), m), [])
+
+
+class TestManifestLoadValidation(unittest.TestCase):
+    """ladder.load_manifest() validates both manifest blocks at load
+    (issue #274): a typo'd spread axis, or a spread-carrying check absent
+    from its block's `measure`, fails the load loudly instead of being
+    silently ungraded at grading time. grade()'s runtime skip semantics
+    are untouched (pinned unchanged by
+    test_grade_with_typo_axis_name_skips_instead_of_crashing above), and
+    grade_reverse() grades per-point min/max only -- deliberately no test
+    pushes a spread typo through it, since it grades no spreads."""
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _patched_manifest(mutate):
+        """A copy of the committed ladder.json with `mutate` applied, and
+        ladder.MANIFEST patched to point at it for one load."""
+        m = json.loads(ladder.MANIFEST.read_text())
+        mutate(m)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ladder_mutated.json"
+            path.write_text(json.dumps(m))
+            with mock.patch.object(ladder, "MANIFEST", path):
+                yield
+
+    def test_load_manifest_passes_validation(self):
+        # Issue #274 AC: the committed manifest still loads unchanged,
+        # through both validator call sites (top-level + reverse_ladder).
+        m = ladder.load_manifest()
+        self.assertIn("checks", m)
+        self.assertIn("reverse_ladder", m)
+        self.assertTrue(m["checks"])
+        self.assertTrue(m["reverse_ladder"]["checks"])
+
+    def test_load_manifest_rejects_typo_axis_top_level(self):
+        def typo(m):
+            floors = m["checks"]["td_od50_ns"]["min_spread_pct_by_axis"]
+            floors["tepmreature"] = floors.pop("temperature")
+
+        with self._patched_manifest(typo):
+            with self.assertRaises(ValueError) as ctx:
+                ladder.load_manifest()
+        msg = str(ctx.exception)
+        self.assertIn("tepmreature", msg)
+        self.assertIn("'td_od50_ns'", msg)
+        self.assertIn("[checks]", msg)
+        self.assertIn("['process', 'supply', 'temperature']", msg)
+
+    def test_load_manifest_rejects_typo_axis_in_reverse_ladder(self):
+        def typo(m):
+            m["reverse_ladder"]["checks"]["td_od50_rev_ns"][
+                "min_spread_pct_by_axis"] = {"tepmreature": 5.0}
+
+        with self._patched_manifest(typo):
+            with self.assertRaises(ValueError) as ctx:
+                ladder.load_manifest()
+        msg = str(ctx.exception)
+        self.assertIn("tepmreature", msg)
+        self.assertIn("'td_od50_rev_ns'", msg)
+        self.assertIn("[reverse_ladder.checks]", msg)
+
+    def test_load_manifest_rejects_spread_check_absent_from_measure(self):
+        def ghost(m):
+            m["checks"]["ghost"] = {"min_spread_pct_by_axis": {"process": 1.0}}
+
+        with self._patched_manifest(ghost):
+            with self.assertRaises(ValueError) as ctx:
+                ladder.load_manifest()
+        self.assertIn("'ghost'", str(ctx.exception))
+
+    def test_load_manifest_accepts_manifest_without_reverse_ladder(self):
+        def strip(m):
+            del m["reverse_ladder"]
+
+        with self._patched_manifest(strip):
+            m = ladder.load_manifest()
+        self.assertNotIn("reverse_ladder", m)
 
 
 class ReverseLadder(unittest.TestCase):

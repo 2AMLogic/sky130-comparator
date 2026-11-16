@@ -1,0 +1,11 @@
+{
+  "completed_at": "2026-11-15T16:21:01.269664+00:00",
+  "job_id": "klt-sim-918a01ac5de7",
+  "jobs_prefix": "jobs",
+  "launched_at": "2026-11-15T16:20:29.322838+00:00",
+  "profile": "batch-runner-submit",
+  "region": "us-east-1",
+  "request_sha256": "2ea1e67717a986b875cb5f95cedc8712d188c7eed50af07e71df9af6e7bb206e",
+  "state": "done",
+  "unit_count": 1
+}

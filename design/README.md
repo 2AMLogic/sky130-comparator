@@ -149,8 +149,9 @@ The full derivation is in `comparator.sch`'s own sizing-rationale text block
   spike {EM} trades roughly 1:1 into regeneration time however it is
   slowed, so `τ ≈ 250 ps` is picked where the kickback halves-plus
   (144.60 → 85.71 mV post-mitigation record at `tt`/27 °C) while decision
-  time at 50 mV overdrive stays under the DRAFT row's 1.5 ns target at
-  every probed corner (1.10 ns `tt`, 1.09–1.19 ns `ss`/`ff`). Slower `τ`
+  time at 50 mV overdrive stays under the Decision-time row's ratified
+  1.5 ns target (DR-005) at every probed corner (1.10 ns `tt`,
+  1.09–1.19 ns `ss`/`ff`). Slower `τ`
   pairs buy more kickback reduction at that ~1:1 rate; DR-003 records the
   measured ladder and stops there deliberately.
 
@@ -252,8 +253,12 @@ matrix), not leakage — the record states this.
   `spec/dr-004-support/evaluate_idd_probe.spice`) — ~95 µW static at
   1.8 V against the DRAFT row's 50 µW figure. DR-004 deliberately changes
   no bound; the re-anchoring is an open ratification decision.
-- **No ratified spec beyond DR-002's three rows.** The top-level
-  `README.md`'s Decision-time and Supply/power rows are DRAFT, so those
-  records substantiate no spec row; they are quoted against the DRAFT rows
-  only as design intent. DR-004, like DR-001 and DR-003 before it, is
-  *proposed* pending PR merge.
+- **No fully-ratified table yet: four of five rows are ratified.** The
+  target-spec table (top-level `README.md`) is ratified per-row — DR-002
+  (Offset sigma, Input-referred noise, Kickback) and DR-005 (Decision time
+  vs. overdrive) — with only Supply/power still DRAFT/OPEN and no
+  ratified bound. Records written before DR-002's merge (2026-09-16)
+  predate ratification and quote the rows only as design intent; records
+  from DR-002 onward state the per-row ratified status in their own
+  `Claim` field (and, where a target-spec row is measured directly, a
+  `Ratified bound comparison` section).
