@@ -81,7 +81,7 @@ jobs:
       # plus a Markdown record. `check` validates the schema (artifact: uris
       # only) and fails if a stored object's bytes are also committed. CI
       # cannot reach the broker, so the bytes are NOT hash-verified here;
-      # `verify` / `klt artifact verify` is the out-of-band step (sim/README.md,
+      # `klt artifact verify` is the out-of-band step (sim/README.md,
       # "Stored evidence"). Stdlib-only; reads the tree via git.
       - name: Stored-evidence manifest gate selftest (hermetic)
         run: python3 scripts/check-artifact-manifests.py selftest
@@ -177,13 +177,27 @@ jobs:
       # result to the committed envelope: exit non-zero when an inventoried
       # file (README, LICENSE, spec/README.md, this workflow) or a gate's
       # behavior moved since evidence/item10.json was produced. Items 1 and 9
-      # are attested too (evidence/item1.json, evidence/item9.json) but their
-      # inventories run xschem 3.4.7 / ngspice 46 + the pinned PDK, which this
-      # PDK-free job does not install: item 9 is re-checked in the
-      # harness-selftest job below; item 1 (design/netlist.sh --check needs
-      # xschem) has no CI step yet, see the PR for issue #189.
+      # are attested too (evidence/item1.json, evidence/item9.json). Item 9's
+      # envelope is re-checked here as well, below: its content-hash half is
+      # PDK-free, and running it here is what catches inventory drift at PR
+      # time (issue #270) instead of only after merge in the push-only
+      # harness-selftest job -- which is kept, because only its PDK-equipped
+      # copy can fail on toolchain-pin drift. Item 1 (design/netlist.sh
+      # --check needs xschem) has no CI step yet, see the PR for issue #189.
       - name: Re-check the item-10 attestation envelope
         run: klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json
+
+      # T1 item 9's attestation envelope (issue #189), re-checked PDK-free
+      # (issue #270). `--check`'s content-hash half needs no ngspice, xschem
+      # or PDK (measured 1.65 s), and this job has no `if:`, so a PR that
+      # edits one of the 29 inventoried sim/** paths without re-minting
+      # evidence/item9.json fails HERE, at PR time, instead of turning main
+      # red after merge. On this PDK-free runner the cold_start command and
+      # pin checks pass via the missing-tools path -- they cannot detect
+      # toolchain-pin drift here -- which is why the harness-selftest job's
+      # PDK-equipped re-check below is kept rather than moved.
+      - name: Re-check the item-9 attestation envelope (hash currency; PDK-free)
+        run: klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json
 
       # Rule-9 integrator view (issue #36): stdlib-only, no klt needed.
       - name: Integrator-view selftest (hermetic)

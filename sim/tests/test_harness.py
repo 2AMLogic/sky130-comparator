@@ -24,12 +24,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 SIM_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SIM_DIR))
 
-from harness import corners, evidence, measure, runner  # noqa: E402
+from harness import corners, evidence, measure, record, runner  # noqa: E402
 from harness import evidence_store, mc_runner, pdk, testbench, toolchain  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_evidence_store import _fake_put  # noqa: E402
@@ -290,6 +291,238 @@ class TestReservation(unittest.TestCase):
             [f"sim/{self.exp.name}/corners/{res.record_id}/tt_27_1p80.log",
              f"sim/{self.exp.name}/netlist-snapshots/{res.record_id}.spice"])
         self.assertIn("## Stored evidence", text)
+
+
+class TestRecordByteIdentity(unittest.TestCase):
+    """record.begin_record()/finalize_record() -- extracted (issue #240)
+    from the two byte-identical heads/tails of runner.write_evidence() and
+    mc_runner.write_evidence(). sim/ records are append-only evidence, so
+    the extraction's acceptance bar is that the emitted record text is
+    byte-identical to the pre-extraction code's: the goldens below were
+    captured from the pre-extraction write_evidence() bodies over these
+    exact fixtures and patches (pdk/ngspice/git identity mocked, the real
+    environment_block + footer_lines + corner_matrix_summary_line left
+    running), and each test asserts equality with the record_text handed
+    to the (mocked) evidence_store.store_run()."""
+
+    _PDK = SimpleNamespace(found=True, variant="sky130A")
+
+    @staticmethod
+    def _fake_store_run(captured: dict) -> callable:
+        def fake(**kw):
+            captured["text"] = kw["record_text"]
+            return kw["experiment_dir"] / "manifests" / "x.json"
+        return fake
+
+    def _patches(self, root: Path, captured: dict, ngspice_version: str = "ngspice-44"):
+        return [
+            mock.patch.object(pdk, "resolve", return_value=self._PDK),
+            mock.patch.object(pdk, "resolved_commit", return_value="0123456789abcdef"),
+            mock.patch.object(toolchain, "_ngspice_version", return_value=ngspice_version),
+            mock.patch.object(evidence, "git_info", return_value=evidence.GitInfo(
+                commit="c0ffee0", branch="main", dirty=False)),
+            mock.patch.object(evidence, "REPO_ROOT", root),
+            mock.patch.object(evidence_store, "store_run", self._fake_store_run(captured)),
+        ]
+
+    RUNNER_GOLDEN = """# Record 20260101-000000-abc1234
+
+- **Record ID**: 20260101-000000-abc1234
+- **Claim**: harness corner smoke passes its own checks
+- **Netlist provenance**: schematic (`sim/harness-corner-smoke/testbench.spice`)
+- **Corner matrix run**: process=['ss', 'tt'], temperature_c=[-40, 27], supply_v=[1.7, 1.8] (2 points, one-at-a-time per sim/README.md)
+- **Note**: golden note
+- **Overall**: FAIL
+
+## Per-corner results
+
+| corner-id | vgs_nfet | vdiv_ratio | pass/fail |
+|---|---|---|---|
+| `tt_27_1p80` | 0.7 | 0.5 | PASS |
+| `ss_m40_1p70` | 0.65 | 0.48 | FAIL: vdiv_ratio=0.48 < min 0.49 |
+
+## Per-axis sensitivity (spread %, other axes held at baseline)
+
+| measurement | process | temperature | supply |
+|---|---|---|---|
+| `vgs_nfet` | 7.1 | 1.2 | 0.3 |
+| `vdiv_ratio` | 4.2 | 0.8 | 0.1 |
+
+## Environment
+
+- PDK: sky130A @ 0123456789abcdef
+- ngspice: ngspice-44
+- Harness: sim/harness 0.1.0
+- git: `c0ffee0` on `main` (clean)
+- DUT netlist sha256: `0000000000000000000000000000000000000000000000000000000000000000`
+
+- **Supersedes**: prev-id
+
+Written by `sim/run_corners.py`. Append-only: never edit or delete this file -- a re-run or correction mints a new record-id and points back here via **Supersedes** (see `sim/README.md`).
+"""
+
+    def test_runner_record_text_is_byte_identical_to_pre_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exp = root / "sim" / "harness-corner-smoke"
+            exp.mkdir(parents=True)
+            frag = exp / "testbench.spice"
+            frag.write_text("* dut netlist\n.include sky130.lib.spice\n.end\n")
+            manifest = mock.MagicMock()
+            manifest.experiment_dir = exp
+            manifest.netlist_fragment = frag
+            manifest.claim = "harness corner smoke passes its own checks"
+            manifest.measure = {"vgs_nfet": {}, "vdiv_ratio": {}}
+            manifest.checks = {}
+            pts = [
+                runner.CornerPointResult(
+                    process_corner="tt", temp_c=27, supply_v=1.8, corner_id="tt_27_1p80",
+                    measures={"vgs_nfet": 0.7, "vdiv_ratio": 0.5},
+                    log_path=exp / "corners" / "20260101-000000-abc1234" / "tt_27_1p80.log",
+                    log_text="LOG-TT\n", ok=True,
+                ),
+                runner.CornerPointResult(
+                    process_corner="ss", temp_c=-40, supply_v=1.7, corner_id="ss_m40_1p70",
+                    measures={"vgs_nfet": 0.65, "vdiv_ratio": 0.48},
+                    log_path=exp / "corners" / "20260101-000000-abc1234" / "ss_m40_1p70.log",
+                    log_text="LOG-SS\n", ok=False,
+                    check_failures=["vdiv_ratio=0.48 < min 0.49"],
+                ),
+            ]
+            spreads = {
+                "vgs_nfet": {"process": 7.1, "temperature": 1.2, "supply": 0.3},
+                "vdiv_ratio": {"process": 4.2, "temperature": 0.8, "supply": 0.1},
+            }
+            res = runner.RunResult(
+                manifest=manifest, points=pts, record_id="20260101-000000-abc1234",
+                netlist_sha256="0" * 64, overall_ok=False,
+            )
+            captured: dict = {}
+            with contextlib.ExitStack() as stack:
+                for p in self._patches(root, captured):
+                    stack.enter_context(p)
+                stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+                out = runner.write_evidence(res, spreads, note="golden note",
+                                            supersedes="prev-id")
+        self.assertEqual(captured["text"], self.RUNNER_GOLDEN)
+        self.assertEqual(
+            out, exp / "records" / "20260101-000000-abc1234.md")
+
+    MC_GOLDEN = """# Monte Carlo record 20260202-000000-def5678
+
+- **Record ID**: 20260202-000000-def5678
+- **Claim**: mc smoke separates mismatch from the negative control
+- **Netlist provenance**: schematic (`sim/mc-smoke/testbench.spice`)
+- **Statistical convention**: mismatch corner `tt_mm`, N=2, seed=7 (draws use seed, seed+1, ..., seed+N-1), PVT point process=tt temp=27C supply=1.8V
+- **Negative control**: N=2 draws at the plain `tt` corner (mismatch DISABLED), same seed sequence -- PASS (stdev == 0 on every measurement)
+- **Positive control**: N=2 draws at the `tt_mm` corner (mismatch ENABLED) must show stdev strictly greater than each measurement's `min_stdev` floor (default 0.0) -- PASS
+- **Note**: golden mc note
+- **Overall**: PASS
+
+## Distributions (mismatch-enabled draws)
+
+| measurement | N | mean | stdev | min | max |
+|---|---|---|---|---|---|
+| `vgs_nfet` | 2 | 0.702 | 0.002 | 0.7 | 0.704 |
+| `vdiv_ratio` | 2 | 0.501 | 0.001 | 0.5 | 0.502 |
+
+## Negative control (mismatch-disabled draws)
+
+| measurement | N | mean | stdev (must be 0) | min | max |
+|---|---|---|---|---|---|
+| `vgs_nfet` | 2 | 0.7 | 0 | 0.7 | 0.7 |
+| `vdiv_ratio` | 2 | 0.5 | 0 | 0.5 | 0.5 |
+
+## Environment
+
+- PDK: sky130A @ 0123456789abcdef
+- ngspice: ngspice-44
+- Harness: sim/harness 0.1.0
+- git: `c0ffee0` on `main` (clean)
+- DUT netlist sha256: `1111111111111111111111111111111111111111111111111111111111111111`
+- MC seed: 7
+- MC N: 2
+
+- **Supersedes**: (none)
+
+Written by `sim/monte_carlo.py`. Append-only: never edit or delete this file -- a re-run or correction mints a new record-id and points back here via **Supersedes** (see `sim/README.md`).
+"""
+
+    def test_mc_record_text_is_byte_identical_to_pre_extraction(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exp = root / "sim" / "mc-smoke"
+            exp.mkdir(parents=True)
+            frag = exp / "testbench.spice"
+            frag.write_text("* mc dut netlist\n.include sky130.lib.spice\n.end\n")
+            manifest = mock.MagicMock()
+            manifest.experiment_dir = exp
+            manifest.netlist_fragment = frag
+            manifest.claim = "mc smoke separates mismatch from the negative control"
+            manifest.measure = {"vgs_nfet": {}, "vdiv_ratio": {}}
+            manifest.checks = {"vgs_nfet": {"min_stdev": 1e-3}}
+
+            def draw(seed, vgs, vdiv):
+                return mc_runner.Draw(
+                    seed=seed, measures={"vgs_nfet": vgs, "vdiv_ratio": vdiv},
+                    log_text=f"LOG-seed{seed}\n")
+
+            res = mc_runner.McResult(
+                manifest=manifest, process_corner="tt", mismatch_corner="tt_mm",
+                temp_c=27, supply_v=1.8, seed=7, n=2,
+                draws=[draw(7, 0.700, 0.500), draw(8, 0.704, 0.502)],
+                negative_control_draws=[draw(7, 0.700, 0.500), draw(8, 0.700, 0.500)],
+                record_id="20260202-000000-def5678", netlist_sha256="1" * 64,
+            )
+            captured: dict = {}
+            with contextlib.ExitStack() as stack:
+                for p in self._patches(root, captured):
+                    stack.enter_context(p)
+                stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+                out = mc_runner.write_evidence(res, note="golden mc note", supersedes="")
+        self.assertEqual(captured["text"], self.MC_GOLDEN)
+        self.assertEqual(out, exp / "records" / "20260202-000000-def5678.md")
+
+
+class TestRecordFailClosedGates(unittest.TestCase):
+    """record.record_preflight() / record.store_record_fail_closed() --
+    the fail-closed artifact-store gates (issue #198) the two harness CLIs
+    install, extracted (issue #240) from their byte-for-byte identical
+    copies so the user-facing refusal wording lives in one place. Exit
+    code 10 and both messages are pinned here because
+    test_evidence_store.py's TestCliFailsClosed asserts the observable
+    CLI behavior end-to-end."""
+
+    def test_preflight_ok_returns_zero(self):
+        with mock.patch.object(evidence_store, "preflight"):
+            self.assertEqual(record.record_preflight(), 0)
+
+    def test_preflight_refusal_prints_and_returns_ten(self):
+        err = io.StringIO()
+        with mock.patch.object(evidence_store, "preflight",
+                               side_effect=evidence_store.StoreError("no broker")), \
+                contextlib.redirect_stderr(err):
+            rc = record.record_preflight()
+        self.assertEqual(rc, 10)
+        self.assertEqual(
+            err.getvalue(),
+            "EVIDENCE CANNOT BE STORED -- nothing run, nothing written: no broker\n")
+
+    def test_store_gate_returns_the_record_path(self):
+        path = Path("/tmp/records/x.md")
+        self.assertIs(record.store_record_fail_closed(lambda: path), path)
+
+    def test_store_gate_prints_and_returns_ten_on_store_error(self):
+        err = io.StringIO()
+
+        def boom():
+            raise evidence_store.StoreError("broker refused")
+        with contextlib.redirect_stderr(err):
+            rc = record.store_record_fail_closed(boom)
+        self.assertEqual(rc, 10)
+        self.assertEqual(
+            err.getvalue(),
+            "EVIDENCE NOT STORED -- nothing committed (fail closed): broker refused\n")
 
 
 class TestRunKltYield(unittest.TestCase):

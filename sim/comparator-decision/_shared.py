@@ -684,6 +684,40 @@ def kickback_subset_justification(corner: str, temp_c: float) -> str:
     )
 
 
+def subset_corner_campaign_reason() -> str:
+    """Why an `offset`/`regen` record may run one PVT point, and why the
+    full ratified PVT corner sweep and Monte Carlo campaign remain open
+    work.
+
+    offset.py and regen.py used to carry byte-identical copies of this
+    justification, and both asserted the campaign was waiting on the
+    target-spec table's ratification -- a clause the table's own state
+    refuted: four of its five rows are RATIFIED (DR-002, DR-005) and these
+    drivers grade against the ratified constants. The clause was written
+    into the `Corner matrix run` field of every record emitted, so each
+    new record re-published the claim #246 / PR #258 retired (issue #284;
+    that pass swept the string "target-spec table is DRAFT", which shares
+    no substring with this wording, which is how both copies survived it).
+    The real open reasons are coverage and gradeability. One helper
+    instead of two copies, so the next wording change cannot leave a
+    straggler behind.
+    """
+    return (
+        "**subset-corner justification**: single-point characterization of "
+        "this repo's own design at the stated corner, per issue #24's "
+        "acceptance criteria; a full ratified PVT corner sweep and Monte "
+        "Carlo campaign remain open work -- open on coverage and on "
+        "gradeability, not on ratification: four of the target-spec table's "
+        "five rows are RATIFIED (DR-002: Offset sigma, Input-referred "
+        "noise, Kickback; DR-005: Decision time vs. overdrive) and these "
+        "drivers already grade against those ratified constants, so what "
+        "remains open is Supply/power coverage (the one DRAFT/OPEN row -- "
+        "no ratified bound and no measurement yet) and T1 sign-off item 5 "
+        "(full corner verification vs a ratified spec) not being gradeable "
+        "yet (issue #188; see issue #3 item 5)"
+    )
+
+
 def post_layout_delta_lines(
     mode: str, corner: str, temp_c: float, measured: float, unit_scale: float = 1.0,
 ) -> list[str]:

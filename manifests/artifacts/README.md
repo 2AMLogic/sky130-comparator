@@ -13,6 +13,5 @@ Evidence bytes are private; these manifests are public (operator decision
 Manifests are append-only evidence: never edit or delete one. CI runs
 `python3 scripts/check-artifact-manifests.py check --tree <sha>`, which checks
 the schema and that no stored object's bytes are also committed. To check the
-bytes, run `python3 scripts/check-artifact-manifests.py verify <manifest>` or
-`klt artifact verify <manifest>` with `KLT_ARTIFACT_BROKER` set. See
+bytes, run `klt artifact verify <manifest>` with `KLT_ARTIFACT_BROKER` set. See
 `sim/README.md`, "Stored evidence".

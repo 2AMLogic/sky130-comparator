@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import evidence, evidence_store, pdk, runner, testbench, toolchain
+from . import pdk, record, runner, testbench, toolchain
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -65,13 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     temperatures_c = [float(t) for t in args.temps.split(",")] if args.temps else None
 
     if args.record:
-        # Fail closed before spending simulation time (issue #198): the raw
-        # outputs go to the artifact store, never to git.
-        try:
-            evidence_store.preflight(evidence.REPO_ROOT)
-        except evidence_store.StoreError as e:
-            print(f"EVIDENCE CANNOT BE STORED -- nothing run, nothing written: {e}", file=sys.stderr)
-            return 10
+        rc = record.record_preflight()
+        if rc:
+            return rc
 
     result, axis_spreads = runner.run(
         manifest,
@@ -83,14 +79,14 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.record:
-        try:
-            record_path = runner.write_evidence(
+        stored = record.store_record_fail_closed(
+            lambda: runner.write_evidence(
                 result, axis_spreads, note=args.note, supersedes=args.supersedes
             )
-        except evidence_store.StoreError as e:
-            print(f"EVIDENCE NOT STORED -- nothing committed (fail closed): {e}", file=sys.stderr)
-            return 10
-        print(f"wrote {record_path}")
+        )
+        if isinstance(stored, int):
+            return stored
+        print(f"wrote {stored}")
 
     if not args.quiet:
         print(f"{'PASS' if result.overall_ok else 'FAIL'}: {args.experiment} ({result.record_id})")

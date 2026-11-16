@@ -31,6 +31,7 @@ real call site untouched.
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import dataclasses
 import hashlib
@@ -38,6 +39,7 @@ import importlib.util
 import io
 import json
 import math
+import re
 import sys
 import tempfile
 import unittest
@@ -406,6 +408,66 @@ class TestJobsPlumbing(unittest.TestCase):
         self.assertEqual(cm.exception.code, 0)
         self.assertIn("noise-tran", buf.getvalue())
         self.assertIn("--jobs", buf.getvalue())
+
+
+class TestRunManyTsRetryParallelSeam(unittest.TestCase):
+    """Issue #269: `_run_many_ts_retry`'s `workers > 1` branch submitted a
+    bare `_run` -- undefined in `noise_tran.py` ever since the #224 split --
+    so any `--jobs N>1` noise-tran campaign died with a NameError on its
+    first batch; and had it resolved to something, it would have bypassed
+    the `_shared._run` patch seam the module's import comment documents.
+    Both the parallel first pass and the sequential retry loop must
+    dispatch through the seam, like the `workers <= 1` branch already does.
+    """
+
+    @staticmethod
+    def _builds(names):
+        built_ts: dict[str, float] = {}
+
+        def make(name):
+            def build(ts):
+                built_ts[name] = ts
+                return f"deck {name} ts={ts}"
+            return build
+
+        return [(name, make(name)) for name in names], built_ts
+
+    def test_parallel_path_dispatches_through_the_patched_seam(self):
+        builds, built_ts = self._builds([f"po_{i}" for i in range(4)])
+        calls: list[str] = []
+
+        def fake_run(deck_text, scratch_dir, log_name):
+            calls.append(log_name)
+            return f"log {log_name}"
+
+        with unittest.mock.patch.object(cd_run._shared, "_run", fake_run):
+            results = cd_run.noise_tran._run_many_ts_retry(
+                builds, Path("scratch"), workers=2)
+
+        # The patched seam is what ran: every deck went through `fake_run`
+        # (a bare `_run` would raise NameError before any of this) and the
+        # returned logs are the seam's return values.
+        self.assertEqual(sorted(calls), [f"po_{i}" for i in range(4)])
+        self.assertEqual(results, {f"po_{i}": f"log po_{i}" for i in range(4)})
+        # First pass only: every build happened at the default ts.
+        self.assertEqual(set(built_ts.values()), {cd_run.noise_tran.NOISE_TRAN_TS})
+
+    def test_failed_deck_retries_at_the_perturbed_ts_through_the_same_seam(self):
+        builds, built_ts = self._builds(["po_ok", "po_bad"])
+
+        def fake_run(deck_text, scratch_dir, log_name):
+            if log_name == "po_bad" and built_ts["po_bad"] == cd_run.noise_tran.NOISE_TRAN_TS:
+                raise RuntimeError("ngspice timed out")
+            return f"log {log_name}"
+
+        with unittest.mock.patch.object(cd_run._shared, "_run", fake_run):
+            results = cd_run.noise_tran._run_many_ts_retry(
+                builds, Path("scratch"), workers=2)
+
+        self.assertEqual(
+            built_ts["po_bad"], cd_run.noise_tran.NOISE_TRAN_RETRY_TS,
+            "the failed deck was not retried at the perturbed ts")
+        self.assertEqual(results, {"po_ok": "log po_ok", "po_bad": "log po_bad"})
 
 
 class TestDutProvenance(unittest.TestCase):
@@ -861,6 +923,90 @@ class TestKickbackSubsetJustification(unittest.TestCase):
                 self.assertIn(f"{corner}/{temp_c:g}C", text)
 
 
+class TestSubsetCornerCampaignReason(unittest.TestCase):
+    """Issue #284: `offset.py` and `regen.py` printed -- into the
+    `Corner matrix run` field of every record they emit -- a clause saying
+    the full ratified PVT campaign was "blocked on the top-level README
+    target-spec table's ratification", and `reset.py` said the matrix
+    "stays blocked on target-spec ratification". Four of the table's five
+    rows are RATIFIED (DR-002 / DR-005), so all three clauses were false,
+    and `sim/` records are append-only evidence: every new record
+    re-published the claim #246 / PR #258 retired (that pass swept the
+    string "target-spec table is DRAFT", which shares no substring with
+    these wordings, so all three sites survived it). The restatement keeps
+    "remains open work" -- T1 item 5 is `unmet`/`no_evidence` -- and re-cuts
+    only the reason: coverage and gradeability, not ratification."""
+
+    RETIRED_CLAIM_RE = re.compile(
+        r"blocked on (the top-level README )?target-spec"
+        r"|stays blocked on target-spec"
+        r"|blocked\s+on.{0,120}?ratification"
+    )
+
+    @staticmethod
+    def _string_constants(path):
+        """Every string literal in one module, with adjacent implicit
+        concatenations joined (an f-string run arrives as one `JoinedStr`
+        whose `Constant` parts concatenate in order), whitespace collapsed.
+
+        The join is the point: offset.py and regen.py split the retired
+        clause across source lines ("... blocked on the top-level README "
+        "target-spec table's ratification ..."), so a per-literal match
+        would inherit exactly the blind spot that let #258's sweep skip
+        them (issue #284, Champion note 1)."""
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        inside_joined = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                inside_joined.update(id(child) for child in ast.walk(node))
+        texts = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.JoinedStr):
+                texts.append("".join(
+                    part.value for part in node.values
+                    if isinstance(part, ast.Constant)
+                    and isinstance(part.value, str)
+                ))
+            elif (isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and id(node) not in inside_joined):
+                texts.append(node.value)
+        return [" ".join(t.split()) for t in texts]
+
+    def test_helper_restates_reason_without_retired_claim(self):
+        text = " ".join(cd_run.subset_corner_campaign_reason().split())
+        self.assertNotRegex(text, self.RETIRED_CLAIM_RE)
+        # ...and still says the campaign remains open work ("remains open
+        # work" must survive the edit: T1 item 5 is `unmet`/`no_evidence`).
+        self.assertIn("remain open work", text)
+        # the correct reason, and only that: coverage + item-5 gradeability
+        self.assertIn("Supply/power", text)
+        self.assertIn("no ratified bound", text)
+        self.assertIn("no measurement", text)
+        self.assertIn("item 5", text)
+        self.assertIn("issue #188", text)
+
+    def test_reset_keeps_its_own_justification_and_restates_the_reason(self):
+        texts = self._string_constants(
+            SIM_DIR / "comparator-decision" / "reset.py")
+        clause = [t for t in texts if "full ratified PVT matrix" in t]
+        self.assertEqual(
+            len(clause), 1,
+            "reset.py's subset-corner justification moved or vanished",
+        )
+        self.assertNotRegex(clause[0], self.RETIRED_CLAIM_RE)
+        self.assertIn("remains open work", clause[0])
+
+    def test_no_live_module_reintroduces_the_retired_claim(self):
+        for path in sorted((SIM_DIR / "comparator-decision").glob("*.py")):
+            for text in self._string_constants(path):
+                self.assertNotRegex(
+                    text, self.RETIRED_CLAIM_RE,
+                    msg=f"{path.name} re-asserts the retired claim "
+                    f"(issue #284): {text!r}",
+                )
+
+
 class _FakeNgspiceDecks:
     """Deterministic stand-in for one `ngspice` invocation, wired in by
     monkeypatching `cd_run._shared._run` (issue #100).
@@ -1043,6 +1189,22 @@ class TestNoiseTranResumableCampaign(unittest.TestCase):
         # The cross-check really was measurable, so this compared the full
         # record shape and not just its degenerate branch.
         self.assertEqual(chunked.sigma_decision_mv, chunked.sigma_decision_mv)
+
+    def test_a_jobs_2_campaign_matches_a_jobs_1_run_at_the_same_n(self):
+        # Issue #269: the Monte Carlo batches route through
+        # `_run_many_ts_retry(batch, scratch_dir, jobs)`, whose parallel
+        # branch used to raise NameError on the first batch for any
+        # `--jobs N>1`. A jobs=2 campaign must complete and produce the
+        # same record the sequential default produces -- which decks ran
+        # in which thread must not change what a deck contributes.
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            serial = self._campaign()
+        with _stubbed_noise_tran(_FakeNgspiceDecks()):
+            parallel = self._campaign(jobs=2)
+        self.assertEqual(self._record_inputs(serial), self._record_inputs(parallel))
+        self.assertEqual(
+            cd_run.two_statistics_line(serial), cd_run.two_statistics_line(parallel),
+        )
 
     def test_an_interrupted_chunk_writes_no_record_and_leaves_a_resumable_dir(self):
         argv = [
