@@ -20,18 +20,18 @@ if _EXPERIMENT_DIR not in sys.path:
 
 import _shared  # noqa: E402  -- `_shared._run{,_many}` are patch seams
 from _shared import (  # noqa: E402
-    CLAIM_TEXT,
     RESET_GND_TIE_MOVES,
     RESET_SCHEMATIC_COUNTERPART,
     VCM,
     VDD,
     _begin_dut_record,
+    _deck_preamble,
     _dut_device_line,
     _dut_devices,
     _dut_lines,
     _finalize_record,
+    _record_header,
     _retie_star_legs,
-    netlist_provenance,
 )
 from harness import evidence, pdk, toolchain  # noqa: E402
 
@@ -163,13 +163,11 @@ def _reset_device_block(variant: str) -> str:
 
 def _reset_deck(info: pdk.PdkInfo, corner: str, temp_c: float, variant: str, log_name: str) -> str:
     lines = [
-        f"* comparator-decision reset-integrity check -- variant={variant} "
-        f"corner={corner} temp={temp_c}C supply={VDD}V (issue #24)",
-        f".lib {info.ngspice_lib} {corner}",
-        f".temp {temp_c}",
-        f".param vdd_val = {VDD}",
-        "",
-        "Vdd VDD 0 dc {vdd_val}",
+        *_deck_preamble(
+            info, corner, temp_c,
+            f"* comparator-decision reset-integrity check -- variant={variant} "
+            f"corner={corner} temp={temp_c}C supply={VDD}V (issue #24)",
+        ),
         "* CLK held LOW for the entire window: reset asserted, never released.",
         "Vclk CLK 0 dc 0",
         f"Vinp VINP 0 dc {VCM}",
@@ -314,11 +312,7 @@ def write_reset_evidence(
 
     lines: list[str] = []
     a = lines.append
-    a(f"# Record {record_id}")
-    a("")
-    a(f"- **Record ID**: {record_id}")
-    a(CLAIM_TEXT)
-    a(netlist_provenance())
+    lines += _record_header(record_id)
     a(
         "- **Corner matrix run**: "
         + ", ".join(f"{c}/{t}C" for c, t in corner_set)
