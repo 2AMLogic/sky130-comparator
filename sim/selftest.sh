@@ -85,6 +85,10 @@ run_mc() {
 # diverge. Hermetic: no ngspice, no PDK; klt is optional (its absence is a
 # loud SKIP, or a failure under --require-pdk). Every gate runs to completion
 # even when an earlier one failed, so drift in both is reported in one run.
+# KLT_GATE_RAN records whether the item-10 gate actually executed (it is
+# skipped when klt is not installed), so the --quick summary cannot claim
+# coverage the run did not achieve.
+KLT_GATE_RAN=0
 run_freshness_gates() {
   local failed=0
 
@@ -104,6 +108,7 @@ run_freshness_gates() {
   echo
   echo "-- freshness gate: item-10 attestation envelope --"
   if command -v klt >/dev/null 2>&1; then
+    KLT_GATE_RAN=1
     if ! (cd "${REPO_ROOT}" && klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json); then
       echo "FAIL: item-10 attestation envelope re-check -- an inventoried file"
       echo "      or gate moved since evidence/item10.json was minted (the drift"
@@ -174,9 +179,16 @@ if [ "${QUICK}" -eq 1 ]; then
   echo "SKIP: stages 3-4 (--quick: unit tests + freshness gates + environment"
   echo "      check only)."
   echo
-  echo "PASS (quick): harness plumbing is present; the pin-freshness gates ran"
-  echo "      (characterization-envelope selftest + re-hash, item-10 attestation"
-  echo "      re-check); PVT/MC switching NOT verified."
+  if [ "${KLT_GATE_RAN}" -eq 1 ]; then
+    echo "PASS (quick): harness plumbing is present; the pin-freshness gates ran"
+    echo "      (characterization-envelope selftest + re-hash, item-10 attestation"
+    echo "      re-check); PVT/MC switching NOT verified."
+  else
+    echo "PASS (partial): harness plumbing is present; the characterization-"
+    echo "      envelope selftest + re-hash ran, but the item-10 attestation"
+    echo "      re-check SKIPPED (klt not installed); PVT/MC switching NOT"
+    echo "      verified."
+  fi
   exit 0
 fi
 
