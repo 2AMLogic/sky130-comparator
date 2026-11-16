@@ -356,7 +356,7 @@ def summary_section(manifest_rel: str, manifest: dict, empty: list[str]) -> str:
         "",
         "```",
         f"klt artifact get {manifest_rel}#<name> -o <out>",
-        f"python3 scripts/check-artifact-manifests.py verify {manifest_rel}",
+        f"klt artifact verify {manifest_rel}",
         "```",
         "",
         "| name | size (B) | sha256 |",
