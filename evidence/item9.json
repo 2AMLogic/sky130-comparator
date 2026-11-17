@@ -199,7 +199,7 @@
         "role": "testbench",
         "path": "sim/pdk.json",
         "passed": true,
-        "content_hash": "sha256:d2b017d632a78846b5a8bd3f87f3b4edec18d42a5d3de3d064b13b5ad6dae7f0"
+        "content_hash": "sha256:17f7b42626649396a52041ae33e0e983fe2335ea11340c17d33cd3b9049bfea0"
       },
       {
         "check": "present",
