@@ -1050,12 +1050,13 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
             "grader says for the citation the committed manifest carries (or "
             "would carry), so the item-11 verdict is a re-runnable "
             "measurement. The reasoning is in layout/README.md -> 'Why item "
-            "11 is cited'."),
+            "11 is cited'. The T1 met-count of record lives in "
+            "manifests/t1-signoff-report.json, gated by "
+            "scripts/check-t1-signoff.py gate, and is deliberately NOT "
+            "restated here."),
         "cited_parts": list(ERC_ITEM_11_PARTS),
         "item_11_status": row.get("status"),
         "item_11_reason": row.get("reason"),
-        "t1_met_count_if_cited": report.get("t1_met_count"),
-        "t1_item_count": report.get("t1_item_count"),
         "supply_nets_graded": power.get("supply_nets"),
         "power_connectivity_status": power.get("power_connectivity_status"),
         "ties_checked_by_well_assertion": power.get(
@@ -1135,9 +1136,8 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
             klt, repo_root, tmp,
             ((signoff.get("provenance") or {}).get("input") or {})
             .get("content_hash"))
-        print(f"    item 11 citation grades {grade['item_11_status']} "
-              f"({grade['t1_met_count_if_cited']}/{grade['t1_item_count']} T1 "
-              "items), see layout/README.md")
+        print(f"    item 11 citation grades {grade['item_11_status']}, see "
+              "layout/README.md")
     ok = all(row["pass"] for row in rows)
     evidence = {
         "tool": {"klt_pin": KLT_PIN,
