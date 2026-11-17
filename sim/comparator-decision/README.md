@@ -410,7 +410,7 @@ kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
 `run.py` baseline exactly (1.8902 mV); the PEX note's -15.0 % delta becomes
 -14.33 %, so the library is a sized seventh confounder there, not the
 explanation. A follow-up leg made the schematic figure single-variable
-([`records/klt-pilot-library-effect-schematic-ngspice47-20261115.md`](records/klt-pilot-library-effect-schematic-ngspice47-20261115.md),
+([`records/klt-pilot-library-effect-schematic-ngspice47-20261116.md`](records/klt-pilot-library-effect-schematic-ngspice47-20261116.md),
 issue #283: the committed `ngspice`-lib schematic request re-run on
 ngspice-47, `models.lib` held fixed): the library alone is worth **+0.53 %**
 on the schematic worst-node peak (vs +0.81 % extracted) and the

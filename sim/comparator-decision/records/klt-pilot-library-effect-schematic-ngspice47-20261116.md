@@ -1,4 +1,4 @@
-# Pilot note 2026-11-15 -- schematic kickback library A/B made single-variable (issue #283)
+# Pilot note 2026-11-16 -- schematic kickback library A/B made single-variable (issue #283)
 
 Not a ratified record: no `Record ID`, no graded corner set, no `limits`. It
 refines the "Attribution caveat" section of
@@ -72,10 +72,20 @@ overdrive:
 | VINP | 0.5984 mV | 0.6014 mV | 0.6668 mV | **+0.0029 mV (+0.486 %)** | **+0.0655 mV (+10.89 %)** |
 
 Percentages are relative to the earlier leg of each difference (C - A vs A;
-B - C vs C). The two single-variable effects compound to the parent note's
-bundled A -> B deltas to within rounding: VINN (1.00354)(1.00533) = +0.889 %
-vs measured +0.889 %; VINP (1.00486)(1.10892) = +11.43 % vs measured
-+11.43 %. No third term is hiding in the bundle on either node.
+B - C vs C). The two single-variable effects arithmetically compound to the
+parent note's bundled A -> B deltas -- VINN (1.00354)(1.00533) = +0.889 %,
+VINP (1.00486)(1.10892) = +11.43 %, equal to the measured bundles -- but
+that agreement is the algebraic identity (C/A)·(B/C) = B/A, not empirical
+corroboration: it holds for any values of A, B, C whatsoever, so it cannot
+discriminate between "no third term" and "a third term absorbed into one of
+the legs", and it bounds no cross-term. What actually excludes the extra
+terms the parent note bundled is hash parity across A, B and C
+(machine-checkable above): the equal `worker_environment.pdk.stamp_sha256`
+(`4ca10280ae9f…`) removes the PDK-revision term, and the equal
+`netlist_sha256` (`4e584841…`) removes a deck term. The bundle therefore
+contains only the two measured single-variable effects plus whatever
+library×solver interaction exists -- and that interaction is not measured
+here (see Caveats).
 
 **The < 0.03 % bound is refuted.** The parent note claimed "ngspice-46 -> 47
 and any PDK-revision effect are together bounded by the ~0 % pilot-vs-baseline
@@ -153,10 +163,12 @@ extracted pair.
   construction (0.0000 mV at both solver versions -- see the parent note's
   verified corrections), and the extracted (`pex`) pair is already clean
   single-variable; neither was re-run.
-- The library effect *at ng-46* is not measured (that would be a fourth leg,
-  (ng-46, `combined`)); the A -> B bundle decomposes exactly into the two
-  measured single-variable effects to rounding, so the missing cross-term is
-  < 0.001 pp at this corner.
+- The library×solver interaction is **not measured** and is unbounded by
+  anything in this note: the interaction term is (B - C) - (D - A) where
+  D = f(ng-46, `combined`), and D was not run. The A -> B bundle absorbs the
+  interaction identically -- B - A = (C - A) + (B - C) holds whatever the
+  interaction is -- so the compounding check cannot bound it. The same
+  fourth leg D would also measure the library effect *at ng-46*.
 - `records/klt-pilot-library-effect-20261115.md` is intentionally untouched:
   `sim/` evidence is append-only (`scripts/check-sim-append-only.py`
   byte-freezes committed records); this note is the correction, and cites the
