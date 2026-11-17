@@ -4,6 +4,7 @@
     python3 scripts/check-sim-append-only.py gate --event pull_request --base-ref origin/main
     python3 scripts/check-sim-append-only.py gate --event push --before <sha> [--head <sha>]
     python3 scripts/check-sim-append-only.py gate --event workflow_dispatch [--base <sha>]
+    python3 scripts/check-sim-append-only.py gate --event merge_group --base <sha> [--head <sha>]
     python3 scripts/check-sim-append-only.py selftest
 
 sim/README.md forbids editing or deleting committed evidence, even for typo
@@ -32,6 +33,9 @@ FAILURE, never a pass):
   push               `--before` (event.before) vs head (event.after)
   workflow_dispatch  no event base exists: `--base <sha>` is required,
                      otherwise the gate fails rather than claim verification
+  merge_group        the merge queue's trial merge: `--base <sha>` (the
+                     event's merge_group.base_sha) vs head (--head); like
+                     workflow_dispatch, an absent or unavailable base fails
   all-zero --before  (branch creation / first commit) has no base: fails
 The checkout must supply history (actions/checkout `fetch-depth: 0`).
 
@@ -109,6 +113,16 @@ def resolve_base(repo, event, base_ref=None, before=None, base=None,
             raise ValueError(
                 "manual dispatch has no event base: re-run with an explicit "
                 "base commit input; refusing to claim append-only was verified")
+        base_sha = resolve_commit(repo, base)
+        if base_sha is None:
+            raise ValueError(f"base commit {base!r} is not available")
+        return base_sha, head_sha
+    if event == "merge_group":
+        if not base:
+            raise ValueError(
+                "merge_group has no event base (github.event.merge_group."
+                "base_sha empty?): re-run with an explicit base commit; "
+                "refusing to claim append-only was verified")
         base_sha = resolve_commit(repo, base)
         if base_sha is None:
             raise ValueError(f"base commit {base!r} is not available")
@@ -295,6 +309,18 @@ def run_selftest(_args):
     expect("manual dispatch with explicit base catches an edit",
            _run(lambda r: _write(r, REC, "x\n"), event="workflow_dispatch",
                 base="main"), [REC])
+    m = _run(lambda r: None, event="merge_group")
+    cases.append(("merge_group without a base fails explicitly",
+                  msg_has(m, "merge_group")))
+    m = _run(lambda r: None, event="merge_group", base="origin/nonesuch")
+    cases.append(("merge_group with unavailable base fails explicitly",
+                  msg_has(m, "not available")))
+    expect("merge_group with explicit base compares and passes",
+           _run(lambda r: _write(r, "sim/exp/records/new.md", "n\n"),
+                event="merge_group", base="main"), clean=True)
+    expect("merge_group with explicit base catches an edit",
+           _run(lambda r: _write(r, REC, "x\n"), event="merge_group",
+                base="main"), [REC])
 
     def shallow_unrelated(r):
         _g(r, "checkout", "-q", "--orphan", "other")
@@ -311,10 +337,12 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="mode", required=True)
     g = sub.add_parser("gate", help="compare protected sim/ evidence to base")
     g.add_argument("--event", required=True,
-                   choices=["pull_request", "push", "workflow_dispatch"])
+                   choices=["pull_request", "push", "workflow_dispatch",
+                            "merge_group"])
     g.add_argument("--base-ref", help="PR target ref (merge-base is used)")
     g.add_argument("--before", help="push event's before commit")
-    g.add_argument("--base", help="explicit base commit (manual dispatch)")
+    g.add_argument("--base",
+                   help="explicit base commit (manual dispatch / merge group)")
     g.add_argument("--head", default="HEAD", help="head commit (default HEAD)")
     g.add_argument("--repo", default=".", help="repository path (default .)")
     return dispatch(parser, sub, argv, run_gate, run_selftest)
