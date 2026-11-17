@@ -429,6 +429,38 @@ extracted poly-resistor R values (2003.8 / 20797.4 Ω became 2692.1 / 21485.7 Ω
 in `layout/extract-parasitics.json` and the LVS placeholder note). The
 side venv is gone.
 
+## The merge queue on `main` (issue #280)
+
+The committed evidence envelopes (`evidence/item*.json`) pin the files they
+attest by content hash, so a PR whose CI ran before a sibling moved an
+attested file can land an envelope that was stale the moment it merged —
+measured twice on item 9 (the #254 → #264 ordering), with 4 of the 5
+envelope-touching merges in recent history landing on a moved base. No
+PR-time check can see a base that moves after the check finishes, so the
+chosen mechanism is a **merge queue on `main`** (operator ruling, rjwalters,
+2026-11-17): the queue re-runs the required checks against the queued merge
+result, so an envelope can no longer land on a base it was not checked
+against. Enabling it took two steps:
+
+1. This repo's CI reports on merge-group commits:
+   `.github/workflows/t1-signoff.yml` carries the `merge_group:` trigger,
+   and its sim/ append-only gate accepts `--event merge_group` with the
+   trial-merge base/head from the event payload
+   (`scripts/check-sim-append-only.py`). The fleet's ruleset tooling refuses
+   to enable a queue whose required check cannot report there.
+2. Applying the queue ruleset (`repo-ruleset-policy.py --merge-queue-repo`)
+   is a repo-settings change owned by the operator, not by a branch in this
+   repo.
+
+Declined alternatives, for the record: GitHub's `strict` up-to-date-branch
+flag (measured stalling every BEHIND PR fleet-wide on 2026-11-15 and rolled
+back, 2AMLogic/2am#7309); a post-merge auto-repair job (needs
+`permissions: contents: write` on this currently read-only workflow — CI
+pushing evidence to `main`); and accepting the recurrence. Until the queue is
+live, the response to a stale envelope on `main` stays the one-command item-9
+re-mint: `uvx --from klayout-tools==0.8.0 klt signoff --attest 9 --inventory
+attest/item9.json -o evidence/item9.json`.
+
 ## The integrator-view gate (issue #36)
 
 `scripts/check-integrator-view.py` is the rot gate for

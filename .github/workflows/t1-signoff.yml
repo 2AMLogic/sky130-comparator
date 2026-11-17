@@ -30,6 +30,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       base_sha:
@@ -58,7 +59,12 @@ jobs:
       # enforce that -- `--update` re-pins whatever is on disk -- so this
       # compares protected paths against Git history. PR: head vs merge-base
       # with the target branch. main push: event.before vs the pushed head.
-      # Manual dispatch has no event base: it needs the `base_sha` input and
+      # Merge queue (issue #280): the trial-merge commit vs the event's
+      # merge_group.base_sha -- github.base_ref is empty there, so the base
+      # comes from the event payload, and a missing one FAILS the same way
+      # as a manual dispatch without its input (BASE_REF is `origin/` and
+      # inert on merge_group, exactly as it already is on push). Manual
+      # dispatch has no event base: it needs the `base_sha` input and
       # FAILS without it rather than claim verification. An unavailable base
       # (branch creation, force-push) is likewise an explicit failure.
       - name: sim/ append-only gate selftest (hermetic)
@@ -71,10 +77,16 @@ jobs:
           BEFORE: ${{ github.event.before }}
           DISPATCH_BASE: ${{ github.event.inputs.base_sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MG_BASE: ${{ github.event.merge_group.base_sha }}
+          MG_HEAD: ${{ github.event.merge_group.head_sha }}
         run: |
+          BASE="$DISPATCH_BASE"; HEAD="$HEAD_SHA"
+          if [ "$EVENT" = "merge_group" ]; then
+            BASE="$MG_BASE"; HEAD="$MG_HEAD"
+          fi
           python3 scripts/check-sim-append-only.py gate --event "$EVENT" \
               --base-ref "$BASE_REF" --before "$BEFORE" \
-              --base "$DISPATCH_BASE" --head "$HEAD_SHA"
+              --base "$BASE" --head "$HEAD"
 
       # Stored-evidence manifests (issue #198): new sim runs put raw bytes in
       # the fleet artifact store and commit only manifests/artifacts/*.manifest.json
