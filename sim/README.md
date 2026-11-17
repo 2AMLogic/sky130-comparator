@@ -391,14 +391,17 @@ issue's acceptance criteria ask for:
 
 | Stage | What it proves | Needs PDK? |
 | --- | --- | --- |
-| 1/4 | `sim/harness/*` unit tests (`sim/tests/`) | no |
+| 1/4 | `sim/harness/*` unit tests (`sim/tests/`) **plus the pin-freshness gates**: the characterization-envelope selftest + live re-hash and the item-10 attestation-envelope re-check (`klt` optional — its absence is a loud `SKIP`, or a failure under `--require-pdk`) — the same commands t1-signoff.yml runs, so pin drift fails locally instead of only in CI (issue #292) | no |
 | 2/4 | toolchain + PDK pin match `sim/toolchain.json` | — |
 | 3/4 | `harness-corner-smoke` PVT run and `mc-smoke` Monte Carlo run (incl. its negative control) both pass end to end | yes |
 | 4/4 | **negative control**: re-running `harness-corner-smoke` with `--sabotage-corners` (the process-corner `.lib` section forced to `tt`, everything else untouched) must **FAIL** its process-axis sensitivity floor | yes |
 
 CI runs this same unfiltered stage 1/4 discovery, PDK-free, in
 `.github/workflows/t1-signoff.yml`'s "sim/tests unit suite (hermetic)" step —
-so the acceptance test and the gate cannot drift apart.
+so the acceptance test and the gate cannot drift apart. The freshness gates in
+stage 1/4 mirror t1-signoff.yml's own envelope steps with the same command
+strings; each gate runs to completion even when an earlier one failed, so
+drift in several envelopes is reported in one run.
 
 Stage 4 is the one that matters most. Stages 1–3 can all pass while the corner
 runner silently simulates typical everywhere — every number would look

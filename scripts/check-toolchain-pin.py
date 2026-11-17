@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Toolchain-pin CI gate (issue #245): the workflow's install lines cannot
-drift from the pin's single source of truth.
+"""Toolchain-pin CI gate (issues #245, #271): neither the workflow's install
+lines nor the committed evidence envelopes' recorded producer can drift from
+the pin's single source of truth.
 
     python3 scripts/check-toolchain-pin.py gate
     python3 scripts/check-toolchain-pin.py selftest
@@ -20,13 +21,38 @@ line would install a different toolchain in CI than the artifacts declare.
 or if the pin has vanished from the workflow entirely. The scan is
 deliberately job-count-agnostic -- the file is scanned line by line, so a
 job added later is covered without touching this gate (the count of install
-lines is reported, never assumed).
+lines is reported, never assumed). Since issue #271 the same gate also
+fails if any committed `evidence/*.json` records a `provenance.klt_version`
+other than the pin: `klt signoff --check` compares an envelope's checks and
+content hashes but never its recorded producer, so an envelope attributed
+to a dev build -- or to a version that does not exist -- passes CI
+silently, and `evidence/` being append-only makes the wrong producer
+permanent once merged. The envelope scan is glob-driven (no hardcoded item
+list, same discipline as the workflow scan) and fail-closed: an envelope
+with no `provenance` block or no `klt_version` fails rather than passes
+silently, and so does an empty envelope set, because `evidence/` is this
+repo's product rather than an optional one.
 
 `selftest` is hermetic (stdlib file reads only, no klt, no PDK): it proves
 the composite `KLT_PIN` derivation still renders the string the committed
 artifacts carry byte for byte, that the scanner accepts a matching
 multi-install-line workflow, and that it rejects the drift shapes -- a
-partial bump of one line's either pin, and each pin vanishing.
+partial bump of one line's either pin, and each pin vanishing -- and that
+the envelope check rejects its drift shapes too: the fabricated producer
+`99.99.99.dev666+gdeadbeefcafe` the issue measured `klt signoff --check`
+accepting, the real dev build `0.9.3.dev3+gd5d57daf9a14`, a `.dev` suffix
+on the pin itself, a missing `klt_version`, a missing `provenance` block,
+an unparseable or non-object envelope, and an empty envelope set.
+
+Since issue #313 the gate also covers the xschem pin: `sim/toolchain.json`
+`xschem_tag` is its source of truth, and the workflow repeats it in four
+non-comment literal classes -- `XSCHEM_VERSION:`, the `/tags/<v>.tar.gz` of
+`XSCHEM_URL`, the `xschem-<v>-` cache-key prefix and the `XSCHEM V<v>`
+version assertion. Any that disagrees with `xschem_tag`, or a class that
+vanished, fails. Only the TAG is checked: `XSCHEM_SHA256` cannot be derived
+from the tag and is NOT covered by this gate (nor is the sha embedded in the
+cache key), so a bump still needs a hand-updated hash. Prose comments and
+step names are deliberately left as prose, like the klt scan's comment skip.
 
 Same `_gate_common` convention as the other gates in this directory, and the
 same cross-directory import precedent as `check-layout-device-count.py`
@@ -51,12 +77,23 @@ from gen_comparator import KLAYOUT_VERSION, KLT_PIN, KLT_VERSION  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = Path(".github/workflows/t1-signoff.yml")
+EVIDENCE_DIR = Path("evidence")
+#: Source of truth for the xschem pin (issue #313); read as JSON directly.
+TOOLCHAIN_JSON = Path("sim/toolchain.json")
 #: The committed artifact whose `tool.klt_pin` the composite is asserted
 #: against byte for byte (re-asserted in CI by check-layout-device-count.py).
 KLT_PIN_ARTIFACT = Path("layout/extract-device-count.json")
 
 TOOLS_RE = re.compile(r"klayout-tools==([^\s\"'`]+)")
 ENGINE_RE = re.compile(r"\bklayout==([^\s\"'`]+)")
+
+#: The four mechanical xschem literal classes in the workflow (issue #313).
+XSCHEM_PATTERNS = {
+    "XSCHEM_VERSION": re.compile(r"\bXSCHEM_VERSION:\s*[\"']?([^\s\"']+)"),
+    "XSCHEM_URL tag": re.compile(r"\bXSCHEM_URL:.*?/tags/(.+?)\.tar\.gz"),
+    "cache key xschem-<v>-": re.compile(r"\bkey:\s*xschem-([0-9][^-\s\"']*)-"),
+    "`XSCHEM V<v>` assertion": re.compile(r"XSCHEM V([0-9][^\s\"']*)"),
+}
 
 
 def scan_workflow(text: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
@@ -101,14 +138,117 @@ def check_workflow(text: str, name: str) -> None:
            f"{KLT_VERSION} / {KLAYOUT_VERSION}")
 
 
+def scan_xschem(text: str) -> dict[str, list[tuple[int, str]]]:
+    """Every xschem pin literal, per class, as (lineno, version). Comment
+    lines are skipped, as in `scan_workflow`."""
+    found: dict[str, list[tuple[int, str]]] = {k: [] for k in XSCHEM_PATTERNS}
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if line.lstrip().startswith("#"):
+            continue
+        for label, pattern in XSCHEM_PATTERNS.items():
+            found[label].extend((lineno, m.group(1))
+                                for m in pattern.finditer(line))
+    return found
+
+
+def check_xschem_pin(text: str, tag: object, name: str) -> None:
+    """Assert every workflow xschem literal equals `xschem_tag` (issue #313).
+
+    Checks the tag only -- `XSCHEM_SHA256` is not derivable from it and is
+    not covered. `tag` is whatever the JSON held, so a missing or non-string
+    key is reported as a failure rather than a traceback.
+    """
+    if not isinstance(tag, str) or not tag:
+        fail(f"{TOOLCHAIN_JSON}: no usable `xschem_tag` string -- cannot "
+             "check the workflow's xschem pin")
+        return
+    before = len(FAILURES)
+    for label, hits in scan_xschem(text).items():
+        if not hits:
+            fail(f"{name}: no {label} literal found -- the xschem pin has "
+                 "vanished from CI")
+        for lineno, version in hits:
+            if version != tag:
+                fail(f"{name}:{lineno}: {label} is {version}, but "
+                     f"{TOOLCHAIN_JSON} pins xschem_tag {tag}")
+    if len(FAILURES) == before:
+        ok(f"{name}: all xschem literals match {TOOLCHAIN_JSON} "
+           f"xschem_tag {tag} (tag only; XSCHEM_SHA256 is not checked)")
+
+
+def check_evidence_provenance(envelopes: list[tuple[str, object]], name: str) -> None:
+    """Assert every committed evidence envelope names the pinned producer.
+
+    Each envelope is a `(path, doc)` pair with `doc` either the parsed JSON
+    object or the `ValueError` the parse produced, so the selftest can drive
+    the whole matrix -- malformed and non-object files included -- without
+    touching the filesystem (the same separation that makes
+    `scan_workflow`/`check_workflow` selftestable). Fail-closed on every
+    degenerate shape (issue #271): a missing producer is not a passing
+    producer, and neither is an empty envelope set -- `evidence/` is the
+    repo's product, so its absence is a gate failure, not a vacuous pass.
+    """
+    if not envelopes:
+        fail(f"{name}: no committed envelopes found -- an empty evidence "
+             "tree is not a passing one")
+        return
+    for path, doc in envelopes:
+        if isinstance(doc, ValueError):
+            fail(f"{path}: unreadable envelope, cannot check its producer "
+                 f"({doc})")
+            continue
+        if not isinstance(doc, dict):
+            fail(f"{path}: envelope is not a JSON object, cannot check its "
+                 f"producer")
+            continue
+        provenance = doc.get("provenance")
+        if not isinstance(provenance, dict):
+            fail(f"{path}: records no provenance block -- a committed "
+                 "envelope must name its producer")
+            continue
+        recorded = provenance.get("klt_version")
+        if not isinstance(recorded, str) or not recorded:
+            fail(f"{path}: provenance records no klt_version -- a missing "
+                 "producer is not a passing producer")
+            continue
+        if recorded != KLT_VERSION:
+            fail(f"{path}: records provenance.klt_version {recorded}, but "
+                 f"the single source of truth (layout/gen_comparator.py) "
+                 f"pins klayout-tools=={KLT_VERSION}")
+    if not FAILURES:
+        ok(f"{name}: all {len(envelopes)} envelope(s) record "
+           f"provenance.klt_version {KLT_VERSION}")
+
+
 def run_gate(args: argparse.Namespace) -> int:
-    path = Path(args.repo_root).resolve() / WORKFLOW
+    root = Path(args.repo_root).resolve()
+    path = root / WORKFLOW
     try:
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         fail(f"workflow not found: {path}")
         return 1
     check_workflow(text, str(WORKFLOW))
+    try:
+        xschem_tag = json.loads(
+            (root / TOOLCHAIN_JSON).read_text(encoding="utf-8")).get("xschem_tag")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        xschem_tag = None
+    check_xschem_pin(text, xschem_tag, str(WORKFLOW))
+
+    # (path, doc) pairs: doc is the parsed envelope, or the ValueError the
+    # parse produced so the pure check reports it as a gate failure instead
+    # of a traceback. Glob, not a list: an envelope committed later is
+    # covered without editing this gate.
+    envelopes: list[tuple[str, object]] = []
+    for env_path in sorted((root / EVIDENCE_DIR).glob("*.json")):
+        try:
+            doc = json.loads(env_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            doc = ValueError(f"{type(exc).__name__}: {exc}")
+        envelopes.append((str(env_path.relative_to(root)), doc))
+    check_evidence_provenance(envelopes, f"{EVIDENCE_DIR}/*.json")
+
     if FAILURES:
         print(f"gate: {len(FAILURES)} failure(s) -- see above")
         return 1
@@ -170,19 +310,99 @@ def run_selftest(args: argparse.Namespace) -> int:
           True, "# prose\n" + good_line + "# more prose klayout==0.0.1\n"
                 + bumped_tools)
 
+    def check_x(name, expect_fail, text, tag="3.4.7"):
+        reset()
+        check_xschem_pin(text, tag, "fx-workflow")
+        case_results.append((name, (len(FAILURES) > 0) == expect_fail))
+
+    def xs(ver=None, url=None, key=None, assertion=None):
+        v = "3.4.7"
+        return (f'      XSCHEM_VERSION: "{ver or v}"\n'
+                f'      XSCHEM_URL: https://x/archive/refs/tags/{url or v}.tar.gz\n'
+                f'          key: xschem-{key or v}-abc123-default-v1\n'
+                f"          echo \"$out\" | grep -q 'XSCHEM V{assertion or v}'\n")
+
+    check_x("xschem: accepts a workflow whose four literals match", False, xs())
+    check_x("xschem: rejects a drifted XSCHEM_VERSION", True, xs(ver="3.4.8"))
+    check_x("xschem: rejects a drifted XSCHEM_URL tag", True, xs(url="3.4.8"))
+    check_x("xschem: rejects a drifted cache-key prefix", True, xs(key="3.4.8"))
+    check_x("xschem: rejects a drifted `XSCHEM V<v>` assertion", True,
+            xs(assertion="3.4.8"))
+    check_x("xschem: rejects a bumped xschem_tag against old literals", True,
+            xs(), tag="3.5.0")
+    for label, pattern in XSCHEM_PATTERNS.items():
+        kept = "".join(l for l in xs().splitlines(keepends=True)
+                       if not pattern.search(l))
+        check_x(f"xschem: rejects a workflow with the {label} literal gone",
+                True, kept)
+    check_x("xschem: ignores comment prose mentioning another version", False,
+            "# XSCHEM_VERSION: \"9.9.9\" xschem-9.9.9- XSCHEM V9.9.9\n" + xs())
+    check_x("xschem: rejects a missing xschem_tag key", True, xs(), tag=None)
+
+    def check_env(name, expect_fail, envelopes):
+        # Same reset() contract as `check` above: the tally is shared by
+        # identity with _gate_common, clearing must stay in place.
+        reset()
+        check_evidence_provenance(envelopes, "fx-evidence")
+        case_results.append((name, (len(FAILURES) > 0) == expect_fail))
+
+    def good_env(item):
+        # Built from the imported pin, never a literal in this file.
+        return (f"evidence/item{item}.json",
+                {"provenance": {"klt_version": KLT_VERSION,
+                                "klayout_version": KLAYOUT_VERSION}})
+
+    check_env("accepts four envelopes all recording the pin", False,
+              [good_env(n) for n in (1, 2, 9, 10)])
+    check_env("rejects the fabricated producer 99.99.99.dev666+gdeadbeefcafe "
+              "among matching envelopes", True,
+              [good_env(1), good_env(2), good_env(9),
+               ("evidence/item10.json",
+                {"provenance": {"klt_version":
+                                "99.99.99.dev666+gdeadbeefcafe"}})])
+    check_env("rejects the real dev build 0.9.3.dev3+gd5d57daf9a14 "
+              "(the PR #256 shape)", True,
+              [good_env(1),
+               ("evidence/item10.json",
+                {"provenance": {"klt_version":
+                                "0.9.3.dev3+gd5d57daf9a14"}})])
+    check_env(f"rejects a dev suffix on the pin itself "
+              f"({KLT_VERSION}.dev1+gdeadbeef)", True,
+              [good_env(1),
+               ("evidence/item2.json",
+                {"provenance": {"klt_version":
+                                f"{KLT_VERSION}.dev1+gdeadbeef"}})])
+    check_env("rejects an envelope whose provenance lacks klt_version", True,
+              [good_env(1),
+               ("evidence/item2.json",
+                {"provenance": {"klayout_version": KLAYOUT_VERSION}})])
+    check_env("rejects an envelope with no provenance block at all", True,
+              [good_env(1), ("evidence/junk.json", {"checks": []})])
+    check_env("rejects an unparseable envelope with a reported error", True,
+              [good_env(1),
+               ("evidence/bad.json",
+                ValueError("JSONDecodeError: Expecting value"))])
+    check_env("rejects a non-object envelope (a JSON array)", True,
+              [good_env(1), ("evidence/list.json", [1, 2])])
+    check_env("rejects an empty envelope set -- evidence/ must not be empty",
+              True, [])
+
     return report_cases(case_results)
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Toolchain-pin CI gate: the t1-signoff workflow's "
-        "klayout-tools==/klayout== install lines vs the pin's single source "
-        "of truth in layout/gen_comparator.py (issue #245)"
+        "klayout-tools==/klayout== install lines and the committed "
+        "evidence/*.json envelopes' provenance.klt_version vs the pin's "
+        "single source of truth in layout/gen_comparator.py, and the "
+        "xschem literals vs sim/toolchain.json (issues #245, #271, #313)"
     )
     sub = parser.add_subparsers(dest="mode", required=True)
 
     p_gate = sub.add_parser(
-        "gate", help="fail if any workflow install line disagrees with the pin"
+        "gate", help="fail if any workflow install line or committed "
+        "evidence envelope producer disagrees with the pin"
     )
     p_gate.add_argument("--repo-root", default=str(REPO_ROOT))
 
