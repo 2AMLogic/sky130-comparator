@@ -17,7 +17,7 @@
         "role": "hygiene",
         "path": ".github/workflows/t1-signoff.yml",
         "passed": true,
-        "content_hash": "sha256:337af9b1a481edd3cfa4a3dafe08e2939bdc8f9db22e0755d370220085d1bbf1"
+        "content_hash": "sha256:671873cc692e37b400c9a029028179bfa996a06a3b13b0be29403bfc650498d0"
       },
       {
         "check": "present",
@@ -138,7 +138,7 @@
     ]
   },
   "provenance": {
-    "klt_version": "0.8.0",
+    "klt_version": "0.9.3.dev234+g5ed4e55bffbd",
     "klayout_version": null,
     "pdk": null,
     "deck": null,
