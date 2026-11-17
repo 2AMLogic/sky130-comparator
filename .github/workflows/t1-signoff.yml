@@ -334,6 +334,13 @@ jobs:
       - name: Enable the pinned sky130A PDK (sim/pdk.json)
         run: ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 
+      # Pinned klt must be on PATH before the harness selftest below: the
+      # item-10 freshness gate inside sim/selftest.sh turns a missing klt
+      # into a failure under --require-pdk (issue #315). Same pin as the
+      # signoff job.
+      - name: Install klt (pinned; same pin as the signoff job)
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
+
       # Reduced default mode (the "check:ci" mode); --require-pdk turns a
       # missing ngspice/PDK into a failure instead of a skip. Stage 4's
       # sabotage negative control is part of this run.
@@ -345,10 +352,7 @@ jobs:
       # (sim/selftest.sh --quick) and compares against the committed
       # evidence/item9.json; it also re-asserts the pins recorded in the
       # inventory (klt 0.8.0, ngspice 46, xschem 3.4.7 -- hence the pinned klt
-      # install here). Needs ngspice 46 + the PDK, which this job provides.
-      - name: Install klt (pinned; same pin as the signoff job)
-        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
-
+      # install above). Needs ngspice 46 + the PDK, which this job provides.
       - name: Re-check the item-9 attestation envelope
         run: PDK_ROOT="$HOME/.ciel" klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json
 
