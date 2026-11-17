@@ -51,7 +51,30 @@ the file — the silent-drift class #285 exposed when
 `erc-coverage-probe.json` carried a stale T1 met-count nothing read.
 `--selftest` is the hermetic half (no klt, no PDK): it proves a mutated or
 no-longer-regenerated artifact fails the same `compare_evidence` code path
-the live check runs.
+the live check runs, and that the host-provenance normalization below is
+what makes a single-root regeneration pass.
+
+One measured exception to the byte-compare (issue #319): a GitHub runner
+installs exactly one PDK search root (`~/.ciel`, via `ciel enable`), while
+a workstation that also has volare installed has two — klt stamps the
+extra roots into `compose-report.json`'s
+`provenance.pdk.ambiguous_sources` on a multi-root host and **omits the
+key entirely** on a single-root host (never emits `[]`). Those bytes
+record the generating host, not the design, so a raw byte-compare of that
+one artifact is red in whichever environment did *not* generate the
+committed copy. `--check` therefore compares `compose-report.json`
+through a canonical form (`compose_canonical_bytes`) with exactly that
+key stripped from both sides — stripped by name, never normalized to an
+empty list — while the tool pins in the same provenance block
+(`klt_version`, `klayout_version`) stay strictly compared and get an
+explicit off-pin diagnostic (`compose_pin_error`, mirroring
+`extract_pex.py`'s `_assert_pinned`). Everything else in the file still
+bites: any drift beyond that key fails CI naming the file. The committed
+copy keeps the key its generating host emitted — the ambiguity warning
+was true there — which is why a workstation regeneration reproduces it
+byte-identically while a single-root runner's fresh copy legitimately
+differs by that one key; either side can regenerate and commit without
+flip-flopping the gate.
 
 **Toolchain pin.** `klt` (klayout-tools) **0.8.0** on the **klayout
 0.30.12** engine (the engine klt 0.8.0 build-tests against; the LVS, ERC and

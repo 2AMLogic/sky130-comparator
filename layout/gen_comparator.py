@@ -110,7 +110,13 @@ that is exactly what ``--check`` asserts, and the same determinism is why
 ``--check`` can also byte-compare the five evidence artifacts no citation
 pins (``compose-report.json``, ``route-summary.json``, ``lvs-request.json``
 and the two coverage probes, issue #311): re-derived under the same pin,
-they must reproduce their committed bytes or CI goes red.
+they must reproduce their committed bytes or CI goes red.  One documented
+exception (issue #319): ``compose-report.json`` is compared with its
+host-dependent ``provenance.pdk.ambiguous_sources`` subtree stripped from
+both sides -- klt emits it only when the generating host has more than one
+PDK search root, so its presence records the host, not the design; the
+tool pins inside the same provenance block stay strict
+(:func:`compose_canonical_bytes`, :func:`compose_pin_error`).
 """
 from __future__ import annotations
 
@@ -121,6 +127,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 # --- layer table (sky130A GDS numbers, as klt's own curated deck names them) --
@@ -1017,7 +1024,55 @@ def compose_bbox(compose: dict) -> dict | None:
     return bbox
 
 
-def compare_evidence(pairs: list[tuple[str, Path, Path]]
+def compose_canonical_bytes(path: Path) -> bytes:
+    """Canonical compose-report bytes: host-dependent provenance removed.
+
+    Invariant (issue #319 review): a gated artifact's compared bytes must be
+    a function of the pin and the design, never of the generating host's
+    installed PDK roots.  ``provenance.pdk.ambiguous_sources`` records PDK
+    search roots *other than* the one klt resolved against -- klt emits it
+    only when more than one search root exists on the generating host and
+    omits the key entirely on a single-root host (it never emits ``[]``) --
+    so it is stripped by name from both sides before the compare.  Stripped,
+    not normalized to ``[]``: a key present on one side and absent on the
+    other would still differ after list-normalization (the single-root host
+    would stay 40 bytes apart).  The committed copy keeps the key its own
+    generating host emitted -- the ambiguity warning was true there -- only
+    the gate ignores exactly this subtree.  The tool pins in the same
+    provenance block stay strict: see :func:`compose_pin_error`.  The
+    indent-2 round-trip is byte-exact on the committed artifact (measured,
+    issue #319); a side effect is that pure formatting differences would no
+    longer fail this one artifact -- its invariant is content, not bytes.
+    """
+    report = json.loads(Path(path).read_text())
+    pdk = (report.get("provenance") or {}).get("pdk")
+    if isinstance(pdk, dict):
+        pdk.pop("ambiguous_sources", None)
+    return (json.dumps(report, indent=2) + "\n").encode()
+
+
+def compose_pin_error(path: Path) -> str | None:
+    """The off-pin diagnostic for a compose report, or ``None`` if on pin.
+
+    Mirrors ``layout/extract_pex.py``'s ``_assert_pinned``: the canonical
+    compare would still fail an off-pin compose report (the version strings
+    are compared bytes), but this names the actual problem instead of
+    reporting generic drift -- an off-pin report is a different measurement,
+    not a stale copy of this one.
+    """
+    report = json.loads(Path(path).read_text())
+    provenance = report.get("provenance") or {}
+    got = (provenance.get("klt_version"), provenance.get("klayout_version"))
+    if got != (KLT_VERSION, KLAYOUT_VERSION):
+        return (f"records klt {got[0]!r} on klayout {got[1]!r}, but this "
+                f"repo pins klt {KLT_VERSION!r} on klayout "
+                f"{KLAYOUT_VERSION!r} (docs/environment-setup.md, "
+                ".github/workflows/t1-signoff.yml)")
+    return None
+
+
+def compare_evidence(pairs: list[tuple[str, Path, Path]
+                     | tuple[str, Path, Path, Callable[[Path], bytes]]]
                      ) -> tuple[list[str], list[str]]:
     """Byte-compare each ``(name, committed, fresh)`` evidence artifact pair.
 
@@ -1028,10 +1083,20 @@ def compare_evidence(pairs: list[tuple[str, Path, Path]]
     fresh file counts as drift of that artifact (a file deleted from
     layout/, or one the flow no longer produces), not an error.  Returns
     ``(passed, failed)`` name lists; prints one line per artifact.
+
+    A pair may carry a fourth element, a normalizer mapping each side's
+    path to the bytes actually compared.  The invariant it exists for
+    (issue #319 review): a gated artifact's compared bytes must be a
+    function of the pin and the design, never of the generating host's
+    installed PDK roots -- the normalizer strips exactly such host-dependent
+    subtrees from both sides, everything else (pin fields included) still
+    bites.
     """
     passed: list[str] = []
     failed: list[str] = []
-    for name, committed, fresh in pairs:
+    for item in pairs:
+        name, committed, fresh = item[0], item[1], item[2]
+        normalize = item[3] if len(item) > 3 else None
         if not Path(committed).exists():
             print(f"  evidence {name}: FAIL -- committed copy missing",
                   file=sys.stderr)
@@ -1041,15 +1106,29 @@ def compare_evidence(pairs: list[tuple[str, Path, Path]]
                   f"{fresh} missing)", file=sys.stderr)
             failed.append(name)
         else:
-            a, b = Path(committed).read_bytes(), Path(fresh).read_bytes()
+            if normalize is not None:
+                a, b = normalize(committed), normalize(fresh)
+            else:
+                a, b = Path(committed).read_bytes(), Path(fresh).read_bytes()
             if a == b:
-                print(f"  evidence {name}: PASS "
-                      f"({len(a)} bytes byte-identical)")
+                if normalize is not None:
+                    print(f"  evidence {name}: PASS (byte-identical after "
+                          f"host-provenance normalization, {len(a)} "
+                          "canonical bytes)")
+                else:
+                    print(f"  evidence {name}: PASS "
+                          f"({len(a)} bytes byte-identical)")
                 passed.append(name)
             else:
-                print(f"  evidence {name}: FAIL -- drifted (committed "
-                      f"{len(a)} bytes vs fresh {len(b)} bytes)",
-                      file=sys.stderr)
+                if normalize is not None:
+                    print(f"  evidence {name}: FAIL -- drifted beyond the "
+                          f"excluded host-provenance subtree (canonical "
+                          f"committed {len(a)} bytes vs canonical fresh "
+                          f"{len(b)} bytes)", file=sys.stderr)
+                else:
+                    print(f"  evidence {name}: FAIL -- drifted (committed "
+                          f"{len(a)} bytes vs fresh {len(b)} bytes)",
+                          file=sys.stderr)
                 failed.append(name)
     return passed, failed
 
@@ -1119,6 +1198,55 @@ def selftest() -> int:
             (f"an artifact the flow no longer re-derives fails its row "
              f"(failed={failed})",
              "layout/route-summary.json" in failed))
+
+        # Issue #319: compose-report.json's provenance.pdk.ambiguous_sources
+        # is host-dependent -- klt emits it only when the generating host has
+        # more than one PDK search root and omits the key entirely on a
+        # single-root host -- so the gate compares that artifact through
+        # compose_canonical_bytes.  The live CI run is the only surface that
+        # could originally surface the class (every host in a given repo has
+        # a fixed PDK-root inventory), so these repo-authored fixtures are
+        # the hermetic control for it.
+        def compose_fixture(klt_version: str, ambiguous: bool) -> str:
+            pdk: dict = {"name": "sky130A", "source": "search root: ~/.ciel"}
+            if ambiguous:
+                pdk["ambiguous_sources"] = ["search root: ~/.volare"]
+            report = {"provenance": {"klt_version": klt_version,
+                                     "klayout_version": "0.30.12",
+                                     "pdk": pdk}}
+            return json.dumps(report, indent=2) + "\n"
+
+        (committed / "compose-report.json").write_text(
+            compose_fixture("0.8.0", ambiguous=True))
+        (fresh / "compose-report.json").write_text(
+            compose_fixture("0.8.0", ambiguous=False))
+        compose_pair = ("layout/compose-report.json",
+                        committed / "compose-report.json",
+                        fresh / "compose-report.json")
+        passed, failed = compare_evidence(
+            [compose_pair + (compose_canonical_bytes,)])
+        case_results.append(
+            ("a compose report whose only delta is the host-dependent "
+             f"ambiguous_sources key passes once stripped (failed={failed})",
+             passed == ["layout/compose-report.json"]))
+        passed, failed = compare_evidence([compose_pair])
+        case_results.append(
+            ("the same pair fails the raw byte-compare the other artifacts "
+             f"get -- the normalizer is what bites (failed={failed})",
+             failed == ["layout/compose-report.json"]))
+        (fresh / "compose-report.json").write_text(
+            compose_fixture("0.9.9", ambiguous=False))
+        passed, failed = compare_evidence(
+            [compose_pair + (compose_canonical_bytes,)])
+        case_results.append(
+            ("an off-pin fresh compose report still fails after "
+             f"normalization (failed={failed})",
+             failed == ["layout/compose-report.json"]))
+        off_pin = compose_pin_error(fresh / "compose-report.json")
+        case_results.append(
+            (f"compose_pin_error names the off-pin pair (got {off_pin!r})",
+             off_pin is not None and "0.9.9" in off_pin
+             and "0.8.0" in off_pin))
     return report_cases(case_results)
 
 
@@ -1180,6 +1308,22 @@ def main() -> int:
             # just proved byte-identical to the fresh one.
             evidence_out = tmp / "evidence"
             evidence_out.mkdir()
+            # The compose report's tool pins are asserted explicitly, both
+            # sides, before the compare: the canonical compare would still
+            # fail an off-pin report, but this names it as a different
+            # measurement rather than generic drift (issue #319).
+            compose_fresh = tmp / "compose.json"
+            layout_dir = repo_root / "layout"
+            for where, path in (("committed layout/compose-report.json",
+                                 layout_dir / "compose-report.json"),
+                                ("the fresh compose report", compose_fresh)):
+                if not path.exists():
+                    continue  # compare_evidence names the missing copy
+                pin_err = compose_pin_error(path)
+                if pin_err is not None:
+                    print(f"gen_comparator.py --check: FAIL -- {where} "
+                          f"{pin_err}", file=sys.stderr)
+                    return 1
             print("[check] signoff LVS request + envelope (probe input)")
             signoff_lvs = emit_lvs_evidence(args.klt, repo_root,
                                             out_dir=evidence_out)
@@ -1194,10 +1338,10 @@ def main() -> int:
                   "can fail)")
             emit_erc_coverage_probe(args.klt, repo_root, bbox, signoff_erc,
                                     out_dir=evidence_out)
-            layout_dir = repo_root / "layout"
             _, failed = compare_evidence([
                 ("layout/compose-report.json",
-                 layout_dir / "compose-report.json", tmp / "compose.json"),
+                 layout_dir / "compose-report.json", compose_fresh,
+                 compose_canonical_bytes),
                 ("layout/route-summary.json",
                  layout_dir / "route-summary.json",
                  tmp / "route.summary.json"),
