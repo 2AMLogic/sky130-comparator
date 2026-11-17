@@ -8,6 +8,16 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-16
 
+- **PR #293**: fix(harness): reject ungradeable spread checks at manifest load
+- **PR #279**: ci: re-check the item-9 attestation envelope PDK-free in the signoff job
+- **PR #278**: sim: quantify the sky130 model-library effect on the kickback/PEX pilots
+- **PR #273**: refactor(layout): split signoff evidence emitters into layout/evidence_emit.py
+- **PR #218**: docs: roadmap as of 2026-11-13
+- **Issue #274** (closed): Validate spread-axis names at manifest load: a typo'd axis is now silently ungraded in both benches
+- **Issue #270** (closed): Item-9 envelope drift is only detectable after merge: harness-selftest never runs on pull_request
+- **Issue #244** (closed): klt-pilot kickback/PEX requests name libs.tech/ngspice, but run.py grades on libs.tech/combined
+- **Issue #226** (closed): Split layout/gen_comparator.py (2225 lines): the evidence emitters are half the file and a one-way seam
+- **Issue #125** (closed): Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **PR #287**: fix(sim): restate the PVT campaign open-work reason without the retired ratification claim
 - **PR #277**: fix: dispatch noise_tran's parallel MC batch through the _shared._run seam
 - **PR #256**: Drop untested verify twin of klt artifact verify from check-artifact-manifests
