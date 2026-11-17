@@ -57,8 +57,11 @@ c7i.8xlarge), `elapsed_seconds: 26`, `state: "done"`, `exit_code: "0"`.
   `39ca1adb826660324c3626f72bd946ec40704f0f3fc8e243c623f76e24b3eee2`
   (ngspice-47); A ran ngspice-46.
 
-So B - C differs in the library alone (both ng-47) and C - A differs in the
-solver alone (both `ngspice` lib).
+So B - C differs in the library alone among the hashed axes (netlist, PDK
+stamp, ngspice binary all equal), and C - A differs in the solver alone
+among the hashed axes. Hashes do not pin everything: the leg pairs also
+co-vary in un-hashed runner/host fields, itemized under [Provenance](#provenance)
+with the reason neither pair treats them as confounds.
 
 ## Result
 
@@ -82,10 +85,13 @@ the legs", and it bounds no cross-term. What actually excludes the extra
 terms the parent note bundled is hash parity across A, B and C
 (machine-checkable above): the equal `worker_environment.pdk.stamp_sha256`
 (`4ca10280ae9f…`) removes the PDK-revision term, and the equal
-`netlist_sha256` (`4e584841…`) removes a deck term. The bundle therefore
-contains only the two measured single-variable effects plus whatever
-library×solver interaction exists -- and that interaction is not measured
-here (see Caveats).
+`netlist_sha256` (`4e584841…`) removes a deck term. The bundle is therefore
+the two measured single-variable effects plus whatever library×solver
+interaction exists, as far as the hashes reach: the parity excludes the
+PDK-revision and deck terms, while host and runner-image terms are not
+hash-pinned (Provenance itemizes the co-varying fields) and are argued
+immaterial there, not excluded -- and the library×solver interaction itself
+is not measured here (see Caveats).
 
 **The < 0.03 % bound is refuted.** The parent note claimed "ngspice-46 -> 47
 and any PDK-revision effect are together bounded by the ~0 % pilot-vs-baseline
@@ -146,8 +152,26 @@ extracted pair.
   `environment.backend.source: "flag"`).
 - `worker_environment.pdk`: sky130A, `open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7`
   (the repo pin) -- same stamp as legs B and the extracted pair; leg A also
-  ran `f6eeac7` (2026-11-06 fleet), so the PDK axis is fixed across A, B, C
-  and the solver axis is the only difference inside C - A.
+  ran `f6eeac7` (2026-11-06 fleet), so the PDK axis is fixed across A, B, C.
+- Un-hashed axes co-vary across both leg pairs, so the "single-variable"
+  claims above hold among the hashed fields only, not across the whole
+  runner stack. C - A also moves the runner AMI
+  (`ami-095c25ae241a4d360` on A's 2026-11-06 fleet -> `ami-09c14f55df4958cbd`
+  here) and the client `klt` build (0.9.2.dev103+g9f4cec35997a ->
+  0.9.3.dev39+g205f77baff57) -- the runner's whole software image, glibc and
+  libm included, is not pinned across the solver leg. B - C also moves
+  instance type (`m6i.4xlarge` -> `c7i.8xlarge`), CPU (Xeon Platinum 8375C
+  -> 8488C), physical cores (8 -> 16), concurrency (1 -> 2), availability
+  zone (`us-east-1f` -> `us-east-1a`) and the client `klt` build
+  (0.9.3.dev3+gd5d57daf9a14 -> 0.9.3.dev39+g205f77baff57). Neither pair is
+  treated as a confound on measured grounds, not by assumption: the hashed
+  fields pin the solver binary, deck and PDK where the effects are claimed,
+  and across the runner-image move (C - A) the two legs reproduce to well
+  under 1e-9 V on the barely-moving max lobes -- `vinn_max` 0.87506960391
+  (A) vs 0.87506960412 (C), a ~2e-10 V difference on different ngspice
+  builds -- roughly four orders of magnitude below the smallest effect
+  claimed here (C - A +0.0066 mV = 6.6e-6 V), so the image/host moves are
+  argued immaterial, not excluded.
 - us-east-1 spot c7i.8xlarge; submitted 2026-11-16, elapsed 26 s.
 - Reports: `klt-pilot/report-kickback-loaded-ngspice47.json` (byte-copy of
   `out-ngspice47/kickback-request-loaded-ngspice47/report.json`, flattened to
