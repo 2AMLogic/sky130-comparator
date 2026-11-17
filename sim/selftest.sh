@@ -5,8 +5,11 @@
 #   sim/selftest.sh                unit tests + a reduced PVT/MC self-test run
 #                                   (the "check:ci" default -- see below for why)
 #   sim/selftest.sh --full         also runs the full corner grid + a larger MC N
-#   sim/selftest.sh --quick        unit tests + the pin-freshness gates +
-#                                   environment check only, no ngspice
+#   sim/selftest.sh --quick        unit tests + the pin-freshness gates
+#                                   (characterization-envelope selftest +
+#                                   re-hash, item-10 and item-9 attestation
+#                                   re-checks) + environment check only,
+#                                   no ngspice
 #   sim/selftest.sh --require-pdk  fail (instead of skipping) if the PDK is absent
 #
 # Stage 4 is the one that matters most: --sabotage-corners re-runs
@@ -81,14 +84,26 @@ run_mc() {
 # drift -- one round trip per failing step, because the CI job runs under -e.
 # These commands are byte-for-byte the steps CI runs (t1-signoff.yml
 # "Characterization-envelope selftest", "Re-hash the characterization report",
-# "Re-check the item-10 attestation envelope"), so local and CI cannot
-# diverge. Hermetic: no ngspice, no PDK; klt is optional (its absence is a
-# loud SKIP, or a failure under --require-pdk). Every gate runs to completion
-# even when an earlier one failed, so drift in both is reported in one run.
-# KLT_GATE_RAN records whether the item-10 gate actually executed (it is
-# skipped when klt is not installed), so the --quick summary cannot claim
-# coverage the run did not achieve.
+# "Re-check the item-10 attestation envelope", and the item-9 step), so local
+# and CI cannot diverge. Hermetic: no ngspice, no PDK; klt is optional (its
+# absence is a loud SKIP, or a failure under --require-pdk). Every gate runs
+# to completion even when an earlier one failed, so drift in several is
+# reported in one run. KLT_GATE_RAN records whether the klt attestation
+# gates actually executed (they are skipped when klt is not installed), so
+# the --quick summary cannot claim coverage the run did not achieve.
+#
+# The item-9 gate (issue #309) needs a re-entry guard the other two do not:
+# item 9's inventory declares cold_start = "bash sim/selftest.sh --quick",
+# and klt runs that command for both mint and check, so a gate that invoked
+# klt bare would re-enter --quick, hit the gate again, and recurse without
+# bound. The gate exports SELFTEST_ITEM9_REENTRY=1 to its klt call; a
+# selftest invocation that sees the variable already set IS the attestation's
+# own cold_start and skips the item-9 gate (only that gate -- the nested
+# cold start still runs the other two, so its exit status stays meaningful).
+# Re-minting evidence/item9.json by hand needs the same variable set on the
+# klt call.
 KLT_GATE_RAN=0
+ITEM9_REENTRY_SKIP=0
 run_freshness_gates() {
   local failed=0
 
@@ -127,10 +142,39 @@ run_freshness_gates() {
     fi
   fi
 
+  echo
+  echo "-- freshness gate: item-9 attestation envelope (testbenches shipped) --"
+  if [ "${SELFTEST_ITEM9_REENTRY:-}" = "1" ]; then
+    ITEM9_REENTRY_SKIP=1
+    echo "SKIP: item-9 attestation -- this run IS the attestation's own"
+    echo "      cold_start (SELFTEST_ITEM9_REENTRY is set), so re-running the"
+    echo "      gate here would recurse; the other freshness gates still run."
+  elif command -v klt >/dev/null 2>&1; then
+    KLT_GATE_RAN=1
+    if ! (cd "${REPO_ROOT}" && SELFTEST_ITEM9_REENTRY=1 klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json); then
+      echo "FAIL: item-9 attestation envelope re-check -- an inventoried"
+      echo "      testbench or harness file moved since evidence/item9.json was"
+      echo "      minted (the drift list above names which)."
+      failed=1
+    fi
+  else
+    if [ "${REQUIRE_PDK}" -eq 1 ]; then
+      echo "FAIL: item-9 attestation envelope re-check needs klt, which is not"
+      echo "      installed (--require-pdk turns the absence into a failure)."
+      failed=1
+    else
+      echo "SKIP: item-9 attestation (klt not installed)"
+      echo "      The other freshness gates ran; install klt to gate this one"
+      echo "      locally too."
+    fi
+  fi
+
   return "${failed}"
 }
 
-echo "== 1/4 harness unit tests + pin-freshness gates (no PDK required) =="
+echo "== 1/4 harness unit tests + pin-freshness gates:"
+echo "      characterization-envelope selftest + re-hash, item-10 and item-9"
+echo "      attestation re-checks (no PDK required) =="
 if ! python3 -m unittest discover -s "${SIM_DIR}/tests" -t "${SIM_DIR}/tests"; then
   echo "FAIL: harness unit tests"
   exit 1
@@ -176,18 +220,23 @@ esac
 
 if [ "${QUICK}" -eq 1 ]; then
   echo
-  echo "SKIP: stages 3-4 (--quick: unit tests + freshness gates + environment"
-  echo "      check only)."
+  echo "SKIP: stages 3-4 (--quick: unit tests + freshness gates"
+  echo "      (envelope selftest + re-hash, item-10 and item-9 attestation"
+  echo "      re-checks) + environment check only)."
   echo
   if [ "${KLT_GATE_RAN}" -eq 1 ]; then
     echo "PASS (quick): harness plumbing is present; the pin-freshness gates ran"
-    echo "      (characterization-envelope selftest + re-hash, item-10 attestation"
-    echo "      re-check); PVT/MC switching NOT verified."
+    echo "      (characterization-envelope selftest + re-hash, item-10 and item-9"
+    echo "      attestation re-checks); PVT/MC switching NOT verified."
+    if [ "${ITEM9_REENTRY_SKIP}" -eq 1 ]; then
+      echo "      (the item-9 re-check was skipped: this run is that attestation's"
+      echo "      own cold_start -- see SELFTEST_ITEM9_REENTRY.)"
+    fi
   else
     echo "PASS (partial): harness plumbing is present; the characterization-"
-    echo "      envelope selftest + re-hash ran, but the item-10 attestation"
-    echo "      re-check SKIPPED (klt not installed); PVT/MC switching NOT"
-    echo "      verified."
+    echo "      envelope selftest + re-hash ran, but the item-10 and item-9"
+    echo "      attestation re-checks SKIPPED (klt not installed); PVT/MC"
+    echo "      switching NOT verified."
   fi
   exit 0
 fi
