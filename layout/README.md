@@ -24,7 +24,8 @@ Generation (regenerates the GDS and every evidence file, ~1 min):
 
 ```sh
 python3 layout/gen_comparator.py           # regenerate + verify + emit
-python3 layout/gen_comparator.py --check   # byte-compare against the committed GDS
+python3 layout/gen_comparator.py --check   # byte-compare the GDS + the five evidence artifacts
+python3 layout/gen_comparator.py --selftest  # hermetic: a mutated artifact fails the compare
 ```
 
 `--check` passes (re-verified at the 0.8.0 pin, issue #207): the flow is deterministic (no randomness, no dict-ordering
@@ -35,6 +36,45 @@ builds, so nothing in that toolchain move is a geometry change.
 `compose-report.json` did move: klt 0.6.0 records a `source_path` +
 `source_digest` per placed block (additive; no field removed), so the
 compose evidence now pins each `klt gen` block's own GDS by hash.
+
+Since issue #311 the same `--check` also byte-compares the five evidence
+artifacts no manifest citation re-derives — `compose-report.json`,
+`route-summary.json`, `lvs-request.json`, `lvs-coverage-probe.json` and
+`erc-coverage-probe.json` — on every PR (the `layout-device-count` job).
+The first two are flow outputs the check already regenerated; the request
+is the serialized `LVS_REQUEST` constant; the two probes are re-run in
+full (1+8 `klt lvs`, 1 `klt layers`, 1+9 `klt erc`, 1 `klt signoff` —
+measured ~12 s beside the flow's ~11 s at the 0.8.0 pin) into a temp dir
+and byte-compared, so a committed probe whose inputs moved (schematic
+netlist, spec, tiers doc, GDS) or whose bytes were edited fails CI naming
+the file — the silent-drift class #285 exposed when
+`erc-coverage-probe.json` carried a stale T1 met-count nothing read.
+`--selftest` is the hermetic half (no klt, no PDK): it proves a mutated or
+no-longer-regenerated artifact fails the same `compare_evidence` code path
+the live check runs, and that the host-provenance normalization below is
+what makes a single-root regeneration pass.
+
+One measured exception to the byte-compare (issue #319): a GitHub runner
+installs exactly one PDK search root (`~/.ciel`, via `ciel enable`), while
+a workstation that also has volare installed has two — klt stamps the
+extra roots into `compose-report.json`'s
+`provenance.pdk.ambiguous_sources` on a multi-root host and **omits the
+key entirely** on a single-root host (never emits `[]`). Those bytes
+record the generating host, not the design, so a raw byte-compare of that
+one artifact is red in whichever environment did *not* generate the
+committed copy. `--check` therefore compares `compose-report.json`
+through a canonical form (`compose_canonical_bytes`) with exactly that
+key stripped from both sides — stripped by name, never normalized to an
+empty list — while the tool pins in the same provenance block
+(`klt_version`, `klayout_version`) stay strictly compared and get an
+explicit off-pin diagnostic (`compose_pin_error`, mirroring
+`extract_pex.py`'s `_assert_pinned`). Everything else in the file still
+bites: any drift beyond that key fails CI naming the file. The committed
+copy keeps the key its generating host emitted — the ambiguity warning
+was true there — which is why a workstation regeneration reproduces it
+byte-identically while a single-root runner's fresh copy legitimately
+differs by that one key; either side can regenerate and commit without
+flip-flopping the gate.
 
 **Toolchain pin.** `klt` (klayout-tools) **0.8.0** on the **klayout
 0.30.12** engine (the engine klt 0.8.0 build-tests against; the LVS, ERC and
