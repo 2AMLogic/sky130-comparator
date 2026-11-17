@@ -80,7 +80,7 @@
         "role": "testbench",
         "path": "sim/comparator-regeneration/ladder.py",
         "passed": true,
-        "content_hash": "sha256:0cd4043ecf4dba53f9d1920c5017ad1a0b9eff03a05ab1eaa59924d3438b9897"
+        "content_hash": "sha256:156a7b9607b3fd8d27f91e6bc47d71d73665f754480870b2daad5e9e8b03f3aa"
       },
       {
         "check": "present",
@@ -122,7 +122,7 @@
         "role": "testbench",
         "path": "sim/harness/corners.py",
         "passed": true,
-        "content_hash": "sha256:617514c4a821627cd4c72a6eb30f662688a1d5ffdd60e17858eb0f165615922c"
+        "content_hash": "sha256:cf83db69e4980bc9e5989802bda4950228839d81c73e588d12283fef0c694c5c"
       },
       {
         "check": "present",
