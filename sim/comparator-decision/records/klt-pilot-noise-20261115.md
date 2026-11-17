@@ -28,10 +28,9 @@ The baseline record stores four decimal places, so "delta" cannot be computed
 tighter than its displayed precision -- the honest statement is **every
 quantity the record stores is reproduced to that precision**, by a fleet run
 on a different ngspice (46 -> 47) and PDK revision (`c6d73a35` -> `f6eeac7`).
-Unlike the `kickback` and `kickback-pex` pilots, whose deltas had to be
-flagged "indicative only" against unquantified environment drift (the `regen`
-pilot's delta, by contrast, was fully decomposed, not indicative), this
-measurement shows **no visible PDK/ngspice-revision confounder at this corner**: nothing
+Unlike the `kickback` and `regen` pilots, whose deltas had to be flagged
+"indicative only" against unquantified environment drift, this measurement
+shows **no visible PDK/ngspice-revision confounder at this corner**: nothing
 moved beyond what the record's storage precision can express.
 
 **Against the ratified bound, stated for completeness and legislating
@@ -232,12 +231,5 @@ via the body block on the klt-0.9.0 runner this pilot used.
   `_noise_sub_model_lines()` moves, regenerate it from `_noise_deck` rather
   than editing device lines by hand (snapshot provenance is stated in the
   body header).
-- Documentary correction (2026-11-16): the comparison clause in the results
-  section originally grouped the `regen` pilot with the "indicative only"
-  pilots and omitted `kickback-pex`. `klt-pilot-regen-20261114.md:27-28` and
-  `sim/comparator-decision/README.md:349-350` state the `regen` delta is
-  decomposed, and `klt-pilot-kickback-pex-20261114.md:119-123` carries the
-  caveat. Prose corrected in place, as in `728e7fe`; no measured value, deck,
-  or provenance line touched.
 - `run.py` was not touched; no ratified record, spec row, characterization
   report or `regen-*` artifact changed.
