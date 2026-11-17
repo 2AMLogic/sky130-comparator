@@ -35,7 +35,6 @@ Issues currently being built (`loom:building`).
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
-- **#329**: WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation)
 
 ## PRs Awaiting Review
 
@@ -59,7 +58,6 @@ Issues carrying `loom:curated`.
 - **#229**: klt-pilot: the two regen bdiff dry-run artifacts name the wrong netlist *(curated)* *(held)*
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib *(curated)*
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
-- **#329**: WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation) *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -81,10 +79,10 @@ _None._
 | Very important | 1 |
 | Important | 2 |
 | Ready (`loom:issue`) | 0 |
-| In Progress (`loom:building`) | 4 |
+| In Progress (`loom:building`) | 3 |
 | PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 1 |
-| Curated | 7 |
+| Curated | 6 |
 | Architect / Hermit proposals | 5 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
