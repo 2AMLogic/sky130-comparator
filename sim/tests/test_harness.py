@@ -804,6 +804,28 @@ class TestSpreadCheckValidation(unittest.TestCase):
         self.assertIn("'ghost'", msg)
         self.assertIn("'measure'", msg)
 
+    def test_report_only_block_rejects_any_spread_key(self):
+        # spreads_graded=False (issue #295): a block nothing spread-grades
+        # (ladder.json's reverse_ladder) must reject a correctly spelled
+        # floor or ceiling at load too -- the same silently-ungraded
+        # pass/fail line as the typo case, minus the typo.
+        for key in ("min_spread_pct_by_axis", "max_spread_pct_by_axis"):
+            with self.assertRaises(ValueError) as ctx:
+                corners.validate_spread_checks(
+                    "ladder.json [reverse_ladder.checks]", {"x": "expr"},
+                    {"x": {key: {"temperature": 5.0}}},
+                    spreads_graded=False,
+                )
+            msg = str(ctx.exception)
+            self.assertIn("'x'", msg)
+            self.assertIn("report-only", msg)
+        # Non-spread entries still pass untouched.
+        corners.validate_spread_checks(
+            "ladder.json [reverse_ladder.checks]", {"x": "expr"},
+            {"x": {"min": 0.001, "max": 25.0}, "y": {"min_stdev": 1e-6}},
+            spreads_graded=False,
+        )
+
     def test_accepts_min_max_min_stdev_and_non_spread_entries(self):
         # mc-smoke's min_stdev-only check (whose name IS in measure) and a
         # non-spread check absent from measure must both stay accepted --
@@ -855,8 +877,11 @@ class TestSpreadCheckValidation(unittest.TestCase):
     def test_committed_ladder_manifest_blocks_pass_validation(self):
         # ladder.json is loaded by ladder.load_manifest(), not
         # testbench.load() -- so its two blocks are validated directly
-        # here (issue #274 AC); the real load path is pinned by
-        # test_comparator_regeneration.py's load-path tests.
+        # here (issue #274 AC), each with the flag its real call site
+        # passes: the top-level block graded (default) and the
+        # reverse_ladder block report-only (issue #295). The real load
+        # path is pinned by test_comparator_regeneration.py's load-path
+        # tests.
         raw = json.loads(
             (SIM_DIR / "comparator-regeneration" / "testbench" / "ladder.json")
             .read_text()
@@ -865,7 +890,8 @@ class TestSpreadCheckValidation(unittest.TestCase):
             "ladder.json [checks]", raw["measure"], raw["checks"])
         rev = raw["reverse_ladder"]
         corners.validate_spread_checks(
-            "ladder.json [reverse_ladder.checks]", rev["measure"], rev["checks"])
+            "ladder.json [reverse_ladder.checks]", rev["measure"], rev["checks"],
+            spreads_graded=False)
 
     def test_spread_axes_enum_matches_both_grading_paths(self):
         """Drift pin (issue #274 AC): SPREAD_AXES -- what
