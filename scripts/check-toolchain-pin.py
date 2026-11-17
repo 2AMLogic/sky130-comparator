@@ -44,6 +44,16 @@ accepting, the real dev build `0.9.3.dev3+gd5d57daf9a14`, a `.dev` suffix
 on the pin itself, a missing `klt_version`, a missing `provenance` block,
 an unparseable or non-object envelope, and an empty envelope set.
 
+Since issue #313 the gate also covers the xschem pin: `sim/toolchain.json`
+`xschem_tag` is its source of truth, and the workflow repeats it in four
+non-comment literal classes -- `XSCHEM_VERSION:`, the `/tags/<v>.tar.gz` of
+`XSCHEM_URL`, the `xschem-<v>-` cache-key prefix and the `XSCHEM V<v>`
+version assertion. Any that disagrees with `xschem_tag`, or a class that
+vanished, fails. Only the TAG is checked: `XSCHEM_SHA256` cannot be derived
+from the tag and is NOT covered by this gate (nor is the sha embedded in the
+cache key), so a bump still needs a hand-updated hash. Prose comments and
+step names are deliberately left as prose, like the klt scan's comment skip.
+
 Same `_gate_common` convention as the other gates in this directory, and the
 same cross-directory import precedent as `check-layout-device-count.py`
 importing its counter from `layout/gen_comparator.py`.
@@ -68,12 +78,22 @@ from gen_comparator import KLAYOUT_VERSION, KLT_PIN, KLT_VERSION  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = Path(".github/workflows/t1-signoff.yml")
 EVIDENCE_DIR = Path("evidence")
+#: Source of truth for the xschem pin (issue #313); read as JSON directly.
+TOOLCHAIN_JSON = Path("sim/toolchain.json")
 #: The committed artifact whose `tool.klt_pin` the composite is asserted
 #: against byte for byte (re-asserted in CI by check-layout-device-count.py).
 KLT_PIN_ARTIFACT = Path("layout/extract-device-count.json")
 
 TOOLS_RE = re.compile(r"klayout-tools==([^\s\"'`]+)")
 ENGINE_RE = re.compile(r"\bklayout==([^\s\"'`]+)")
+
+#: The four mechanical xschem literal classes in the workflow (issue #313).
+XSCHEM_PATTERNS = {
+    "XSCHEM_VERSION": re.compile(r"\bXSCHEM_VERSION:\s*[\"']?([^\s\"']+)"),
+    "XSCHEM_URL tag": re.compile(r"\bXSCHEM_URL:.*?/tags/(.+?)\.tar\.gz"),
+    "cache key xschem-<v>-": re.compile(r"\bkey:\s*xschem-([0-9][^-\s\"']*)-"),
+    "`XSCHEM V<v>` assertion": re.compile(r"XSCHEM V([0-9][^\s\"']*)"),
+}
 
 
 def scan_workflow(text: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
@@ -116,6 +136,44 @@ def check_workflow(text: str, name: str) -> None:
         ok(f"{name}: all {len(tools)} klayout-tools== and {len(engine)} "
            f"klayout== install line(s) match the pin "
            f"{KLT_VERSION} / {KLAYOUT_VERSION}")
+
+
+def scan_xschem(text: str) -> dict[str, list[tuple[int, str]]]:
+    """Every xschem pin literal, per class, as (lineno, version). Comment
+    lines are skipped, as in `scan_workflow`."""
+    found: dict[str, list[tuple[int, str]]] = {k: [] for k in XSCHEM_PATTERNS}
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if line.lstrip().startswith("#"):
+            continue
+        for label, pattern in XSCHEM_PATTERNS.items():
+            found[label].extend((lineno, m.group(1))
+                                for m in pattern.finditer(line))
+    return found
+
+
+def check_xschem_pin(text: str, tag: object, name: str) -> None:
+    """Assert every workflow xschem literal equals `xschem_tag` (issue #313).
+
+    Checks the tag only -- `XSCHEM_SHA256` is not derivable from it and is
+    not covered. `tag` is whatever the JSON held, so a missing or non-string
+    key is reported as a failure rather than a traceback.
+    """
+    if not isinstance(tag, str) or not tag:
+        fail(f"{TOOLCHAIN_JSON}: no usable `xschem_tag` string -- cannot "
+             "check the workflow's xschem pin")
+        return
+    before = len(FAILURES)
+    for label, hits in scan_xschem(text).items():
+        if not hits:
+            fail(f"{name}: no {label} literal found -- the xschem pin has "
+                 "vanished from CI")
+        for lineno, version in hits:
+            if version != tag:
+                fail(f"{name}:{lineno}: {label} is {version}, but "
+                     f"{TOOLCHAIN_JSON} pins xschem_tag {tag}")
+    if len(FAILURES) == before:
+        ok(f"{name}: all xschem literals match {TOOLCHAIN_JSON} "
+           f"xschem_tag {tag} (tag only; XSCHEM_SHA256 is not checked)")
 
 
 def check_evidence_provenance(envelopes: list[tuple[str, object]], name: str) -> None:
@@ -171,6 +229,12 @@ def run_gate(args: argparse.Namespace) -> int:
         fail(f"workflow not found: {path}")
         return 1
     check_workflow(text, str(WORKFLOW))
+    try:
+        xschem_tag = json.loads(
+            (root / TOOLCHAIN_JSON).read_text(encoding="utf-8")).get("xschem_tag")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        xschem_tag = None
+    check_xschem_pin(text, xschem_tag, str(WORKFLOW))
 
     # (path, doc) pairs: doc is the parsed envelope, or the ValueError the
     # parse produced so the pure check reports it as a gate failure instead
@@ -246,6 +310,35 @@ def run_selftest(args: argparse.Namespace) -> int:
           True, "# prose\n" + good_line + "# more prose klayout==0.0.1\n"
                 + bumped_tools)
 
+    def check_x(name, expect_fail, text, tag="3.4.7"):
+        reset()
+        check_xschem_pin(text, tag, "fx-workflow")
+        case_results.append((name, (len(FAILURES) > 0) == expect_fail))
+
+    def xs(ver=None, url=None, key=None, assertion=None):
+        v = "3.4.7"
+        return (f'      XSCHEM_VERSION: "{ver or v}"\n'
+                f'      XSCHEM_URL: https://x/archive/refs/tags/{url or v}.tar.gz\n'
+                f'          key: xschem-{key or v}-abc123-default-v1\n'
+                f"          echo \"$out\" | grep -q 'XSCHEM V{assertion or v}'\n")
+
+    check_x("xschem: accepts a workflow whose four literals match", False, xs())
+    check_x("xschem: rejects a drifted XSCHEM_VERSION", True, xs(ver="3.4.8"))
+    check_x("xschem: rejects a drifted XSCHEM_URL tag", True, xs(url="3.4.8"))
+    check_x("xschem: rejects a drifted cache-key prefix", True, xs(key="3.4.8"))
+    check_x("xschem: rejects a drifted `XSCHEM V<v>` assertion", True,
+            xs(assertion="3.4.8"))
+    check_x("xschem: rejects a bumped xschem_tag against old literals", True,
+            xs(), tag="3.5.0")
+    for label, pattern in XSCHEM_PATTERNS.items():
+        kept = "".join(l for l in xs().splitlines(keepends=True)
+                       if not pattern.search(l))
+        check_x(f"xschem: rejects a workflow with the {label} literal gone",
+                True, kept)
+    check_x("xschem: ignores comment prose mentioning another version", False,
+            "# XSCHEM_VERSION: \"9.9.9\" xschem-9.9.9- XSCHEM V9.9.9\n" + xs())
+    check_x("xschem: rejects a missing xschem_tag key", True, xs(), tag=None)
+
     def check_env(name, expect_fail, envelopes):
         # Same reset() contract as `check` above: the tally is shared by
         # identity with _gate_common, clearing must stay in place.
@@ -302,8 +395,8 @@ def main(argv=None) -> int:
         description="Toolchain-pin CI gate: the t1-signoff workflow's "
         "klayout-tools==/klayout== install lines and the committed "
         "evidence/*.json envelopes' provenance.klt_version vs the pin's "
-        "single source of truth in layout/gen_comparator.py (issues #245, "
-        "#271)"
+        "single source of truth in layout/gen_comparator.py, and the "
+        "xschem literals vs sim/toolchain.json (issues #245, #271, #313)"
     )
     sub = parser.add_subparsers(dest="mode", required=True)
 
