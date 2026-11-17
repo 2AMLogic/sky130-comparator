@@ -1,0 +1,391 @@
+{
+  "schema_version": 3,
+  "netlist": {
+    "path": "sim/comparator-decision/klt-pilot/kickback-body-loaded.spice",
+    "scope": "repo"
+  },
+  "status": "pass",
+  "corner_count": 1,
+  "passed": 1,
+  "failed": 0,
+  "errored": 0,
+  "inconclusive": 0,
+  "diagnostic_counts": {
+    "by_code": {},
+    "by_severity": {},
+    "corners_with_diagnostics": 0
+  },
+  "metrics": {
+    "sim__corner__count": 1,
+    "sim__corner__passed_count": 1,
+    "sim__corner__failed_count": 0,
+    "sim__corner__errored_count": 0,
+    "sim__corner__inconclusive_count": 0
+  },
+  "environment": {
+    "engine": "ngspice",
+    "engine_version": "47",
+    "ngspice_binary": "/usr/local/bin/ngspice",
+    "engine_build": {
+      "version_banner": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Nov 13 23:19:32 UTC 2026\n******",
+      "binary_sha256": "39ca1adb826660324c3626f72bd946ec40704f0f3fc8e243c623f76e24b3eee2",
+      "probe": "ok",
+      "reason": null
+    },
+    "models_lib": {
+      "path": null,
+      "scope": "external"
+    },
+    "models_lib_sha256": "17c208a699228f5acb87bf59c09c22a4c4d3937b6766b4957737d34e8e075f64",
+    "models_lib_sha256_scope": "client",
+    "netlist_sha256": "4e584841268300653a3e80d1ab0bd247d11c9771ecb96e4ff65475c65fd9928b",
+    "netlist_closure": [
+      {
+        "path": "sim/comparator-decision/klt-pilot/kickback-body-loaded.spice",
+        "scope": "repo",
+        "sha256": "4e584841268300653a3e80d1ab0bd247d11c9771ecb96e4ff65475c65fd9928b"
+      },
+      {
+        "path": "sim/comparator-decision/testbench/comparator_core.spice",
+        "scope": "repo",
+        "sha256": "e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4"
+      }
+    ],
+    "netlist_identity": "sha256:e7f09634c99a8169f764277bfd129fcf6465dd695653f278ded842c177b2d7c5",
+    "remote": {
+      "provider": "aws-batch-fleet",
+      "job_id": "klt-sim-1bcd79aae93b",
+      "region": "us-east-1",
+      "instance_id": "i-0f8f86c5f9827fa30",
+      "instance_type": "c7i.8xlarge",
+      "availability_zone": "us-east-1a",
+      "ami_id": "ami-09c14f55df4958cbd",
+      "lifecycle": "spot",
+      "spot": true,
+      "state": "done",
+      "exit_code": "0",
+      "concurrency": "2",
+      "physical_cores": "16",
+      "elapsed_seconds": 26,
+      "client_submitted_at": "2026-11-16T11:17:49.019422Z",
+      "client_launched_at": "2026-11-16T11:18:09.456749Z",
+      "client_status_terminal_at": "2026-11-16T11:19:11.756436Z",
+      "client_collected_at": "2026-11-16T11:19:12.587054Z",
+      "runner_klt_version": "0.9.0",
+      "client_klt_version": "0.9.3.dev39+g205f77baff57",
+      "runner_compatibility": "match",
+      "runner_request_features": {
+        "required": [
+          "options.ngspice_init"
+        ],
+        "missing": [],
+        "status": "supported"
+      },
+      "worker_environment": {
+        "capture": "ok",
+        "simulator": {
+          "requested_binary": "ngspice",
+          "binary_source": "PATH",
+          "selected_path": "/usr/local/bin/ngspice",
+          "version_banner": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Nov 13 23:19:32 UTC 2026\n******\n",
+          "version_probe": "ok"
+        },
+        "pdk": {
+          "variant": "sky130A",
+          "root": "/opt/pdk",
+          "stamp_scheme": "sources-sha256",
+          "stamp_sha256": "4ca10280ae9f293aa1ff69f0060a52e0026929111bda881503717469b429ce67",
+          "stamp_text": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7",
+          "models_staged": false,
+          "stamp_scope": "executed"
+        },
+        "cpu_model": "Intel(R) Xeon(R) Platinum 8488C",
+        "omp_num_threads": null,
+        "image_manifest": null,
+        "model_inputs": null,
+        "diagnostics": [],
+        "pdk_stamp_comparison": {
+          "status": "match"
+        },
+        "engine_build_comparison": {
+          "status": "match"
+        }
+      },
+      "runner_model_inputs": null,
+      "runner_models_lib_sha256": "17c208a699228f5acb87bf59c09c22a4c4d3937b6766b4957737d34e8e075f64",
+      "job_ceiling": {
+        "basis": "conservative_serial_bound",
+        "unit_count": 1,
+        "per_unit_timeout_s": 600,
+        "overhead_s": 120.0,
+        "job_bound_s": 720.0,
+        "max_job_seconds": 3600.0,
+        "max_job_seconds_source": "fleet_config",
+        "exceeds_ceiling": false,
+        "check": "warn",
+        "max_units_per_job": 5,
+        "recommended_hosts": 1
+      },
+      "models_lib_comparison": {
+        "status": "match"
+      }
+    },
+    "engine_host": "worker",
+    "client_ngspice_binary": "/home/ubuntu/.local/bin/ngspice",
+    "backend": {
+      "resolved": "batch",
+      "source": "flag",
+      "requested": "batch"
+    }
+  },
+  "coverage": {
+    "corners_simulated": 1,
+    "measurements_declared": 6,
+    "measurements_with_limits": 0,
+    "unrecognized_limit_keys": [],
+    "schema_version": 1,
+    "known": true,
+    "checked": [
+      "measurement:[0,\"tt/novdd/27C\",\"vinn_max\"]/observation",
+      "measurement:[0,\"tt/novdd/27C\",\"vinn_min\"]/observation",
+      "measurement:[0,\"tt/novdd/27C\",\"vinn_q\"]/observation",
+      "measurement:[0,\"tt/novdd/27C\",\"vinp_max\"]/observation",
+      "measurement:[0,\"tt/novdd/27C\",\"vinp_min\"]/observation",
+      "measurement:[0,\"tt/novdd/27C\",\"vinp_q\"]/observation"
+    ],
+    "skipped": [],
+    "inapplicable": [
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinn_max\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinn_min\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinn_q\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinp_max\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinp_min\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[0,\"tt/novdd/27C\",\"vinp_q\"]/limits",
+        "reason": "characterization_without_limits"
+      }
+    ],
+    "unknown": [],
+    "nothing_checked": false,
+    "nothing_checked_reasons": []
+  },
+  "provenance": {
+    "klt_version": "0.9.3.dev39+g205f77baff57",
+    "klt_git_commit": "205f77baff57d130e1e65d768173d3d0ffbff6a0",
+    "klt_reinstall_spec": "klayout-tools @ git+https://github.com/2AMLogic/klayout-tools@205f77baff57d130e1e65d768173d3d0ffbff6a0",
+    "klayout_version": "0.30.13",
+    "pdk": {
+      "name": "sky130A",
+      "source": "search root: ~/.ciel",
+      "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7",
+      "ambiguous_sources": [
+        "search root: ~/.volare"
+      ]
+    },
+    "deck": {
+      "name": "sky130.lib.spice",
+      "content_hash": "sha256:17c208a699228f5acb87bf59c09c22a4c4d3937b6766b4957737d34e8e075f64",
+      "released": false
+    },
+    "input": {
+      "content_hash": "sha256:4e584841268300653a3e80d1ab0bd247d11c9771ecb96e4ff65475c65fd9928b",
+      "role": "netlist"
+    }
+  },
+  "measurements": [
+    {
+      "name": "vinp_q",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250000000005,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250000000005
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250000000005
+      }
+    },
+    {
+      "name": "vinp_max",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250706776702,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250706776702
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9250706776702
+      }
+    },
+    {
+      "name": "vinp_min",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9243986435013,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9243986435013
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.9243986435013
+      }
+    },
+    {
+      "name": "vinn_q",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750000000005,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750000000005
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750000000005
+      }
+    },
+    {
+      "name": "vinn_max",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750696041202,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750696041202
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8750696041202
+      }
+    },
+    {
+      "name": "vinn_min",
+      "unit": null,
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8731197679172,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8731197679172
+      },
+      "max": {
+        "corner_id": "tt/novdd/27C",
+        "value": 0.8731197679172
+      }
+    }
+  ],
+  "corners": [
+    {
+      "corner_id": "tt/novdd/27C",
+      "process": "tt",
+      "supply_v": {},
+      "temperature_c": 27,
+      "status": "pass",
+      "runtime_s": 15.259,
+      "peak_rss_bytes": 380915712,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "vinp_q",
+          "value": 0.9250000000005,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        },
+        {
+          "name": "vinp_max",
+          "value": 0.9250706776702,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        },
+        {
+          "name": "vinp_min",
+          "value": 0.9243986435013,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        },
+        {
+          "name": "vinn_q",
+          "value": 0.8750000000005,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        },
+        {
+          "name": "vinn_max",
+          "value": 0.8750696041202,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        },
+        {
+          "name": "vinn_min",
+          "value": 0.8731197679172,
+          "unit": null,
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": "/home/ubuntu/GitHub/sky130-comparator/.loom/worktrees/issue-283/sim/comparator-decision/klt-pilot/out-ngspice47/kickback-request-loaded-ngspice47/tt_novdd_27C/ngspice.log",
+        "raw": null,
+        "waveform": null,
+        "deck": "/home/ubuntu/GitHub/sky130-comparator/.loom/worktrees/issue-283/sim/comparator-decision/klt-pilot/out-ngspice47/kickback-request-loaded-ngspice47/tt_novdd_27C/corner.cir"
+      },
+      "monte_carlo": null
+    }
+  ]
+}
