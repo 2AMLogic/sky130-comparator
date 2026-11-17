@@ -42,7 +42,7 @@ is DRAFT / OPEN with no measurement behind it ([#134](https://github.com/2AMLogi
   and is extracted under 0.8.0 (PRs #205, #208). No *recorded* metric has been
   re-measured on it; the first simulated figure on the current extraction is
   the [#219](https://github.com/2AMLogic/sky130-comparator/issues/219) pilot
-  (`sim/comparator-decision/records/klt-pilot-kickback-pex-20261114.md`), which
+  (`sim/comparator-decision/pilots/klt-pilot-kickback-pex-20261114.md`), which
   neither closes [#125](https://github.com/2AMLogic/sky130-comparator/issues/125)
   nor changes a spec row.
 - The PDK pin moved to open_pdks `f6eeac7` (PR #180), but the reference
@@ -57,13 +57,13 @@ not fit a shared dispatch host. The pilot in PR #212 changed the picture:
 landing within 0.88 % of the `run.py` baseline — indicative only, since the
 pilot ran on PDK `f6eeac7` while the baseline was minted on `c6d73a35`, so the
 delta cannot separate a PDK-revision effect from a solver one
-(`sim/comparator-decision/records/klt-pilot-kickback-20261106.md`). `regen`,
+(`sim/comparator-decision/pilots/klt-pilot-kickback-20261106.md`). `regen`,
 piloted since on both `tt`/27 C and `ss`/-40 C, needed no such caveat: its
 delta is fully decomposed per corner
-(`sim/comparator-decision/records/klt-pilot-regen-20261114.md`). `noise`
+(`sim/comparator-decision/pilots/klt-pilot-regen-20261114.md`). `noise`
 has since been piloted at `tt`/novdd/27 C and reproduced the `run.py`
 baseline to its stored precision with no visible PDK/ngspice-revision
-confounder (`sim/comparator-decision/records/klt-pilot-noise-20261115.md`).
+confounder (`sim/comparator-decision/pilots/klt-pilot-noise-20261115.md`).
 `offset` and `reset` remain unattempted.
 
 ## Now

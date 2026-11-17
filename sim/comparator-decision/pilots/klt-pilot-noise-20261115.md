@@ -28,10 +28,12 @@ The baseline record stores four decimal places, so "delta" cannot be computed
 tighter than its displayed precision -- the honest statement is **every
 quantity the record stores is reproduced to that precision**, by a fleet run
 on a different ngspice (46 -> 47) and PDK revision (`c6d73a35` -> `f6eeac7`).
-Unlike the `kickback` and `regen` pilots, whose deltas had to be flagged
-"indicative only" against unquantified environment drift, this measurement
-shows **no visible PDK/ngspice-revision confounder at this corner**: nothing
-moved beyond what the record's storage precision can express.
+Unlike the `kickback` and `kickback-pex` pilots, whose deltas had to be
+flagged "indicative only" against unquantified environment drift (the
+`regen` pilot's delta, by contrast, was fully decomposed, not indicative),
+this measurement shows **no visible PDK/ngspice-revision confounder at
+this corner**: nothing moved beyond what the record's storage precision can
+express.
 
 **Against the ratified bound, stated for completeness and legislating
 nothing**: DR-002 ratifies Input-referred noise at <= 1 mV rms differential

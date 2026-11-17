@@ -193,7 +193,7 @@ extracted pair.
   interaction identically -- B - A = (C - A) + (B - C) holds whatever the
   interaction is -- so the compounding check cannot bound it. The same
   fourth leg D would also measure the library effect *at ng-46*.
-- `records/klt-pilot-library-effect-20261115.md` is intentionally untouched:
+- `pilots/klt-pilot-library-effect-20261115.md` is intentionally untouched:
   `sim/` evidence is append-only (`scripts/check-sim-append-only.py`
   byte-freezes committed records); this note is the correction, and cites the
   caveat it refines.
