@@ -112,7 +112,9 @@ def spread_failures(
 SPREAD_AXES = frozenset({"process", "temperature", "supply"})
 
 
-def validate_spread_checks(label: str, measure: dict, checks: dict) -> None:
+def validate_spread_checks(
+    label: str, measure: dict, checks: dict, spreads_graded: bool = True
+) -> None:
     """Load-time validation of one manifest block's spread checks (issue
     #274): raises ValueError for (a) an axis key in
     min/max_spread_pct_by_axis outside SPREAD_AXES -- a misspelled axis is
@@ -123,7 +125,14 @@ def validate_spread_checks(label: str, measure: dict, checks: dict) -> None:
     manifest path and block so the error is fixable without reading the
     source. Only spread-carrying entries are in scope: min/max/min_stdev
     keys and entries without spread blocks pass untouched, and
-    spread_failures() itself is unchanged."""
+    spread_failures() itself is unchanged.
+
+    A block whose checks are never spread-graded (the ladder.json
+    reverse_ladder: grade_reverse() reads per-point min/max only, DR-008
+    "reported, never scored") passes spreads_graded=False so any spread
+    floor/ceiling there fails the load too instead of sitting ungraded
+    (issue #295). Default stays graded, so every existing call site is
+    unchanged."""
     for name, chk in checks.items():
         for key in ("min_spread_pct_by_axis", "max_spread_pct_by_axis"):
             for axis in chk.get(key, {}):
@@ -133,6 +142,15 @@ def validate_spread_checks(label: str, measure: dict, checks: dict) -> None:
                         f"'{key}' -- valid axes are {sorted(SPREAD_AXES)}; "
                         f"the grader would silently skip it"
                     )
+        if not spreads_graded and (
+            "min_spread_pct_by_axis" in chk or "max_spread_pct_by_axis" in chk
+        ):
+            raise ValueError(
+                f"{label}: check '{name}' carries a spread floor/ceiling "
+                f"but this block's checks are report-only -- no grader "
+                f"reads spreads here, so it would be silently ungraded; "
+                f"remove the spread key"
+            )
         if name not in measure and (
             "min_spread_pct_by_axis" in chk or "max_spread_pct_by_axis" in chk
         ):
