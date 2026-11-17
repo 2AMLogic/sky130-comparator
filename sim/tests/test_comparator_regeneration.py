@@ -175,8 +175,9 @@ class TestManifestLoadValidation(unittest.TestCase):
     silently ungraded at grading time. grade()'s runtime skip semantics
     are untouched (pinned unchanged by
     test_grade_with_typo_axis_name_skips_instead_of_crashing above), and
-    grade_reverse() grades per-point min/max only -- deliberately no test
-    pushes a spread typo through it, since it grades no spreads."""
+    grade_reverse() grades per-point min/max only -- so since issue #295
+    a correctly spelled spread key in reverse_ladder.checks is rejected at
+    load too: report-only blocks accept no ungraded pass/fail line."""
 
     @staticmethod
     @contextlib.contextmanager
@@ -235,6 +236,41 @@ class TestManifestLoadValidation(unittest.TestCase):
             with self.assertRaises(ValueError) as ctx:
                 ladder.load_manifest()
         self.assertIn("'ghost'", str(ctx.exception))
+
+    def test_load_manifest_rejects_correctly_spelled_spread_in_reverse_ladder(self):
+        # Issue #295 AC: grade_reverse() grades per-point min/max only
+        # (DR-008, report-only), so a correctly spelled spread floor or
+        # ceiling on a reverse check would pass the shared validator and
+        # then be graded by nothing -- the load must reject it, naming the
+        # check and stating the block is report-only.
+        for key in ("min_spread_pct_by_axis", "max_spread_pct_by_axis"):
+            with self.subTest(key=key):
+
+                def spread(m, key=key):
+                    m["reverse_ladder"]["checks"]["td_od50_rev_ns"][key] = {
+                        "temperature": 5.0}
+
+                with self._patched_manifest(spread):
+                    with self.assertRaises(ValueError) as ctx:
+                        ladder.load_manifest()
+                msg = str(ctx.exception)
+                self.assertIn("'td_od50_rev_ns'", msg)      # check name
+                self.assertIn("[reverse_ladder.checks]", msg)  # block
+                self.assertIn("report-only", msg)           # why rejected
+
+    def test_load_manifest_top_level_spread_keys_still_load(self):
+        # Issue #295 AC: the rejection is per-block -- the same spread key
+        # on a top-level check (which grade() does grade through
+        # spread_failures()) still loads unchanged.
+        def spread(m):
+            m["checks"]["tau_ps"]["min_spread_pct_by_axis"] = {
+                "temperature": 5.0}
+
+        with self._patched_manifest(spread):
+            m = ladder.load_manifest()
+        self.assertEqual(
+            m["checks"]["tau_ps"]["min_spread_pct_by_axis"],
+            {"temperature": 5.0})
 
     def test_load_manifest_accepts_manifest_without_reverse_ladder(self):
         def strip(m):

@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -17,7 +18,7 @@ from types import SimpleNamespace
 SIM_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SIM_DIR))
 
-from harness import cli, evidence_store as store  # noqa: E402
+from harness import cli, mc_cli, evidence_store as store  # noqa: E402
 
 
 def _fake_put(files, repo_root):
@@ -129,17 +130,27 @@ class TestStoreRun(unittest.TestCase):
                             blobs={}, record_text="r\n", put=_fake_put)
 
 
+_RECORD_CLI_CASES = [
+    # (label, module, argv, patched runner target)
+    ("run_corners", cli, ["harness-corner-smoke", "--record"], "harness.runner.run"),
+    ("monte_carlo", mc_cli, ["mc-smoke", "--record", "--seed", "1", "--n", "2"],
+     "harness.mc_runner.run"),
+]
+
+
 class TestCliFailsClosed(unittest.TestCase):
     def test_record_without_broker_exits_nonzero_before_simulating(self):
-        err = io.StringIO()
-        env = {k: v for k, v in __import__("os").environ.items() if k != store.ENV_BROKER}
-        with unittest.mock.patch.dict("os.environ", env, clear=True), \
-                unittest.mock.patch("harness.runner.run") as run, \
-                contextlib.redirect_stderr(err):
-            rc = cli.main(["harness-corner-smoke", "--record"])
-        self.assertEqual(rc, 10)
-        run.assert_not_called()
-        self.assertIn("KLT_ARTIFACT_BROKER", err.getvalue())
+        for label, module, argv, runner_target in _RECORD_CLI_CASES:
+            with self.subTest(cli=label):
+                err = io.StringIO()
+                env = {k: v for k, v in os.environ.items() if k != store.ENV_BROKER}
+                with unittest.mock.patch.dict("os.environ", env, clear=True), \
+                        unittest.mock.patch(runner_target) as run, \
+                        contextlib.redirect_stderr(err):
+                    rc = module.main(argv)
+                self.assertEqual(rc, 10)
+                run.assert_not_called()
+                self.assertIn("KLT_ARTIFACT_BROKER", err.getvalue())
 
 
 if __name__ == "__main__":
