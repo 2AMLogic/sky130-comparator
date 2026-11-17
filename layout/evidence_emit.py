@@ -493,7 +493,8 @@ def _supply_pairing(envelope: dict) -> dict:
     }
 
 
-def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
+def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict,
+                            out_dir: Path | None = None) -> None:
     """Measure what the signoff LVS `match` does and does not cover.
 
     A `klt lvs` envelope states its verdict, not its reach.  Two things about
@@ -507,6 +508,11 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
 
     Writes ``layout/lvs-coverage-probe.json``, and raises if any row's
     observed verdict differs from the one it asserts.
+
+    ``out_dir`` redirects the artifact *write* (not the ``klt`` runs, which
+    stay repo-rooted against the committed GDS) -- the ``gen_comparator.py
+    --check`` currency path emits into a temp dir and byte-compares
+    (issue #311).
     """
     base = (repo_root / LVS_REFERENCE).read_text()
     rows = []
@@ -575,7 +581,8 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
         "probes": rows,
         "pass": ok,
     }
-    (repo_root / "layout" / "lvs-coverage-probe.json").write_text(
+    (repo_root / "layout" if out_dir is None else Path(out_dir)
+     ).joinpath("lvs-coverage-probe.json").write_text(
         json.dumps(evidence, indent=2) + "\n")
     if not ok:
         raise RuntimeError(
@@ -583,7 +590,8 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
             "the verdict it asserts; see layout/lvs-coverage-probe.json")
 
 
-def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
+def emit_lvs_evidence(klt: str, repo_root: Path,
+                      out_dir: Path | None = None) -> dict:
     """Run the signoff LVS over the *emitted* GDS and commit it.
 
     Mirrors :func:`emit_drc_evidence`: run from the repo root against
@@ -615,12 +623,18 @@ def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
     fail at all is no longer asserted here -- ``emit_lvs_coverage_probe``'s
     ``mos_*``/``connectivity`` rows are the same assertion, generalised, and
     run immediately after.
+
+    ``out_dir`` redirects the two artifact *writes* (not the ``klt`` run,
+    which stays repo-rooted so the envelope echoes repo-relative paths) --
+    the ``gen_comparator.py --check`` currency path emits into a temp dir
+    and byte-compares (issue #311).
     """
-    (repo_root / "layout" / "lvs-request.json").write_text(
+    target = repo_root / "layout" if out_dir is None else Path(out_dir)
+    (target / "lvs-request.json").write_text(
         json.dumps(LVS_REQUEST, indent=2) + "\n")
 
     envelope, rc = _run_lvs(klt, LVS_REQUEST, repo_root)
-    (repo_root / "layout" / "lvs-report.json").write_text(
+    (target / "lvs-report.json").write_text(
         json.dumps(envelope, indent=2) + "\n")
 
     status = envelope.get("status")
@@ -686,7 +700,8 @@ def _erc_rules(envelope: dict) -> list[str]:
     return sorted({str(f.get("rule")) for f in envelope.get("erc_findings") or []})
 
 
-def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
+def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict,
+                      out_dir: Path | None = None) -> dict:
     """Write the ERC supply spec and run it over the *emitted* GDS.
 
     T1 item 11 ("Power delivery (structural)") is the **structural** supply
@@ -724,10 +739,21 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
        re-reads that spec document from disk to find the declared supply nets
        and does **not** verify it against this hash (klt 0.6.0), so an edited
        spec would otherwise silently change what a citation is graded on.
+
+    ``out_dir`` redirects the two artifact *writes* (the ``klt`` runs stay
+    repo-rooted against the committed GDS) -- the ``gen_comparator.py
+    --check`` currency path emits into a temp dir and byte-compares the
+    probe built on top of this envelope (issue #311).
     """
     spec = build_erc_spec(bbox)
     spec_text = json.dumps(spec, indent=2) + "\n"
-    (repo_root / ERC_SPEC_PATH).write_text(spec_text)
+    target = repo_root / "layout" if out_dir is None else Path(out_dir)
+    spec_file = target / "erc-spec.json"
+    spec_file.write_text(spec_text)
+    # Repo-relative in the emit path so the committed envelope echoes
+    # "layout/erc-spec.json"; the --check temp path is echoed instead but
+    # only its content hash reaches the compared probe bytes (issue #311).
+    spec_arg = ERC_SPEC_PATH if out_dir is None else str(spec_file)
 
     taps = json.loads(
         run([klt, "layers", "layout/comparator.gds", "--format", "json"],
@@ -741,8 +767,9 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
             "structures in TAPS -- 'tap_is_dedicated: true' would no longer be "
             "a measured fact, so refusing to commit it")
 
-    envelope, rc = _run_erc(klt, "layout/comparator.gds", ERC_SPEC_PATH, repo_root)
-    (repo_root / ERC_REPORT_PATH).write_text(json.dumps(envelope, indent=2) + "\n")
+    envelope, rc = _run_erc(klt, "layout/comparator.gds", spec_arg, repo_root)
+    (target / "erc-report.json").write_text(
+        json.dumps(envelope, indent=2) + "\n")
 
     coverage = envelope.get("erc_coverage") or {}
     checked = set(coverage.get("checked") or [])
@@ -1076,7 +1103,7 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
 
 
 def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
-                            signoff: dict) -> None:
+                            signoff: dict, out_dir: Path | None = None) -> None:
     """Measure whether the committed ERC supply check can fail.
 
     ``layout/erc-report.json`` states ``erc_status: "clean"`` with an empty
@@ -1092,6 +1119,11 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
     GDS.  Neither committed artifact is written to.  Writes
     ``layout/erc-coverage-probe.json`` and raises if any row's observed
     findings or coverage classification differ from the ones it asserts.
+
+    ``out_dir`` redirects the artifact *write* (not the ``klt`` runs, which
+    stay repo-rooted against the committed GDS) -- the
+    ``gen_comparator.py --check`` currency path emits into a temp dir and
+    byte-compares (issue #311).
     """
     base = build_erc_spec(bbox)
     rows = []
@@ -1166,7 +1198,9 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
         "signoff_if_cited": grade,
         "pass": ok,
     }
-    (repo_root / ERC_PROBE_PATH).write_text(json.dumps(evidence, indent=2) + "\n")
+    probe_path = ((repo_root / ERC_PROBE_PATH) if out_dir is None
+                  else Path(out_dir) / "erc-coverage-probe.json")
+    probe_path.write_text(json.dumps(evidence, indent=2) + "\n")
     if not ok:
         raise RuntimeError(
             "ERC coverage probe FAILED -- a negative control did not produce "

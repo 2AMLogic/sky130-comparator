@@ -16,8 +16,13 @@ repo root against the *emitted* GDS by ``layout/evidence_emit.py`` --
 see that module.
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
-    python3 layout/gen_comparator.py --check    # byte-compare against the
-                                                # committed GDS, change nothing
+    python3 layout/gen_comparator.py --check    # byte-compare the GDS and the
+                                                # five evidence artifacts
+                                                # (issue #311) against the
+                                                # committed copies, change
+                                                # nothing
+    python3 layout/gen_comparator.py --selftest # hermetic proof the evidence
+                                                # comparator bites (no klt/PDK)
 
 PDK resolution defaults to the repo pin (``sim/pdk.json``: sky130A at
 ``~/.ciel``, open_pdks ``f6eeac7dad...``); override with ``--pdk-root``.
@@ -101,7 +106,11 @@ naming convention):
 Determinism: no randomness and no dict-ordering dependence anywhere (the
 router's candidate ordering is a pure function of the geometry), so a
 re-run at the same klt pin reproduces ``comparator.gds`` byte-for-byte --
-that is exactly what ``--check`` asserts.
+that is exactly what ``--check`` asserts, and the same determinism is why
+``--check`` can also byte-compare the five evidence artifacts no citation
+pins (``compose-report.json``, ``route-summary.json``, ``lvs-request.json``
+and the two coverage probes, issue #311): re-derived under the same pin,
+they must reproduce their committed bytes or CI goes red.
 """
 from __future__ import annotations
 
@@ -1000,6 +1009,51 @@ def flow(klt: str, pdk_root: Path, out_dir: Path) -> int:
     return 0
 
 
+def compose_bbox(compose: dict) -> dict | None:
+    """The composed bbox a gen-compose response records (any key shape)."""
+    bbox = compose.get("bbox_um") or compose.get("composed_bbox_um")
+    if not bbox:
+        bbox = compose.get("bbox")
+    return bbox
+
+
+def compare_evidence(pairs: list[tuple[str, Path, Path]]
+                     ) -> tuple[list[str], list[str]]:
+    """Byte-compare each ``(name, committed, fresh)`` evidence artifact pair.
+
+    The currency half of ``--check`` (issue #311): five committed layout/
+    artifacts were re-derived by no gate -- the exact silent-drift shape
+    layout/README.md disclaims -- so ``--check`` names every artifact it
+    compares and fails naming the drifted ones.  A missing committed or
+    fresh file counts as drift of that artifact (a file deleted from
+    layout/, or one the flow no longer produces), not an error.  Returns
+    ``(passed, failed)`` name lists; prints one line per artifact.
+    """
+    passed: list[str] = []
+    failed: list[str] = []
+    for name, committed, fresh in pairs:
+        if not Path(committed).exists():
+            print(f"  evidence {name}: FAIL -- committed copy missing",
+                  file=sys.stderr)
+            failed.append(name)
+        elif not Path(fresh).exists():
+            print(f"  evidence {name}: FAIL -- not re-derived (fresh copy "
+                  f"{fresh} missing)", file=sys.stderr)
+            failed.append(name)
+        else:
+            a, b = Path(committed).read_bytes(), Path(fresh).read_bytes()
+            if a == b:
+                print(f"  evidence {name}: PASS "
+                      f"({len(a)} bytes byte-identical)")
+                passed.append(name)
+            else:
+                print(f"  evidence {name}: FAIL -- drifted (committed "
+                      f"{len(a)} bytes vs fresh {len(b)} bytes)",
+                      file=sys.stderr)
+                failed.append(name)
+    return passed, failed
+
+
 def emit(out_dir: Path, layout_dir: Path) -> dict:
     """Copy the verified deliverables from scratch into layout/ and return
     the composed bbox (the measured-area source)."""
@@ -1013,10 +1067,59 @@ def emit(out_dir: Path, layout_dir: Path) -> dict:
     for item in deliverables:
         src, dst = item if isinstance(item, tuple) else (item, item)
         shutil.copyfile(out_dir / src, layout_dir / dst)
-    bbox = compose.get("bbox_um") or compose.get("composed_bbox_um")
-    if not bbox:
-        bbox = compose.get("bbox")
-    return bbox
+    return compose_bbox(compose)
+
+
+def selftest() -> int:
+    """Hermetic negative controls for :func:`compare_evidence` (issue #311).
+
+    A currency gate means nothing until "a drifted artifact fails it" has
+    been shown reachable on the same code path ``--check`` runs (the
+    ``sim/selftest.sh`` stage-4 discipline, applied to the evidence
+    comparator).  Fixtures only -- no klt, no PDK, no repo state -- so this
+    runs in any checkout; the case-tally convention is the shared
+    ``scripts/_gate_common.py`` one (issue #69).
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from _gate_common import report_cases
+
+    names = ["compose-report.json", "route-summary.json", "lvs-request.json",
+             "lvs-coverage-probe.json", "erc-coverage-probe.json"]
+    case_results = []
+    with tempfile.TemporaryDirectory(prefix="loom-evid-selftest-") as t_str:
+        committed = Path(t_str) / "committed"
+        fresh = Path(t_str) / "fresh"
+        for directory in (committed, fresh):
+            directory.mkdir()
+        for i, name in enumerate(names):
+            body = json.dumps({"artifact": name, "value": i}, indent=2) + "\n"
+            (committed / name).write_text(body)
+            (fresh / name).write_text(body)
+        pairs = [(f"layout/{n}", committed / n, fresh / n) for n in names]
+
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"five freshly-derived artifacts byte-equal their committed "
+             f"copies (passed={len(passed)}, failed={len(failed)})",
+             not failed))
+
+        probe = json.loads((committed / "erc-coverage-probe.json").read_text())
+        probe["value"] = "mutated"
+        (committed / "erc-coverage-probe.json").write_text(
+            json.dumps(probe, indent=2) + "\n")
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"a one-value mutation of the committed erc-coverage-probe.json "
+             f"is named exactly (failed={failed})",
+             failed == ["layout/erc-coverage-probe.json"]))
+
+        (fresh / "route-summary.json").unlink()
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"an artifact the flow no longer re-derives fails its row "
+             f"(failed={failed})",
+             "layout/route-summary.json" in failed))
+    return report_cases(case_results)
 
 
 def main() -> int:
@@ -1030,13 +1133,22 @@ def main() -> int:
     )
     parser.add_argument("--check", action="store_true",
                         help="regenerate into a temp dir and byte-compare the "
-                             "GDS against layout/comparator.gds; commit nothing")
+                             "GDS and the five evidence artifacts (compose-"
+                             "report, route-summary, lvs-request and the two "
+                             "coverage probes, issue #311) against layout/; "
+                             "commit nothing")
+    parser.add_argument("--selftest", action="store_true",
+                        help="hermetic proof that the --check evidence "
+                             "comparator bites (no klt, no PDK)")
     parser.add_argument("--klt", default="klt")
     parser.add_argument("--pdk-root", default=PDK_ROOT_DEFAULT)
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
     pdk_root = Path(args.pdk_root).expanduser()
+
+    if args.selftest:
+        return selftest()
 
     if args.check:
         committed = repo_root / "layout" / "comparator.gds"
@@ -1051,14 +1163,63 @@ def main() -> int:
                 return rc
             fresh = tmp / "comparator.gds"
             a, b = committed.read_bytes(), fresh.read_bytes()
-            if a == b:
-                print("gen_comparator.py --check: PASS -- regenerated GDS "
-                      "is byte-identical to layout/comparator.gds")
-                return 0
-            print("gen_comparator.py --check: FAIL -- regenerated GDS "
-                  f"differs (committed {len(a)} bytes vs fresh {len(b)} bytes)",
-                  file=sys.stderr)
-            return 1
+            if a != b:
+                print("gen_comparator.py --check: FAIL -- regenerated GDS "
+                      f"differs (committed {len(a)} bytes vs fresh {len(b)} "
+                      "bytes)", file=sys.stderr)
+                return 1
+            print("gen_comparator.py --check: GDS byte-identical "
+                  f"({len(a)} bytes); re-deriving the evidence artifacts "
+                  "(issue #311)")
+            # The flow above already re-derived compose-report and
+            # route-summary into tmp; the LVS request constant and the two
+            # coverage-probe matrices are re-derived here, emitted into the
+            # temp dir (out_dir) instead of layout/, and everything is
+            # byte-compared against the committed copies.  The klt runs stay
+            # repo-rooted against the committed GDS, which the compare above
+            # just proved byte-identical to the fresh one.
+            evidence_out = tmp / "evidence"
+            evidence_out.mkdir()
+            print("[check] signoff LVS request + envelope (probe input)")
+            signoff_lvs = emit_lvs_evidence(args.klt, repo_root,
+                                            out_dir=evidence_out)
+            print("[check] LVS coverage probe (what that match covers)")
+            emit_lvs_coverage_probe(args.klt, repo_root, signoff_lvs,
+                                    out_dir=evidence_out)
+            bbox = compose_bbox(json.loads((tmp / "compose.json").read_text()))
+            print("[check] signoff ERC supply spec + run (probe input)")
+            signoff_erc = emit_erc_evidence(args.klt, repo_root, bbox,
+                                            out_dir=evidence_out)
+            print("[check] ERC coverage probe (whether the supply check "
+                  "can fail)")
+            emit_erc_coverage_probe(args.klt, repo_root, bbox, signoff_erc,
+                                    out_dir=evidence_out)
+            layout_dir = repo_root / "layout"
+            _, failed = compare_evidence([
+                ("layout/compose-report.json",
+                 layout_dir / "compose-report.json", tmp / "compose.json"),
+                ("layout/route-summary.json",
+                 layout_dir / "route-summary.json",
+                 tmp / "route.summary.json"),
+                ("layout/lvs-request.json",
+                 layout_dir / "lvs-request.json",
+                 evidence_out / "lvs-request.json"),
+                ("layout/lvs-coverage-probe.json",
+                 layout_dir / "lvs-coverage-probe.json",
+                 evidence_out / "lvs-coverage-probe.json"),
+                ("layout/erc-coverage-probe.json",
+                 layout_dir / "erc-coverage-probe.json",
+                 evidence_out / "erc-coverage-probe.json"),
+            ])
+            if failed:
+                print("gen_comparator.py --check: FAIL -- evidence "
+                      f"artifact(s) drifted: {', '.join(failed)} -- "
+                      "regenerate with `python3 layout/gen_comparator.py` "
+                      "and commit the refreshed artifacts", file=sys.stderr)
+                return 1
+            print("gen_comparator.py --check: PASS -- regenerated GDS and "
+                  "all 5 evidence artifacts are byte-identical to layout/")
+            return 0
     rc = flow(args.klt, pdk_root, repo_root / "layout" / "_gen")
     if rc != 0:
         return rc

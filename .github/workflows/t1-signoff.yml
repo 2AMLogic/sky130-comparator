@@ -255,8 +255,20 @@ jobs:
         run: PDK_ROOT="$HOME/.ciel" python3 layout/extract_pex.py --check
 
       # The item-2 envelope's regeneration claim (issue #186): the committed
-      # GDS is what layout/gen_comparator.py produces. Byte-compare.
-      - name: Regenerate the layout and byte-compare against the committed GDS
+      # GDS is what layout/gen_comparator.py produces. Byte-compare. Since
+      # issue #311 the same --check also re-derives and byte-compares the
+      # five evidence artifacts no manifest citation pins (compose-report,
+      # route-summary, lvs-request and the two coverage probes), emitting
+      # into the temp dir (~21 klt runs: 1+8 lvs, 1 layers, 1+9 erc, 1
+      # signoff; measured ~12s beside the flow's ~11s), so committed
+      # evidence can no longer drift silently -- the class #285 exposed
+      # when erc-coverage-probe.json carried a stale T1 count nothing read.
+      # The selftest is the hermetic half (no klt, no PDK): it proves a
+      # mutated or no-longer-regenerated artifact fails the compare.
+      - name: Evidence-comparator selftest (hermetic; a mutated artifact fails)
+        run: python3 layout/gen_comparator.py --selftest
+
+      - name: Regenerate the layout and byte-compare GDS + evidence artifacts
         run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check
 
   # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
