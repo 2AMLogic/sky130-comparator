@@ -6,8 +6,48 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-17
+
+- **PR #321**: chore(loom): resync installed Loom to v0.19.1306
+- **PR #291**: feat: gate the sky130 PDK pin restatements against sim/pdk.json
+- **PR #322**: fix: reject spread keys in report-only reverse_ladder.checks at manifest load
+- **PR #305**: test: parametrise TestCliFailsClosed over both --record CLIs
+- **PR #320**: fix: install pinned klt before the harness selftest step in t1-signoff.yml
+- **PR #301**: sim: make the schematic kickback library A/B single-variable (ngspice47 leg)
+- **PR #302**: docs: correct regen/kickback-pex clause in noise pilot record
+- **PR #318**: test: add item-9 attestation freshness gate with cold-start re-entry guard
+- **Issue #275** (closed): Extend the toolchain-pin gate to the sky130 PDK pin
+- **Issue #295** (closed): A correctly-spelled spread floor in ladder.json's reverse_ladder block is graded by nothing
+- **Issue #276** (closed): sim/tests: mc_cli's --record fail-closed gate has no end-to-end test
+- **Issue #266** (closed): check-t1-signoff gate red on main: T1 item 9 grades stale_evidence
+- **Issue #315** (closed): harness-selftest is red on every push: item-10 freshness gate needs klt before it is installed
+- **Issue #283** (closed): Schematic kickback library A/B is not single-variable (ngspice-46 vs ngspice-47)
+- **Issue #286** (closed): Noise pilot record mischaracterizes the regen pilot's caveat status
+- **Issue #309** (closed): sim/selftest.sh freshness gates skip the item-9 attestation envelope
+
 ### 2026-11-16
 
+- **PR #294**: chore(loom): resync installed Loom to v0.19.1302
+- **PR #316**: feat: extend toolchain-pin gate to the workflow's xschem literals
+- **PR #314**: test: hoist mutated-table parse out of assertRaises in the #290 guard negative tests
+- **PR #312**: fix: correct stale item-1 CI comment in t1-signoff.yml and re-mint the item-10 envelope
+- **PR #296**: fix: drop stale ungated T1 met-count from ERC coverage probe
+- **PR #306**: test: cross-check ratification-status prose against README's target-spec table
+- **PR #307**: test: run CI's pin-freshness gates in sim/selftest.sh stage 1
+- **PR #308**: fix: re-mint item-9 attestation envelope against current main (main-red fix)
+- **PR #268**: docs: restate target-spec ratification status per-row in comparator-decision and design READMEs
+- **PR #289**: fix(scripts): add the _gate_common sys.path preamble to layout-envelope.py
+- **PR #298**: gate(scripts): fail the toolchain-pin gate on off-pin evidence envelope producers
+- **Issue #313** (closed): check-toolchain-pin gate covers klt/klayout but not xschem_tag
+- **Issue #310** (closed): Negative tests for the #290 ratification guard parse the mutated table inside assertRaises
+- **Issue #248** (closed): t1-signoff workflow comment says item 1 has no CI step
+- **Issue #285** (closed): layout/erc-coverage-probe.json records a stale t1_met_count_if_cited
+- **Issue #290** (closed): Tie the hardcoded target-spec ratification-status prose to README.md's table
+- **Issue #292** (closed): sim/selftest.sh does not cover the content-hash freshness gates CI enforces
+- **Issue #304** (closed): main red: item-9 attestation envelope drifted
+- **Issue #259** (closed): comparator-decision/README.md still asserts the target-spec table is DRAFT/unratified
+- **Issue #239** (closed): scripts/layout-envelope.py lacks the sys.path.insert preamble
+- **Issue #271** (closed): Nothing gates committed evidence envelopes' provenance.klt_version against the repo pin
 - **PR #293**: fix(harness): reject ungradeable spread checks at manifest load
 - **PR #279**: ci: re-check the item-9 attestation envelope PDK-free in the signoff job
 - **PR #278**: sim: quantify the sky130 model-library effect on the kickback/PEX pilots
