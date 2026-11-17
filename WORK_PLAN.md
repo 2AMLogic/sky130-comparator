@@ -7,7 +7,7 @@ Live roadmap generated from GitHub label state by the Loom Guide role.
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
 
-_None._
+- **#288**: docs: condense target-spec Basis cells to method + links; file DR-009
 
 ## Very Important
 
@@ -73,7 +73,7 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 0 |
+| Operator merge-risk holds | 1 |
 | Very important | 1 |
 | Important | 2 |
 | Ready (`loom:issue`) | 0 |
