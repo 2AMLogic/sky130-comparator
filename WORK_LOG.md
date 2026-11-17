@@ -8,6 +8,10 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-17
 
+- **PR #319**: feat: re-derive and byte-compare the five ungated layout evidence artifacts in --check
+- **PR #262**: ci: reword layout-envelope comment to match actual step behavior
+- **Issue #311** (closed): Five committed layout/ evidence artifacts are re-derived by no gate: --check byte-compares only the GDS
+- **Issue #232** (closed): Stale CI comment at t1-signoff.yml:111 names the retired 'member'/'digest' mechanism
 - **PR #321**: chore(loom): resync installed Loom to v0.19.1306
 - **PR #291**: feat: gate the sky130 PDK pin restatements against sim/pdk.json
 - **PR #322**: fix: reject spread keys in report-only reverse_ladder.checks at manifest load
