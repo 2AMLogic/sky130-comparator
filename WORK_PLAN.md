@@ -27,12 +27,13 @@ _None._
 
 Human-approved issues (`loom:issue`) ready for implementation — excluding held (`loom:blocked`/`loom:operator`/`loom:frozen`), `loom:building`, and issues closed by an open `loom:pr` PR (listed under Approved).
 
-- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
+_None._
 
 ## In Progress
 
 Issues currently being built (`loom:building`).
 
+- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
@@ -64,8 +65,8 @@ Issues carrying `loom:curated`.
 ## Proposed (Architect / Hermit)
 
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(architect)*
-- **#134**: Measure comparator supply energy and average power at stated clock conditions *(architect)*
-- **#154**: Measure larger-sample post-layout offset with resumable serial campaigns *(architect)*
+- **#134**: Measure comparator supply energy and average power at stated clock conditions *(architect)* *(held)*
+- **#154**: Measure larger-sample post-layout offset with resumable serial campaigns *(architect)* *(held)*
 - **#234**: characterization-envelope.py's 'no provenance block' design rests on a klt 0.6.0 gap the pinned klt 0.8.0 no longer has *(hermit)* *(held)*
 - **#241**: Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check *(hermit)* *(held)*
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records *(hermit)*
@@ -81,8 +82,8 @@ _None._
 | Operator merge-risk holds | 1 |
 | Very important | 0 |
 | Important | 3 |
-| Ready (`loom:issue`, net of holds/building/merge-pending) | 1 |
-| In Progress (`loom:building`) | 3 |
+| Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
+| In Progress (`loom:building`) | 4 |
 | PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 1 |
 | Curated | 7 |
