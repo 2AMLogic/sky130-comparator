@@ -8,6 +8,7 @@ Live roadmap generated from GitHub label state by the Loom Guide role.
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
 
 - **#288**: docs: condense target-spec Basis cells to method + links; file DR-009
+- **#347**: feat: add operator-gated removal waiver manifest to sim append-only gate
 
 ## Very Important
 
@@ -21,7 +22,7 @@ _None._
 
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#177**: Re-pin open_pdks to f6eeac7 (ciel) — fleet retires volare c6d73a3 *(held)*
-- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
+- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2) *(held)*
 
 ## Ready
 
@@ -33,7 +34,6 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
