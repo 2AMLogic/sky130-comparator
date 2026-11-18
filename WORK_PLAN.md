@@ -60,7 +60,6 @@ Issues carrying `loom:curated`.
 - **#280**: Attestation envelopes still go stale via merge-order races: nothing requires a PR's base to be current before merge *(curated)* *(held)*
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib *(curated)*
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
-- **#337**: README route section understates the campaign spend-quote condition (quote is unconditional, only the wait is $50-gated) *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -86,7 +85,7 @@ _None._
 | In Progress (`loom:building`) | 3 |
 | PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 1 |
-| Curated | 8 |
+| Curated | 7 |
 | Architect / Hermit proposals | 6 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
