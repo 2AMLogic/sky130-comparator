@@ -133,8 +133,9 @@ deck; an interrupted campaign writes none (the property the chunked section
 pins with its own test). The chunk-budgeting guidance carries over unchanged
 -- what changes is that a "chunk" is a job, not a terminal command. Campaign
 batch spend runs at the ordinary scale of this repo's simulation work per the
-ruling on #127; an estimate above ~$50 is quoted on the issue before
-submitting.
+ruling on #127: a spend estimate is quoted on the campaign's issue before the
+first submit regardless of size; if it exceeds ~$50, say so there and wait
+for the operator.
 
 ## Driver module layout
 
