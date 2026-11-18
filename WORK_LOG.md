@@ -8,6 +8,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-18
 
+- **PR #345**: gate: fail CI when WORK_PLAN.md's plan-body region carries a _Generated stamp
+- **Issue #344** (closed): Guide docs ticks keep re-adding a _Generated: stamp inside the guide:plan-body region, defeating the WORK_PLAN debounce
 - **PR #339**: docs: make the campaign spend quote unconditional, gate only the wait on ~$50
 - **Issue #337** (closed): README route section understates the campaign spend-quote condition (quote is unconditional, only the wait is $50-gated)
 - **PR #336**: sim: add the repo-script batch route for the strict env check
