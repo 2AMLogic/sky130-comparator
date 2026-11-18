@@ -24,6 +24,111 @@ conventions (`testbench/`, `netlist-snapshots/`, `corners/`, `mc-draws/`,
 `records/`) this experiment follows; this file covers only what is specific
 to `comparator-decision/`.
 
+## Supported execution route (issue #127)
+
+The supported execution route for this experiment's campaign (issue #125's
+campaign matrix, not duplicated here) is a **`repo-script` batch job on the
+fleet's `sim` image profile** -- the operator ruling of 2026-11-17 (recorded
+on issue #127, option `a`). A dispatch worker is *not* a supported execution
+host for it: the worker fleet is a shared dispatch layer, its local
+ngspice/xschem/PDK installs are incidental, and its host rules forbid running
+simulation campaigns there. An earlier sweep measured a compliant install on
+one worker and explicitly did not accept it as satisfying the route (#127).
+
+**Why the `sim` image satisfies `sim/toolchain.json` unchanged.** The profile
+bakes everything the strict check requires, at the pinned identities, so the
+contract is never relaxed to match a host:
+
+| `sim/toolchain.json` pin | what the `sim` image bakes |
+|---|---|
+| `ngspice_min_major: 46` (floor) | ngspice **47** (the fleet's 47p1 artifact, 2am#7180) |
+| `xschem_tag: "3.4.7"` | xschem **3.4.7** (sha256-pinned artifact, on `PATH`) |
+| `open_pdks: f6eeac7dad08...` | sky130A @ **f6eeac7dad08...** from the fleet PDK store (2am#4541), unpacked under the baked PDK root |
+| `python_min: "3.9"` (floor) | Ubuntu 24.04's python3 (3.12.x) |
+
+`PDK_ROOT` is exported for every job by the fleet harness (eda-runner-env.sh's
+bake-time layer, reading the image's own manifest), so the strict check finds
+the PDK with no in-job environment setup. **A job on this route fetches
+nothing and installs nothing**; a missing or drifted tool is a real exit 1/3
+-- an image gap, to be filed against `2AMLogic/2am` -- never worked around by
+installing into the job.
+
+**The one-command check on the route.**
+[`check-env-batch.sh`](check-env-batch.sh) runs the strict check and records
+the provenance the verification needs around it. Submit it from a clean
+checkout at the commit to attribute:
+
+```sh
+<2am-checkout>/infra/aws/repo-script-submit.py \
+    --source-dir <this checkout> \
+    --script sim/comparator-decision/check-env-batch.sh \
+    --issue <n> --image-profile sim \
+    --output sim/comparator-decision/route-check \
+    --wait-for-capacity 600 --out ./route-check
+```
+
+The submitter ships `git archive` of one commit; the job script runs from the
+extracted source root; `--wait-for-capacity 600` is the fleet's standing rule
+for every batch submit. The script's exit status is `run.py --check-env`'s
+own, verbatim (0 clean / 1 drift / 3 tool-or-PDK missing). What comes back
+per shard: `sNN/files/sim/comparator-decision/route-check/` with
+`env-check.log` (provenance head, the image's own baked-tool manifest, and
+the check's verbatim stdout/stderr plus exit status) and `env-check.json`,
+and `sNN/run.json` with the job's image id, instance type, exit code and wall
+time. Issue #127 holds the recorded verification evidence (UTC timestamp,
+repository commit, tarball sha256, image id, instance type, exit 0).
+
+**Invocation limits.** One shard = one job = one command, and the campaign
+runs **serially** -- one job at a time -- because each resumable chunk feeds
+the next one its scratch (below). The `sim` profile's per-job budget is
+**3600 s** (the fleet's `BATCH_MAX_JOB_SECONDS`; an unconditional in-guest
+poweroff at the cap), so size each chunk inside it with boot+teardown margin:
+`--chunk-seconds 2700`, the same 45-minute budget the chunked campaigns
+already use. The ~60-minute wall-clock ceiling the chunked-campaign section
+below records is a *dispatch-worker* cgroup property, not a property of this
+route; here the binding budget is the job cap. The per-ngspice-process budget
+(`SIM_NGSPICE_TIMEOUT_S`) still applies inside a job.
+
+**Scratch persistence -- resumable across jobs, not sessions.** Job scratch
+does not survive the job; nothing under the job's work directories carries
+over between jobs. "Resumable across sessions" therefore becomes **resumable
+across jobs**: declare the campaign scratch as a shard output and stage it
+back into the next job's source tarball, at its original path.
+
+1. Submit a chunk (`--shard` args are `run.py`'s own; `.py` scripts run under
+   the image's python3 from the source root):
+
+   ```sh
+   ... --script sim/comparator-decision/run.py \
+       --shard "noise-tran --dut extracted --corner ss --temp -40 --n 128 \
+                --seeds-per-point 64 --jobs 1 --resume-dir nt-ss-m40 \
+                --chunk-seconds 2700" \
+       --shard-output 0:nt-ss-m40 ...
+   ```
+
+   `--shard-output 0:nt-ss-m40` collects the campaign scratch (the campaign
+   key, the persisted AC/calibration preamble, and one derived scalar per
+   completed deck -- see the chunked-campaign section below for what the
+   directory holds and why raw logs are not kept).
+
+2. Exit 3 = incomplete and resumable (the driver's own contract, unchanged
+   by the route). Cut the next job's `--tarball` from the same commit plus
+   the collected `nt-ss-m40/` at its original path in the tree (the
+   submitter's `--tarball` input takes any tarball, and entry ownership does
+   not matter).
+
+3. Resubmit the identical shard args against that tarball. The campaign key
+   refuses a directory whose key differs, so a garbled round trip fails
+   loudly instead of merging two campaigns.
+
+A record is still written exactly once, by whichever job completes the last
+deck; an interrupted campaign writes none (the property the chunked section
+pins with its own test). The chunk-budgeting guidance carries over unchanged
+-- what changes is that a "chunk" is a job, not a terminal command. Campaign
+batch spend runs at the ordinary scale of this repo's simulation work per the
+ruling on #127; an estimate above ~$50 is quoted on the issue before
+submitting.
+
 ## Driver module layout
 
 The driver is one module per experiment over a shared preamble (issue #224
