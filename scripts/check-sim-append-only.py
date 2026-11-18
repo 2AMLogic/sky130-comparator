@@ -39,6 +39,14 @@ FAILURE, never a pass):
   all-zero --before  (branch creation / first commit) has no base: fails
 The checkout must supply history (actions/checkout `fetch-depth: 0`).
 
+Waivers (issue #326, DR-011): a protected path whose only change is a REMOVAL
+(D) may be waived by an entry in manifests/append-only-waivers.json
+(`{"waivers": [{"decision_record", "paths", "base_sha"}]}`, exact paths, no
+globs). The manifest is read from head (a PR adds its own entry), but the
+cited record's `Status` is read at the comparison BASE, so a PR cannot ratify
+its own waiver; the path's blob at the base must equal its blob at the
+entry's `base_sha`. M and T are never waivable. A malformed manifest fails.
+
 To correct a recorded result, do not edit it: mint a NEW record under the
 same experiment and cite the old one in its `Supersedes` field (see
 sim/README.md, "Summary record format").
@@ -47,6 +55,9 @@ Stdlib + git only. Exit codes: 0 pass, 1 failure, 2 usage error.
 """
 
 import argparse
+import contextlib
+import io
+import json
 import re
 import subprocess
 import sys
@@ -61,6 +72,9 @@ from _gate_common import (FAILURES, dispatch, fail, ok,  # noqa: E402
 PROTECTED_RE = re.compile(
     r"^sim/[^/]+/(?:records|corners|mc-draws|netlist-snapshots)/.+")
 ZERO_SHA = "0" * 40
+WAIVER_MANIFEST = "manifests/append-only-waivers.json"
+DR_DIR = "spec/decision-records/"
+STATUS_RE = re.compile(r"^- \*\*Status\*\*:\s*(.*)$", re.M)
 STATUS_NAMES = {"M": "modified", "D": "removed", "T": "file-type changed"}
 
 
@@ -148,25 +162,121 @@ def violations(repo, base_sha, head_sha):
     return sorted(found)
 
 
+def load_waivers(repo, head_sha):
+    """Return {path: [(decision_record, base_sha)]} from the head manifest.
+
+    Absent manifest or empty list = no waivers. Malformed raises ValueError.
+    """
+    rc, out = git(repo, "show", f"{head_sha}:{WAIVER_MANIFEST}")
+    if rc != 0:
+        return {}
+    try:
+        doc = json.loads(out.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{WAIVER_MANIFEST} is not valid JSON: {exc}") from None
+    entries = doc.get("waivers") if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError(
+            f'{WAIVER_MANIFEST} must be an object with a "waivers" list')
+    waivers = {}
+    for n, ent in enumerate(entries):
+        where = f"{WAIVER_MANIFEST} waivers[{n}]"
+        if not isinstance(ent, dict):
+            raise ValueError(f"{where} is not an object")
+        rec, sha, paths = (ent.get("decision_record"), ent.get("base_sha"),
+                           ent.get("paths"))
+        if not (isinstance(rec, str) and rec.startswith(DR_DIR)
+                and ".." not in rec.split("/")):
+            raise ValueError(f"{where}: decision_record must be a path under "
+                             f"{DR_DIR}")
+        if not (isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha)):
+            raise ValueError(f"{where}: base_sha must be a full 40-hex SHA")
+        if not (isinstance(paths, list) and paths
+                and all(isinstance(x, str) for x in paths)):
+            raise ValueError(f"{where}: paths must be a non-empty list of "
+                             "strings")
+        for path in paths:
+            if not PROTECTED_RE.match(path) or any(c in path for c in "*?[]"):
+                raise ValueError(f"{where}: {path!r} is not an exact "
+                                 "protected path (no globs)")
+            waivers.setdefault(path, []).append((rec, sha))
+    return waivers
+
+
+def record_ratified_at(repo, base_sha, record):
+    """Return (ratified, reason) for `record` read at `base_sha`."""
+    rc, out = git(repo, "show", f"{base_sha}:{record}")
+    if rc != 0:
+        return False, f"record {record} is missing at the base"
+    m = STATUS_RE.search(out.decode("utf-8", "replace"))
+    status = m.group(1).replace("*", "").strip().lower() if m else ""
+    if not status.startswith("ratified"):
+        return False, (f"record {record} is not ratified at the base "
+                       f"(Status: {status or 'absent'})")
+    return True, ""
+
+
+def waiver_verdict(repo, base_sha, path, entries):
+    """Return (applied_record, None) or (None, reason) for a removed path."""
+    reasons = []
+    for rec, sha in entries:
+        good, why = record_ratified_at(repo, base_sha, rec)
+        if not good:
+            reasons.append(why)
+            continue
+        rc_b, blob_b = git(repo, "rev-parse", "--verify", "--quiet",
+                           f"{base_sha}:{path}")
+        rc_w, blob_w = git(repo, "rev-parse", "--verify", "--quiet",
+                           f"{sha}:{path}")
+        if rc_b == 0 and rc_w == 0 and blob_b == blob_w:
+            return rec, None
+        reasons.append(f"bytes at the base differ from base_sha {sha[:12]} "
+                       "(or the path is absent there)")
+    return None, "; ".join(reasons)
+
+
 def check(repo, event, **kw):
     """Run the comparison; record results via ok()/fail()."""
     try:
         base_sha, head_sha = resolve_base(repo, event, **kw)
+        found = violations(repo, base_sha, head_sha)
+        waivers = load_waivers(repo, head_sha) if found else {}
     except ValueError as exc:
         fail(str(exc))
         return
-    found = violations(repo, base_sha, head_sha)
+    applied = []
+    unwaived = []
     for path, status in found:
-        fail(f"protected evidence {STATUS_NAMES[status]}: {path}")
-    if found:
+        if status == "D" and path in waivers:
+            rec, why = waiver_verdict(repo, base_sha, path, waivers[path])
+            if rec:
+                applied.append((path, rec))
+                continue
+            fail(f"protected evidence removed: {path} (waiver rejected: "
+                 f"{why})")
+            unwaived.append(path)
+            continue
+        fail(f"protected evidence {STATUS_NAMES[status]}: {path}"
+             + (" (listed in the waiver manifest, but only removals are "
+                "waivable)" if path in waivers else
+                " (no waiver entry)" if status == "D" else ""))
+        unwaived.append(path)
+    if unwaived:
         print("gate: sim/ evidence is append-only (sim/README.md). Do not "
               "edit, delete or rename committed records, corner logs, "
               "mc-draws or netlist snapshots; add a NEW record under the "
               "same experiment and cite the old one in its `Supersedes` "
               "field. Re-pinning the characterization envelope does not "
-              "make such an edit acceptable.")
+              "make such an edit acceptable. A removal ruled on by a "
+              f"ratified decision record may be waived in {WAIVER_MANIFEST} "
+              "(DR-011).")
     else:
-        ok(f"no protected sim/ evidence changed ({base_sha[:12]}..{head_sha[:12]})")
+        span = f"{base_sha[:12]}..{head_sha[:12]}"
+        if applied:
+            ok(f"protected sim/ evidence unchanged except waived removals "
+               f"({span}): " + "; ".join(f"{p} (per {r})" for p, r in applied))
+        else:
+            ok(f"no protected sim/ evidence changed ({span})")
 
 
 def run_gate(args):
@@ -328,6 +438,102 @@ def run_selftest(_args):
     m = _run(shallow_unrelated, event="pull_request", base_ref="main")
     cases.append(("pull_request with no merge-base fails explicitly",
                   msg_has(m, "no merge-base")))
+
+    # --- waiver manifest (issue #326, DR-011) ---
+    DRP = "spec/decision-records/DR-010-x.md"
+    DRQ = "spec/decision-records/DR-011-y.md"
+
+    def waiver_fixture(status="**ratified** -- ruled"):
+        """Fixture variant: DR committed at base; returns (tmp, repo, base)."""
+        tmp, repo, base = _fixture()
+        if status is not None:
+            _write(repo, DRP, f"# DR\n\n- **Status**: {status}\n")
+        _g(repo, "checkout", "-q", "main")
+        _commit(repo, "dr at base")
+        _g(repo, "checkout", "-q", "feature")
+        _g(repo, "merge", "-q", "--ff-only", "main")
+        return tmp, repo, resolve_commit(repo, "main")
+
+    def wrun(mutate, manifest=None, **fx):
+        tmp, repo, base = waiver_fixture(**fx)
+        with tmp:
+            if manifest is not None:
+                m = manifest(base) if callable(manifest) else manifest
+                _write(repo, WAIVER_MANIFEST,
+                       m if isinstance(m, str) else json.dumps(m))
+            mutate(repo)
+            _commit(repo, "change")
+            reset()
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                check(repo, "pull_request", base_ref="main")
+            out = (list(FAILURES),
+                   [x for x in buf.getvalue().splitlines()
+                    if x.startswith("gate: ok:")])
+            reset()
+            return out
+
+    def entry(base, paths=(REC,), rec=DRP):
+        return {"waivers": [{"decision_record": rec, "paths": list(paths),
+                             "base_sha": base}]}
+
+    def waived_ok(msgs_oks, path):
+        msgs, oks = msgs_oks
+        return not msgs and any("waived" in o and path in o for o in oks)
+
+    cases.append(("waiver: listed removal with ratified record passes and is "
+                  "printed",
+                  waived_ok(wrun(lambda r: _rm(r, REC), entry), REC)))
+    cases.append(("waiver: empty manifest behaves as today (removal fails)",
+                  bool(wrun(lambda r: _rm(r, REC),
+                            {"waivers": []})[0])))
+    cases.append(("waiver: absent manifest behaves as today (removal fails)",
+                  bool(wrun(lambda r: _rm(r, REC))[0])))
+    expect("waiver: unlisted removal fails and names it",
+           wrun(lambda r: _rm(r, LOG), entry)[0], [LOG])
+    expect("waiver: entry citing a proposed record fails",
+           wrun(lambda r: _rm(r, REC), entry, status="proposed")[0],
+           [REC, "not ratified"])
+    expect("waiver: entry citing a record absent at base fails",
+           wrun(lambda r: _rm(r, REC),
+                lambda b: entry(b, rec=DRQ))[0], [REC, "missing at the base"])
+
+    def self_ratify(r):
+        _write(r, DRP, "# DR\n\n- **Status**: ratified\n")
+        _rm(r, REC)
+    expect("waiver: a PR cannot ratify its own record (status read at base)",
+           wrun(self_ratify, entry, status="proposed")[0],
+           [REC, "not ratified"])
+
+    def bytes_differ(b):
+        return entry("0" * 39 + "1")
+    expect("waiver: bytes differing from base_sha fail",
+           wrun(lambda r: _rm(r, REC), bytes_differ)[0], [REC, "differ"])
+    expect("waiver: a modification of a listed path fails",
+           wrun(lambda r: _write(r, REC, "edited\n"), entry)[0],
+           [REC, "only removals"])
+
+    def retype_listed(r):
+        _rm(r, REC)
+        (Path(r) / REC).symlink_to("elsewhere")
+    expect("waiver: a type change of a listed path fails",
+           wrun(retype_listed, entry)[0], [REC, "only removals"])
+    msgs, oks = wrun(lambda r: (_rm(r, REC), _rm(r, LOG)), entry)
+    cases.append(("waiver: listed + unlisted removals fail only on the "
+                  "unlisted one",
+                  len(msgs) == 1 and LOG in msgs[0] and REC not in msgs[0]))
+    expect("waiver: malformed manifest JSON fails explicitly",
+           wrun(lambda r: _rm(r, REC), "{nope")[0], ["not valid JSON"])
+    expect("waiver: manifest without a waivers list fails explicitly",
+           wrun(lambda r: _rm(r, REC), {"x": 1})[0], ["waivers"])
+    expect("waiver: glob path in an entry fails explicitly",
+           wrun(lambda r: _rm(r, REC),
+                lambda b: entry(b, paths=("sim/exp/records/*.md",)))[0],
+           ["exact protected path"])
+    expect("waiver: path with spaces can be waived",
+           [] if waived_ok(wrun(lambda r: _rm(r, WS),
+                                lambda b: entry(b, paths=(WS,))), WS)
+           else ["x"], clean=True)
 
     return report_cases(cases)
 
