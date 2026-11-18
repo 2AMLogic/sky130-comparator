@@ -54,6 +54,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      # WORK_PLAN.md's guide:plan-body region is renderer-owned (issue
+      # #344): update_work_plan() compares render_plan_body()'s output
+      # byte-for-byte against the committed region, so a hand-typed
+      # `_Generated:` timestamp inside the markers makes every Guide tick
+      # see a diff and defeats the no-op debounce (#5890/#5930 docs churn;
+      # PRs #342/#343 each needed a Judge + Doctor round trip). This gate
+      # fails such a PR here, before review.
+      - name: Work-plan plan-body gate selftest (hermetic)
+        run: python3 scripts/check-work-plan-body.py selftest
+
+      - name: guide:plan-body region carries no timestamp stamp
+        run: python3 scripts/check-work-plan-body.py gate
+
       # sim/ evidence is append-only (issue #138, sim/README.md "Append-only
       # rule"). The characterization-envelope freshness guard below cannot
       # enforce that -- `--update` re-pins whatever is on disk -- so this
