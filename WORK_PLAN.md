@@ -37,6 +37,7 @@ Issues currently being built (`loom:building`).
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
+- **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
 
 ## PRs Awaiting Review
 
@@ -49,6 +50,7 @@ PRs waiting on Judge (`loom:review-requested`).
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
 - **#288**: docs: condense target-spec Basis cells to method + links; file DR-009 — closes #253
+- **#347**: feat: add operator-gated removal waiver manifest to sim append-only gate — closes #326
 
 ## Proposed
 
@@ -61,6 +63,7 @@ Issues carrying `loom:curated`.
 - **#280**: Attestation envelopes still go stale via merge-order races: nothing requires a PR's base to be current before merge *(curated)* *(held)*
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib *(curated)*
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
+- **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325) *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -83,10 +86,10 @@ _None._
 | Very important | 0 |
 | Important | 3 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 4 |
+| In Progress (`loom:building`) | 5 |
 | PRs awaiting review | 1 |
-| Approved PRs awaiting merge | 1 |
-| Curated | 7 |
+| Approved PRs awaiting merge | 2 |
+| Curated | 8 |
 | Architect / Hermit proposals | 6 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
