@@ -6,6 +6,11 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-18
+
+- **PR #336**: sim: add the repo-script batch route for the strict env check
+- **Issue #127** (closed): Establish a verified execution route for comparator campaign #125
+
 ### 2026-11-17
 
 - **PR #332**: ci: report the sim/ append-only gate on merge_group commits (merge queue step 1)
