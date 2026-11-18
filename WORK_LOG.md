@@ -8,6 +8,7 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-17
 
+- **PR #332**: ci: report the sim/ append-only gate on merge_group commits (merge queue step 1)
 - **Issue #329** (closed): WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation)
 - **PR #319**: feat: re-derive and byte-compare the five ungated layout evidence artifacts in --check
 - **PR #262**: ci: reword layout-envelope comment to match actual step behavior
