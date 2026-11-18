@@ -27,12 +27,13 @@ _None._
 
 Human-approved issues (`loom:issue`) ready for implementation — excluding held (`loom:blocked`/`loom:operator`/`loom:frozen`), `loom:building`, and issues closed by an open `loom:pr` PR (listed under Approved).
 
-- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
+_None._
 
 ## In Progress
 
 Issues currently being built (`loom:building`).
 
+- **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
@@ -41,7 +42,7 @@ Issues currently being built (`loom:building`).
 
 PRs waiting on Judge (`loom:review-requested`).
 
-- **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010
+- **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
 
 ## Approved (Awaiting Merge)
 
@@ -81,8 +82,8 @@ _None._
 | Operator merge-risk holds | 1 |
 | Very important | 0 |
 | Important | 3 |
-| Ready (`loom:issue`, net of holds/building/merge-pending) | 1 |
-| In Progress (`loom:building`) | 3 |
+| Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
+| In Progress (`loom:building`) | 4 |
 | PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 1 |
 | Curated | 7 |
