@@ -64,8 +64,15 @@ checkout at the commit to attribute:
     --script sim/comparator-decision/check-env-batch.sh \
     --issue <n> --image-profile sim \
     --output sim/comparator-decision/route-check \
-    --wait-for-capacity 600 --out ./route-check
+    --wait-for-capacity 600 \
+    --out sim/comparator-decision/route-check/collected
 ```
+
+`--out` is a **submit-side** path (where the collected tree lands, as
+`<dir>/sNN/{files/,run.json,status.json,harness.log}` plus `<dir>/group.json`),
+so keep it under the already-ignored `sim/comparator-decision/route-check/`
+scratch area — a bare `--out ./route-check` would drop an untracked
+collect directory at the repo root instead.
 
 The submitter ships `git archive` of one commit; the job script runs from the
 extracted source root; `--wait-for-capacity 600` is the fleet's standing rule
@@ -1427,8 +1434,19 @@ Three flags, `noise-tran` only:
 | `--chunk-decks N` | Stop this invocation cleanly after `N` **campaign** decks — every deck the invocation dispatches, the same all-deck count the stop message and the completed/total pair report. The first four decks of a fresh campaign are the gain calibration (which runs with no noise at all), so a fresh campaign reaches `N - 4` Monte Carlo decks and any `N <= 4` reaches none. Needs `--resume-dir`. |
 | `--chunk-seconds S` | Stop this invocation cleanly once it has been running `S` seconds, checked between decks. Needs `--resume-dir`. The clock starts at campaign setup, so it covers the AC/calibration preamble too. |
 
-**The invocation pattern.** Run the *identical* command repeatedly until it
-exits 0. Nothing about the command changes between chunks — the scratch
+**The invocation pattern — dispatch-worker shape, superseded for the
+campaign.** The command below re-runs the *identical* line against a scratch
+directory in the invoking host's `/tmp`. That is the **dispatch-worker**
+shape of the chunked runner, and it is **not the supported execution route**
+for the campaign (issue #127's ruling): a dispatch worker is not a supported
+campaign host, and the ~60-minute ceiling the comment below names is that
+host's cgroup property, not the route's. On the supported route each chunk
+is a `repo-script` batch job and the `--resume-dir` travels between jobs as
+a declared shard output — see [Supported execution route (issue
+#127)](#supported-execution-route-issue-127) above; the flags, the chunk
+budgeting and the exit-code contract are identical, and the resubmitted
+args are likewise identical. The example stays for the machinery it
+documents. Nothing about the command changes between chunks — the scratch
 directory is what carries the progress:
 
 ```sh

@@ -23,7 +23,8 @@
 #       --script sim/comparator-decision/check-env-batch.sh \
 #       --issue <n> --image-profile sim \
 #       --output sim/comparator-decision/route-check \
-#       --wait-for-capacity 600 --out ./route-check
+#       --wait-for-capacity 600 \
+#       --out sim/comparator-decision/route-check/collected
 #
 # Declared output (collected to <out>/s00/files/... plus run.json, which
 # carries image id, instance type, exit code and wall time):
@@ -35,6 +36,17 @@
 # version drifted, 3 tool/PDK missing. Nothing here transforms it.
 
 set -uo pipefail
+
+# Assert the source root before anything else: the harness runs this script
+# from the extracted source root and every path below (OUT_DIR, run.py) is
+# relative to it. A wrong CWD would otherwise die inside python with exit 2
+# on the missing file, masquerading as a check status -- 0/1/3 are the
+# check's own statuses, so fail here with a message instead.
+[ -f sim/comparator-decision/run.py ] || {
+    echo "check-env-batch.sh: not run from the source root" \
+         "(sim/comparator-decision/run.py not found; cwd=$(pwd))" >&2
+    exit 2
+}
 
 OUT_DIR="sim/comparator-decision/route-check"
 mkdir -p "$OUT_DIR"
