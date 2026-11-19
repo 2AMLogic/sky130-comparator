@@ -38,6 +38,7 @@ Issues currently being built (`loom:building`).
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
+- **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
 
 ## PRs Awaiting Review
 
@@ -64,6 +65,7 @@ Issues carrying `loom:curated`.
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib *(curated)*
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325) *(curated)*
+- **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347) *(curated)*
 
 ## Proposed (Architect / Hermit)
 
