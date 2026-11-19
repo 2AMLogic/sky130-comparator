@@ -50,7 +50,7 @@ PRs waiting on Judge (`loom:review-requested`).
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
 - **#288**: docs: condense target-spec Basis cells to method + links; file DR-009 — closes #253
-- **#347**: feat: add operator-gated removal waiver manifest to sim append-only gate — closes #326
+- **#347**: feat: add operator-gated removal waiver manifest to sim append-only gate — closes #326, #348
 
 ## Proposed
 
@@ -82,7 +82,7 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 1 |
+| Operator merge-risk holds | 2 |
 | Very important | 0 |
 | Important | 3 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
