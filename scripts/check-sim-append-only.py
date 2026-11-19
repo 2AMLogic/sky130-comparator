@@ -43,9 +43,12 @@ Waivers (issue #326, DR-011): a protected path whose only change is a REMOVAL
 (D) may be waived by an entry in manifests/append-only-waivers.json
 (`{"waivers": [{"decision_record", "paths", "base_sha"}]}`, exact paths, no
 globs). The manifest is read from head (a PR adds its own entry), but the
-cited record's `Status` is read at the comparison BASE, so a PR cannot ratify
-its own waiver; the path's blob at the base must equal its blob at the
-entry's `base_sha`. M and T are never waivable. A malformed manifest fails.
+cited record is read at the comparison BASE, so a PR cannot ratify its own
+waiver or add the path to the record in the same diff: the record's `Status`
+must begin `ratified` at the base AND it must contain the waived path as a
+literal string there (condition 4, issue #348); the path's blob at the base
+must equal its blob at the entry's `base_sha`. M and T are never waivable.
+A malformed manifest fails.
 
 To correct a recorded result, do not edit it: mint a NEW record under the
 same experiment and cite the old one in its `Supersedes` field (see
@@ -203,16 +206,25 @@ def load_waivers(repo, head_sha):
     return waivers
 
 
-def record_ratified_at(repo, base_sha, record):
-    """Return (ratified, reason) for `record` read at `base_sha`."""
+def record_ratified_at(repo, base_sha, record, path=None):
+    """Return (ratified, reason) for `record` read at `base_sha`.
+
+    With `path`, the record must additionally contain the path as a literal
+    substring at the base (DR-011 condition 4): a waiver can only cite a
+    record that ruled on that path. Same single read as the Status check, so
+    a PR cannot edit the record to name its own path.
+    """
     rc, out = git(repo, "show", f"{base_sha}:{record}")
     if rc != 0:
         return False, f"record {record} is missing at the base"
-    m = STATUS_RE.search(out.decode("utf-8", "replace"))
+    text = out.decode("utf-8", "replace")
+    m = STATUS_RE.search(text)
     status = m.group(1).replace("*", "").strip().lower() if m else ""
     if not status.startswith("ratified"):
         return False, (f"record {record} is not ratified at the base "
                        f"(Status: {status or 'absent'})")
+    if path is not None and path not in text:
+        return False, f"record {record} does not name {path} at the base"
     return True, ""
 
 
@@ -220,7 +232,7 @@ def waiver_verdict(repo, base_sha, path, entries):
     """Return (applied_record, None) or (None, reason) for a removed path."""
     reasons = []
     for rec, sha in entries:
-        good, why = record_ratified_at(repo, base_sha, rec)
+        good, why = record_ratified_at(repo, base_sha, rec, path)
         if not good:
             reasons.append(why)
             continue
@@ -443,11 +455,17 @@ def run_selftest(_args):
     DRP = "spec/decision-records/DR-010-x.md"
     DRQ = "spec/decision-records/DR-011-y.md"
 
-    def waiver_fixture(status="**ratified** -- ruled"):
-        """Fixture variant: DR committed at base; returns (tmp, repo, base)."""
+    def waiver_fixture(status="**ratified** -- ruled", named=(REC, WS)):
+        """Fixture variant: DR committed at base; returns (tmp, repo, base).
+
+        `named` paths are listed verbatim in the record body (DR-011
+        condition 4); `named=()` writes a record silent on every path.
+        """
         tmp, repo, base = _fixture()
         if status is not None:
-            _write(repo, DRP, f"# DR\n\n- **Status**: {status}\n")
+            lines = "".join(f"- {p}\n" for p in named)
+            _write(repo, DRP,
+                   f"# DR\n\n- **Status**: {status}\n\nWaived paths:\n{lines}")
         _g(repo, "checkout", "-q", "main")
         _commit(repo, "dr at base")
         _g(repo, "checkout", "-q", "feature")
@@ -504,6 +522,32 @@ def run_selftest(_args):
     expect("waiver: a PR cannot ratify its own record (status read at base)",
            wrun(self_ratify, entry, status="proposed")[0],
            [REC, "not ratified"])
+
+    expect("waiver: record silent on the path fails (tautology closed)",
+           wrun(lambda r: _rm(r, REC), entry, named=())[0],
+           [REC, "does not name"])
+
+    def name_at_head(r):
+        _write(r, DRP, f"# DR\n\n- **Status**: ratified\n\nWaived paths:\n"
+                       f"- {REC}\n")
+        _rm(r, REC)
+    expect("waiver: a PR cannot add the path to its own record (names it "
+           "only at head)",
+           wrun(name_at_head, entry, named=())[0], [REC, "does not name"])
+
+    expect("waiver: waived path that is a prefix of a named path passes "
+           "(literal match, pinned)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(REC + ".bak",)), REC)
+           else ["x"], clean=True)
+
+    msgs, oks = wrun(lambda r: (_rm(r, REC), _rm(r, LOG)),
+                     lambda b: entry(b, paths=(REC, LOG)),
+                     named=(REC, LOG))
+    cases.append(("waiver: multi-path entry, record names each path, all "
+                  "waived",
+                  not msgs and all("waived" in o and REC in o and LOG in o
+                                   for o in oks)))
 
     def bytes_differ(b):
         return entry("0" * 39 + "1")
