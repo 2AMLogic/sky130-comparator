@@ -91,7 +91,7 @@ _None._
 | In Progress (`loom:building`) | 5 |
 | PRs awaiting review | 1 |
 | Approved PRs awaiting merge | 2 |
-| Curated | 8 |
+| Curated | 9 |
 | Architect / Hermit proposals | 6 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
