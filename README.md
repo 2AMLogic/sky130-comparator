@@ -9,10 +9,11 @@ open-source xschem + ngspice flow.
 
 **Status:** designed (`design/comparator.sch`), laid out
 (`layout/comparator.gds`) with DRC/LVS evidence, and four of the five spec rows
-are ratified; Supply / power remains DRAFT / OPEN. The current frontier is the
-post-layout re-measurement campaign
-[#125](https://github.com/2AMLogic/sky130-comparator/issues/125), blocked on
-the execution route [#127](https://github.com/2AMLogic/sky130-comparator/issues/127).
+are ratified; Supply / power remains DRAFT / OPEN. The outstanding frontier is
+the post-layout re-measurement campaign
+[#125](https://github.com/2AMLogic/sky130-comparator/issues/125), which runs
+via the verified [`repo-script` batch route on the fleet's `sim`
+image](sim/comparator-decision/README.md#supported-execution-route-issue-127).
 See the [decision records](spec/decision-records/) (latest ratified:
 [DR-006](spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md)),
 [`manifests/design-evidence-tiers.md`](manifests/design-evidence-tiers.md), and
