@@ -188,6 +188,15 @@ if ! run_freshness_gates; then
 fi
 
 echo
+echo "-- plan gate: requalify-plan.json (issue #358 re-qualification campaign) --"
+if ! python3 "${SIM_DIR}/comparator-decision/check-requalify-plan.py"; then
+  echo
+  echo "FAIL: requalify-plan.json is inconsistent -- every entry must name an"
+  echo "      existing record exactly once (see the failures above)."
+  exit 1
+fi
+
+echo
 echo "== 2/4 environment =="
 # --check-env distinguishes its two failure modes, and so must we: exit 3
 # means a tool is MISSING (skippable on a machine that has not been
