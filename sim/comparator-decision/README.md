@@ -453,12 +453,12 @@ expressible as the verbatim `.meas` cards a `klt sim` request grades
 That premise is stale: #2478 closed on 2026-09-25 and
 [`#2482`](https://github.com/2AMLogic/klayout-tools/issues/2482) (ordered steps,
 several solves in one corner) closed on 2026-10-09. Issue #211's pilot
-([`records/klt-pilot-kickback-20261106.md`](records/klt-pilot-kickback-20261106.md))
+([`pilots/klt-pilot-kickback-20261106.md`](pilots/klt-pilot-kickback-20261106.md))
 expressed `kickback` as a `klt sim` request (`klt-pilot/`) and ran both legs on
 the batch fleet: `loaded` 1.8736 mV, `ideal` 0.0000 mV against the `run.py`
 baseline 1.8902 mV (indicative only: PDK `f6eeac7` vs `c6d73a35`). So a `klt sim`
 route exists for `kickback`. Issue #219's follow-up pilot
-([`records/klt-pilot-kickback-pex-20261114.md`](records/klt-pilot-kickback-pex-20261114.md))
+([`pilots/klt-pilot-kickback-pex-20261114.md`](pilots/klt-pilot-kickback-pex-20261114.md))
 then showed the route also carries an **extracted** DUT -- both legs ran on the
 fleet with the DUT included from `layout/comparator.pex.spice`, which each
 report's `netlist_closure` records at `scope: "repo"`, giving `loaded`
@@ -466,7 +466,7 @@ report's `netlist_closure` records at `scope: "repo"`, giving `loaded`
 (indicative only: ngspice-47 vs #211's ngspice-46).
 
 Issue #220's pilot
-([`records/klt-pilot-regen-20261114.md`](records/klt-pilot-regen-20261114.md))
+([`pilots/klt-pilot-regen-20261114.md`](pilots/klt-pilot-regen-20261114.md))
 then did the same for **`regen`**, which feeds the ratified Decision-time row.
 A route exists for it too, and needs no change to the circuit body: a
 `measurements[].crossings` entry takes a vector *expression* as its `signal`,
@@ -487,7 +487,7 @@ moves this measurement by 5 % at `ss`/-40 C, which is the library the
 [`klayout-tools#5651`](https://github.com/2AMLogic/klayout-tools/issues/5651).
 
 Issue #221's pilot
-([`records/klt-pilot-noise-20261115.md`](records/klt-pilot-noise-20261115.md))
+([`pilots/klt-pilot-noise-20261115.md`](pilots/klt-pilot-noise-20261115.md))
 then did the same for **`noise`**, the first route through an analysis whose
 results are ngspice **plot scalars** rather than `.meas` values (ngspice has
 no `.MEASURE NOISE`, and `klt` rejects a `.meas noise` card outright). The
@@ -515,7 +515,7 @@ of its scope).
 
 Issue #244 then **quantified** that library on the `kickback`/PEX operating
 point
-([`records/klt-pilot-library-effect-20261115.md`](records/klt-pilot-library-effect-20261115.md)):
+([`pilots/klt-pilot-library-effect-20261115.md`](pilots/klt-pilot-library-effect-20261115.md)):
 the four pilot requests re-run as `*-combinedlib` variants (one changed key
 each, all four legs one `--batch-set` invocation) moved the worst-node
 kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
@@ -523,7 +523,7 @@ kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
 `run.py` baseline exactly (1.8902 mV); the PEX note's -15.0 % delta becomes
 -14.33 %, so the library is a sized seventh confounder there, not the
 explanation. A follow-up leg made the schematic figure single-variable
-([`records/klt-pilot-library-effect-schematic-ngspice47-20261116.md`](records/klt-pilot-library-effect-schematic-ngspice47-20261116.md),
+([`pilots/klt-pilot-library-effect-schematic-ngspice47-20261116.md`](pilots/klt-pilot-library-effect-schematic-ngspice47-20261116.md),
 issue #283: the committed `ngspice`-lib schematic request re-run on
 ngspice-47, `models.lib` held fixed): the library alone is worth **+0.53 %**
 on the schematic worst-node peak (vs +0.81 % extracted) and the

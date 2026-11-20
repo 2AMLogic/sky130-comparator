@@ -142,6 +142,8 @@ sim/
       <record-id>/
         draw_<i>_seed<n>.log         # raw ngspice output per Monte Carlo draw
         negctrl_<i>_seed<n>.log      # ... and per negative-control draw
+    pilots/
+      klt-pilot-<slug>-<date>.md     # unratified pilot notes (prose commentary)
     records/
       <record-id>.md                 # append-only summary record
 ```
@@ -154,6 +156,11 @@ sim/
   summary record for one run.
 - **`<corner-id>`** — `<process>_<temp>c_<supply>v`, e.g. `ss_-40c_1.62v`,
   `tt_27c_1.80v`.
+- **`pilots/`** — prose pilot notes (e.g. the `klt-pilot-*.md` route
+  investigations): commentary that declares itself *not* a ratified record,
+  carrying no `Record ID` and no graded corner set. They sit outside the
+  append-only protected scope and may be corrected in place (DR-010). New
+  pilot notes are written here, not under `records/`.
 - **`testbench/`** is *not* versioned per record; it holds the current
   testbench. If it changes in a way that affects comparability across records,
   say so in the new record's note. (The per-record `netlist-snapshots/` copy
@@ -326,6 +333,11 @@ guarantee is what makes `sim/` usable as an evidence trail, and "just fixing"
 a record in place defeats it. Note that `.gitignore` carves `*.log` exceptions
 for `sim/*/corners/**` and `sim/*/mc-draws/**` precisely so this raw evidence
 is committed rather than swept up by the generic log-ignore rule.
+
+Pilot notes are not records. Prose route investigations live under
+`pilots/` (see the directory convention above), outside the protected scope,
+and may be corrected in place — `records/` holds graded evidence only
+(DR-010).
 
 **Enforced at creation time (issue #144).** Writers never pick a record-id
 and then write over it. `harness/evidence.py:reserve_record()` claims
