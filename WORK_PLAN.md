@@ -47,6 +47,7 @@ Issues currently being built (`loom:building`).
 PRs waiting on Judge (`loom:review-requested`).
 
 - **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
+- **#363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
 
 ## Approved (Awaiting Merge)
 
@@ -92,7 +93,7 @@ _None._
 | Important | 4 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
 | In Progress (`loom:building`) | 6 |
-| PRs awaiting review | 1 |
+| PRs awaiting review | 2 |
 | Approved PRs awaiting merge | 2 |
 | Curated | 10 |
 | Architect / Hermit proposals | 6 |
