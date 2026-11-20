@@ -6,6 +6,11 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-20
+
+- **PR #356**: docs: point README campaign status at the verified fleet batch route
+- **Issue #355** (closed): Update README campaign status now that the batch execution route is verified
+
 ### 2026-11-18
 
 - **PR #345**: gate: fail CI when WORK_PLAN.md's plan-body region carries a _Generated stamp
