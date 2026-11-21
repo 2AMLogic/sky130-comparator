@@ -129,7 +129,7 @@
         "role": "testbench",
         "path": "sim/harness/evidence.py",
         "passed": true,
-        "content_hash": "sha256:47bb9195231c6d48505b8c765eab68445d3e2adf8cdf5481f24bf90f7a44cdff"
+        "content_hash": "sha256:3df1d65a5fa34fe95b0dc15e9f51881f7c57cb877f2141a471976fe783f51262"
       },
       {
         "check": "present",
@@ -206,7 +206,7 @@
         "role": "testbench",
         "path": "sim/selftest.sh",
         "passed": true,
-        "content_hash": "sha256:918ce6c9e5806b5e59f51c572927b2fe5c8ee6f92761d15767b55c574b0eb358"
+        "content_hash": "sha256:b56485d99bc5bed9210eb2480418c5e86aaec0d17788d8c5b7b15c1f0fb55c75"
       },
       {
         "check": "present",

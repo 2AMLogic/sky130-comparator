@@ -35,18 +35,94 @@ class GitInfo:
     dirty: bool
 
 
-def git_info() -> GitInfo:
+class GitProvenanceError(RuntimeError):
+    """git_info() could not establish honest provenance, so no record may
+    be stamped (issue #358's fail-closed contract: a missing or synthetic
+    identity is an error, never a placeholder commit)."""
+
+
+# The `branch` value recorded for the repo-script batch route (issue #127's
+# supported execution route for sim/comparator-decision). A job tree is
+# `git archive` of exactly RS_SOURCE_COMMIT -- there is no branch there, and
+# the harness's synthetic local HEAD (RS_SYNTHETIC_HEAD=1) is not the source
+# commit -- so the record states the route by name instead of inventing a
+# branch, and `dirty` is False because an archive of one commit cannot
+# differ from it.
+BATCH_ROUTE_BRANCH = "repo-script-archive"
+
+# The batch route's provenance variables (infra/aws/repo-script-job-run.sh
+# exports them to the job script: the submitted commit or empty, and 1 when
+# the job tree's git HEAD is the synthetic local commit).
+ENV_SOURCE_COMMIT = "RS_SOURCE_COMMIT"
+ENV_SYNTHETIC_HEAD = "RS_SYNTHETIC_HEAD"
+
+
+def _env_get(name: str, env: dict[str, str] | None = None) -> str:
+    return (os.environ if env is None else env).get(name, "")
+
+
+def _batch_source_commit(env: dict[str, str] | None = None) -> str | None:
+    """RS_SOURCE_COMMIT stripped, or None when unset/empty."""
+    value = _env_get(ENV_SOURCE_COMMIT, env).strip()
+    return value or None
+
+
+def git_info(repo_root: Path | None = None, env: dict[str, str] | None = None) -> GitInfo:
+    """The provenance triple every evidence record stamps.
+
+    Three cases, in precedence order (issue #358):
+
+    1. **Batch route** -- ``RS_SOURCE_COMMIT`` set: the commit comes from
+       the variable, never from ``git rev-parse`` in the job tree. A
+       repo-script job runs from a ``git archive`` of one commit; the
+       harness may also stage a synthetic local HEAD so path-resolving
+       tools work (``RS_SYNTHETIC_HEAD=1``), and that HEAD is NOT the
+       source commit. The variable wins over both. ``branch`` is the fixed
+       ``BATCH_ROUTE_BRANCH`` marker naming the route (an archive has no
+       branch to report), and ``dirty`` is False because the tree is an
+       archive of exactly that commit.
+    2. **Job tree without a source commit** -- ``RS_SYNTHETIC_HEAD`` set
+       but ``RS_SOURCE_COMMIT`` empty: fails closed. The only git identity
+       available is the synthetic one, and stamping it would misattribute
+       the record.
+    3. **Ordinary checkout** -- neither variable set: the pre-existing
+       ``git -C <repo root>`` calls, behaviour unchanged. A missing or
+       unusable git tree here also fails closed with a clear message; no
+       placeholder commit is ever returned.
+
+    ``repo_root``/``env`` are test seams (defaults: this repo's root and the
+    process environment); callers pass nothing.
+    """
+    root = REPO_ROOT if repo_root is None else repo_root
+
+    source = _batch_source_commit(env)
+    if source is not None:
+        return GitInfo(commit=source, branch=BATCH_ROUTE_BRANCH, dirty=False)
+    if _env_get(ENV_SYNTHETIC_HEAD, env).strip():
+        raise GitProvenanceError(
+            f"{ENV_SYNTHETIC_HEAD} is set but {ENV_SOURCE_COMMIT} is empty: the "
+            "job tree's git HEAD is synthetic (not the source commit) and no "
+            "submitted commit is known; refusing to stamp provenance"
+        )
+
     def _run(*args: str) -> str:
         return subprocess.run(
-            ["git", "-C", str(REPO_ROOT), *args],
+            ["git", "-C", str(root), *args],
             check=True,
             capture_output=True,
             text=True,
         ).stdout.strip()
 
-    commit = _run("rev-parse", "HEAD")
-    branch = _run("rev-parse", "--abbrev-ref", "HEAD")
-    dirty = _run("status", "--porcelain") != ""
+    try:
+        commit = _run("rev-parse", "HEAD")
+        branch = _run("rev-parse", "--abbrev-ref", "HEAD")
+        dirty = _run("status", "--porcelain") != ""
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        raise GitProvenanceError(
+            f"no usable git tree at {root} and {ENV_SOURCE_COMMIT} is unset; "
+            "refusing to stamp a placeholder commit onto an evidence record "
+            "(set RS_SOURCE_COMMIT on the batch route, or run from a checkout)"
+        ) from exc
     return GitInfo(commit=commit, branch=branch, dirty=dirty)
 
 
@@ -62,7 +138,17 @@ def _utcnow() -> _dt.datetime:
     return _dt.datetime.now(_dt.timezone.utc)
 
 
-def _short_sha() -> str:
+def _short_sha(env: dict[str, str] | None = None) -> str:
+    """The record-ID commit suffix, from the SAME source git_info() uses
+    (issue #358): RS_SOURCE_COMMIT's first 7 hex chars on the batch route
+    (never the job tree's synthetic HEAD), and "nogit" whenever no honest
+    commit is available -- including the synthetic-HEAD-without-source-
+    commit case, which git_info() treats as fail-closed."""
+    source = _batch_source_commit(env)
+    if source is not None:
+        return source[:7]
+    if _env_get(ENV_SYNTHETIC_HEAD, env).strip():
+        return "nogit"
     try:
         return subprocess.run(
             ["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],
@@ -70,7 +156,7 @@ def _short_sha() -> str:
             capture_output=True,
             text=True,
         ).stdout.strip()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return "nogit"
 
 
