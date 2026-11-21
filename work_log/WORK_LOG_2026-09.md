@@ -2,6 +2,28 @@
 
 Sections moved byte-for-byte from [WORK_LOG.md](../WORK_LOG.md) by `loom-daemon work-docs archive`.
 
+### 2026-09-21
+
+- **PR #35**: feat: add ~250ps soft-clock shaper, cutting comparator kickback 41%
+- **PR #32**: feat: grade T1 state via klt signoff manifest + CI re-run gate
+- **Issue #31** (closed): Commit a klt signoff block manifest so this block's T1 state is graded, not hand-read
+- **Issue #30** (closed): design: kickback mitigation for comparator input stage (DR-002 non-compliance, 144.60 mV vs. ≤5 mV/≤2 mV)
+
+### 2026-09-16
+
+- **PR #29**: spec: DR-002 target-spec ratification pass (porting-plan next step 5)
+- **Issue #28** (closed): spec: target-spec ratification decision record, informed by real measurements (porting-plan next step 5)
+- **PR #27**: feat: add kickback input-node disturbance experiment
+- **Issue #26** (closed): sim: design an original kickback experiment for design/comparator.sch (porting-plan next step 4)
+- **PR #25**: design: draft design/comparator.sch + derived netlist per DR-001
+- **Issue #24** (closed): design: draft design/comparator.sch schematic + derived netlist per DR-001 (porting-plan next step 1)
+
+### 2026-09-15
+
+- **Issue #23** (closed): design: comparator schematic (design/comparator.sch), sized against DR-001 (porting-plan next step 2)
+- **PR #22**: spec: comparator topology decision record (DR-001)
+- **Issue #21** (closed): design: comparator topology decision record (porting-plan next step 1)
+
 ### 2026-09-09
 
 - **PR #20**: sim: stand up sim/comparator-decision/ regen/offset/noise experiments

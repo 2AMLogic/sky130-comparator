@@ -6,6 +6,11 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-21
+
+- **PR #363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
+- **Issue #358** (closed): Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
+
 ### 2026-11-20
 
 - **PR #356**: docs: point README campaign status at the verified fleet batch route
@@ -331,26 +336,4 @@ Chronological record of merged pull requests and closed issues, maintained by th
 - **Issue #36** (closed): 2am: reuse rule 9 — name this block's consumers in the spec, carry their requirement rows, publish the integrator view as data
 - **Issue #34** (closed): design: kickback full compliance needs the topology class DR-001 scoped out (preamp/double-tail) — DR-001-supersession-grade follow-on
 - **Issue #33** (closed): spec: codify decision-records/TEMPLATE.md now that DR-003 is the third record
-
-### 2026-09-21
-
-- **PR #35**: feat: add ~250ps soft-clock shaper, cutting comparator kickback 41%
-- **PR #32**: feat: grade T1 state via klt signoff manifest + CI re-run gate
-- **Issue #31** (closed): Commit a klt signoff block manifest so this block's T1 state is graded, not hand-read
-- **Issue #30** (closed): design: kickback mitigation for comparator input stage (DR-002 non-compliance, 144.60 mV vs. ≤5 mV/≤2 mV)
-
-### 2026-09-16
-
-- **PR #29**: spec: DR-002 target-spec ratification pass (porting-plan next step 5)
-- **Issue #28** (closed): spec: target-spec ratification decision record, informed by real measurements (porting-plan next step 5)
-- **PR #27**: feat: add kickback input-node disturbance experiment
-- **Issue #26** (closed): sim: design an original kickback experiment for design/comparator.sch (porting-plan next step 4)
-- **PR #25**: design: draft design/comparator.sch + derived netlist per DR-001
-- **Issue #24** (closed): design: draft design/comparator.sch schematic + derived netlist per DR-001 (porting-plan next step 1)
-
-### 2026-09-15
-
-- **Issue #23** (closed): design: comparator schematic (design/comparator.sch), sized against DR-001 (porting-plan next step 2)
-- **PR #22**: spec: comparator topology decision record (DR-001)
-- **Issue #21** (closed): design: comparator topology decision record (porting-plan next step 1)
 
