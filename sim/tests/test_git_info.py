@@ -11,6 +11,7 @@ case). No ngspice, no PDK."""
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -113,6 +114,95 @@ class TestGitInfoFailsClosed(unittest.TestCase):
     def test_short_sha_is_nogit_when_only_synthetic_head(self):
         self.assertEqual(evidence._short_sha(env={evidence.ENV_SYNTHETIC_HEAD: "1"}),
                          "nogit")
+
+
+class TestGitInfoSourceCommitShape(unittest.TestCase):
+    """Issue #365 acceptance: a supplied, nonempty RS_SOURCE_COMMIT must be
+    exactly 40 lowercase ASCII hex characters -- the RAW value, checked
+    before any trimming or slicing. Only an unset variable or the empty
+    string takes #363's missing-value path; everything else is validated,
+    and a malformed value raises GitProvenanceError through both public
+    entry points even when a usable local HEAD exists (the variable, not
+    the tree, is the provenance source on the batch route)."""
+
+    # (label, value) pairs, each malformed for a different reason: a short
+    # sha (an archive tree lacks the objects to expand it), a symbolic
+    # ref, a value that would escape the record-ID path, uppercase hex,
+    # whitespace alone (#363 stripped it to "missing"; #365 treats it as
+    # malformed), a whitespace-padded full sha, and a valid sha followed
+    # by a newline -- the case a validator using a partial-match regex
+    # (Python's `$` matches before a trailing newline) would wrongly accept.
+    MALFORMED = [
+        ("short sha", "059ee87"),
+        ("symbolic ref", "HEAD"),
+        ("path separator", "../etc"),
+        ("uppercase hex", "0123456789ABCDEF0123456789ABCDEF01234567"),
+        ("whitespace only", "   "),
+        ("whitespace-padded sha", "  0123456789abcdef0123456789abcdef01234567  "),
+        ("trailing newline", "0123456789abcdef0123456789abcdef01234567\n"),
+    ]
+    VALID = "0123456789abcdef0123456789abcdef01234567"
+
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+        self.addCleanup(self._td.cleanup)
+        # A checkout with a USABLE HEAD: a malformed variable must raise
+        # rather than silently fall back to it.
+        self.checkout = Path(self._td.name) / "checkout"
+        self.checkout_commit = _make_commit(self.checkout)
+
+    def test_malformed_raises_through_git_info(self):
+        for label, value in self.MALFORMED:
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(
+                    evidence.GitProvenanceError, evidence.ENV_SOURCE_COMMIT
+                ):
+                    evidence.git_info(
+                        repo_root=self.checkout,
+                        env={evidence.ENV_SOURCE_COMMIT: value},
+                    )
+
+    def test_malformed_raises_through_new_record_id(self):
+        import os
+        from unittest import mock
+        for label, value in self.MALFORMED:
+            with self.subTest(label=label):
+                with mock.patch.dict(os.environ, {evidence.ENV_SOURCE_COMMIT: value}):
+                    with self.assertRaises(evidence.GitProvenanceError):
+                        evidence.new_record_id()
+
+    def test_diagnostic_names_variable_and_value(self):
+        value = "../etc"
+        with self.assertRaisesRegex(
+            evidence.GitProvenanceError,
+            f"{evidence.ENV_SOURCE_COMMIT}.*{re.escape(value)}",
+        ):
+            evidence.git_info(
+                repo_root=self.checkout, env={evidence.ENV_SOURCE_COMMIT: value}
+            )
+
+    def test_valid_value_full_commit_and_short_suffix(self):
+        info = evidence.git_info(
+            repo_root=self.checkout,
+            env={evidence.ENV_SOURCE_COMMIT: self.VALID},
+        )
+        self.assertEqual(info.commit, self.VALID)
+        self.assertEqual(evidence._short_sha(env={evidence.ENV_SOURCE_COMMIT: self.VALID}),
+                         self.VALID[:7])
+
+    def test_empty_string_keeps_missing_value_path(self):
+        # "" behaves exactly like unset (#363): the synthetic-HEAD case
+        # still fails closed, and a checkout without it is still used.
+        with self.assertRaisesRegex(evidence.GitProvenanceError, "synthetic"):
+            evidence.git_info(
+                repo_root=self.checkout,
+                env={evidence.ENV_SOURCE_COMMIT: "",
+                     evidence.ENV_SYNTHETIC_HEAD: "1"},
+            )
+        info = evidence.git_info(
+            repo_root=self.checkout, env={evidence.ENV_SOURCE_COMMIT: ""}
+        )
+        self.assertEqual(info.commit, self.checkout_commit)
 
 
 class TestGitInfoOrdinaryCheckout(unittest.TestCase):
