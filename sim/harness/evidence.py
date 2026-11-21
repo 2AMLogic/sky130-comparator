@@ -20,6 +20,7 @@ import datetime as _dt
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -56,15 +57,41 @@ BATCH_ROUTE_BRANCH = "repo-script-archive"
 ENV_SOURCE_COMMIT = "RS_SOURCE_COMMIT"
 ENV_SYNTHETIC_HEAD = "RS_SYNTHETIC_HEAD"
 
+# A full commit ID: exactly 40 lowercase ASCII hexadecimal characters
+# (issue #365). The batch route's job tree is a `git archive` of one
+# commit, so the objects needed to expand an abbreviation are typically
+# absent there -- the variable must carry the FULL ID.
+_SOURCE_COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+
 
 def _env_get(name: str, env: dict[str, str] | None = None) -> str:
     return (os.environ if env is None else env).get(name, "")
 
 
 def _batch_source_commit(env: dict[str, str] | None = None) -> str | None:
-    """RS_SOURCE_COMMIT stripped, or None when unset/empty."""
-    value = _env_get(ENV_SOURCE_COMMIT, env).strip()
-    return value or None
+    """RS_SOURCE_COMMIT validated as a full commit ID, or None when
+    unset/empty (issue #365).
+
+    The RAW value is checked once, before any trimming or slicing: only an
+    unset variable or the empty string takes the missing-value path
+    (#363's checkout / synthetic-HEAD / fail-closed behaviour). Every other
+    value must be exactly 40 lowercase hex characters -- a `git archive`
+    job tree lacks the Git objects to expand a short sha, so an
+    abbreviation, a symbolic ref, uppercase hex, or any padded/whitespace
+    value is refused rather than stamped. This matters doubly because the
+    record ID slices this value into artifact paths, so what is stamped
+    must be the exact commit."""
+    value = _env_get(ENV_SOURCE_COMMIT, env)
+    if value == "":
+        return None
+    if _SOURCE_COMMIT_RE.fullmatch(value) is None:
+        raise GitProvenanceError(
+            f"{ENV_SOURCE_COMMIT}={value!r} is not a full commit ID "
+            "(40 lowercase hex characters); refusing to stamp it onto an "
+            "evidence record (supply the full 40-character commit on the "
+            "batch route, or unset the variable to use a checkout)"
+        )
+    return value
 
 
 def git_info(repo_root: Path | None = None, env: dict[str, str] | None = None) -> GitInfo:
@@ -77,7 +104,12 @@ def git_info(repo_root: Path | None = None, env: dict[str, str] | None = None) -
        repo-script job runs from a ``git archive`` of one commit; the
        harness may also stage a synthetic local HEAD so path-resolving
        tools work (``RS_SYNTHETIC_HEAD=1``), and that HEAD is NOT the
-       source commit. The variable wins over both. ``branch`` is the fixed
+       source commit. The variable wins over both. Its value must be a
+       full 40-character lowercase hex commit ID (see
+       ``_batch_source_commit``): a malformed nonempty value raises
+       ``GitProvenanceError`` here rather than being stamped -- including
+       when a usable local HEAD exists, since the variable, not the tree,
+       is the provenance source on this route. ``branch`` is the fixed
        ``BATCH_ROUTE_BRANCH`` marker naming the route (an archive has no
        branch to report), and ``dirty`` is False because the tree is an
        archive of exactly that commit.
@@ -143,7 +175,10 @@ def _short_sha(env: dict[str, str] | None = None) -> str:
     (issue #358): RS_SOURCE_COMMIT's first 7 hex chars on the batch route
     (never the job tree's synthetic HEAD), and "nogit" whenever no honest
     commit is available -- including the synthetic-HEAD-without-source-
-    commit case, which git_info() treats as fail-closed."""
+    commit case, which git_info() treats as fail-closed. Issue #365: the
+    value is validated by the shared ``_batch_source_commit()`` helper, so
+    a malformed nonempty RS_SOURCE_COMMIT raises here too instead of
+    leaking into record-ID paths."""
     source = _batch_source_commit(env)
     if source is not None:
         return source[:7]
