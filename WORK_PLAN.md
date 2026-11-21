@@ -23,7 +23,6 @@ _None._
 - **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#177**: Re-pin open_pdks to f6eeac7 (ciel) — fleet retires volare c6d73a3 *(held)*
 - **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2) *(held)*
-- **#358**: Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
 
 ## Ready
 
@@ -40,14 +39,14 @@ Issues currently being built (`loom:building`).
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
 - **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
-- **#358**: Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
+- **#359**: Re-qualification campaign, step 2: schematic-DUT kickback, noise, reset and regen records under open_pdks f6eeac7
 
 ## PRs Awaiting Review
 
 PRs waiting on Judge (`loom:review-requested`).
 
 - **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
-- **#363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
+- **#366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 
 ## Approved (Awaiting Merge)
 
@@ -69,7 +68,6 @@ Issues carrying `loom:curated`.
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325) *(curated)*
 - **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347) *(curated)*
-- **#358**: Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record *(curated)*
 
 ## Proposed (Architect / Hermit)
 
@@ -90,12 +88,12 @@ _None._
 |------|-------|
 | Operator merge-risk holds | 2 |
 | Very important | 0 |
-| Important | 4 |
+| Important | 3 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
 | In Progress (`loom:building`) | 6 |
 | PRs awaiting review | 2 |
 | Approved PRs awaiting merge | 2 |
-| Curated | 10 |
+| Curated | 9 |
 | Architect / Hermit proposals | 6 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->
