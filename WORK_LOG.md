@@ -6,6 +6,11 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-22
+
+- **PR #368**: fix: require RS_SOURCE_COMMIT to be a full 40-hex commit ID before stamping provenance
+- **Issue #365** (closed): git_info() accepts any RS_SOURCE_COMMIT shape; validate it before stamping provenance
+
 ### 2026-11-21
 
 - **PR #363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
@@ -327,13 +332,4 @@ Chronological record of merged pull requests and closed issues, maintained by th
 - **Issue #44** (closed): layout: create GDS/OASIS for the comparator (T1 item 2)
 - **PR #43**: feat: full-corner Monte Carlo + PVT campaign (DR-005) -- ratify Decision-time, complete every row's corner set
 - **Issue #41** (closed): Run the full-corner Monte Carlo and PVT campaigns the ratified target-spec rows still lack
-
-### 2026-09-22
-
-- **PR #40**: feat: static preamp ahead of StrongARM latch, closing the kickback gap (DR-004)
-- **PR #39**: docs: add decision-record TEMPLATE.md and point spec/README at it
-- **PR #38**: feat: add rule-9 consumers record and gated integrator view
-- **Issue #36** (closed): 2am: reuse rule 9 — name this block's consumers in the spec, carry their requirement rows, publish the integrator view as data
-- **Issue #34** (closed): design: kickback full compliance needs the topology class DR-001 scoped out (preamp/double-tail) — DR-001-supersession-grade follow-on
-- **Issue #33** (closed): spec: codify decision-records/TEMPLATE.md now that DR-003 is the third record
 

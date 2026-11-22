@@ -34,12 +34,14 @@ _None._
 
 Issues currently being built (`loom:building`).
 
+- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
 - **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
 - **#359**: Re-qualification campaign, step 2: schematic-DUT kickback, noise, reset and regen records under open_pdks f6eeac7
+- **#360**: Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
 
 ## PRs Awaiting Review
 
@@ -47,6 +49,7 @@ PRs waiting on Judge (`loom:review-requested`).
 
 - **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
 - **#366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
+- **#369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
 
 ## Approved (Awaiting Merge)
 
@@ -68,10 +71,10 @@ Issues carrying `loom:curated`.
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
 - **#326**: Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325) *(curated)*
 - **#348**: Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347) *(curated)*
+- **#360**: Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines *(curated)*
 
 ## Proposed (Architect / Hermit)
 
-- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(architect)*
 - **#134**: Measure comparator supply energy and average power at stated clock conditions *(architect)* *(held)*
 - **#154**: Measure larger-sample post-layout offset with resumable serial campaigns *(architect)* *(held)*
 - **#234**: characterization-envelope.py's 'no provenance block' design rests on a klt 0.6.0 gap the pinned klt 0.8.0 no longer has *(hermit)* *(held)*
@@ -90,10 +93,10 @@ _None._
 | Very important | 0 |
 | Important | 3 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 6 |
-| PRs awaiting review | 2 |
+| In Progress (`loom:building`) | 8 |
+| PRs awaiting review | 3 |
 | Approved PRs awaiting merge | 2 |
-| Curated | 9 |
-| Architect / Hermit proposals | 6 |
+| Curated | 10 |
+| Architect / Hermit proposals | 5 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->

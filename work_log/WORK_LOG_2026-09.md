@@ -2,6 +2,15 @@
 
 Sections moved byte-for-byte from [WORK_LOG.md](../WORK_LOG.md) by `loom-daemon work-docs archive`.
 
+### 2026-09-22
+
+- **PR #40**: feat: static preamp ahead of StrongARM latch, closing the kickback gap (DR-004)
+- **PR #39**: docs: add decision-record TEMPLATE.md and point spec/README at it
+- **PR #38**: feat: add rule-9 consumers record and gated integrator view
+- **Issue #36** (closed): 2am: reuse rule 9 — name this block's consumers in the spec, carry their requirement rows, publish the integrator view as data
+- **Issue #34** (closed): design: kickback full compliance needs the topology class DR-001 scoped out (preamp/double-tail) — DR-001-supersession-grade follow-on
+- **Issue #33** (closed): spec: codify decision-records/TEMPLATE.md now that DR-003 is the third record
+
 ### 2026-09-21
 
 - **PR #35**: feat: add ~250ps soft-clock shaper, cutting comparator kickback 41%
