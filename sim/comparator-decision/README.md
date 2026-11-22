@@ -352,12 +352,10 @@ offers `--distributed-rc` with `--critical-net` for a per-segment ladder;
 re-running the supply nets that way is follow-on work (issue #64), not done
 here.
 
-`--dut schematic` is the default and its deck text is **byte-identical** to
-what it was before the switch existed, so a post-layout figure and the
-schematic-level record it is differenced against come from decks that differ
-only in the DUT. That property is what makes the delta attributable to the
-layout, and it is pinned by a test
-(`sim/tests/test_comparator_decision.py::TestDutProvenance`).
+`--dut schematic` is the default. The DUT switch selects the fragment used
+by the deck builder. When interpreting a delta against a committed schematic
+record, compare the open_pdks revision, ngspice version and sampling counts
+in the two records. A change in any of them can also affect the delta.
 
 **All six sub-commands support both provenances.** Four did from issue #57;
 `reset` and `noise-tran` refused `--dut extracted` until issue #65, because

@@ -466,13 +466,8 @@ def write_reset_evidence(
             f"`sim/comparator-decision/records/{RESET_SCHEMATIC_COUNTERPART}.md` "
             "(same five corners, same two variants, same four criteria)."
         )
-        a(
-            "- **What differs between the two runs**: the DUT fragment, and "
-            "nothing else. Same sub-command, same corner matrix, same "
-            "stimulus and initial conditions, same tolerances, same deck "
-            "template -- the schematic-side deck text is byte-identical to "
-            "the one that produced the counterpart record."
-        )
+        a(_shared.schematic_comparison(
+            RESET_SCHEMATIC_COUNTERPART, _shared.simulation_versions(info)))
         a(
             "- **Why this record has no numeric delta table**: `reset` is a "
             "four-criterion pass/fail screen with a paired positive control, "
@@ -511,9 +506,7 @@ def write_reset_evidence(
             "- **The point of running this post-layout at all**: `reset` is "
             "the screen for a latch whose reset state is not a stable, "
             "non-conducting equilibrium, and layout parasitics are exactly "
-            "the class of asymmetry such a screen exists to catch. Until "
-            "this record it had only ever been run against a netlist that is "
-            "symmetric by construction."
+            "the class of asymmetry such a screen exists to catch."
         )
         a("")
     return _finalize_record(

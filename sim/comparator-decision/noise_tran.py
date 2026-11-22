@@ -1370,8 +1370,13 @@ def write_noise_tran_evidence(
     lines.extend(post_layout_delta_lines(
         "noise-tran", result.corner, result.temp_c, result.sigma_pickoff_mv,
     ))
-    a("")
     seeds = result.decision_points[0]["m"] if result.decision_points else 0
+    if (_shared.dut_provenance() == "extracted"
+            and _shared.baseline_for("noise-tran", result.corner, result.temp_c)):
+        a(f"- **Extracted sampling**: {len(result.pickoff_diffs)} pick-off seeds "
+          f"and {seeds} seeds/sign/decision point. The schematic counts are "
+          "given with the counterpart above.")
+    a("")
     return _finalize_record(
         lines, record_path, info, netlist_sha, "noise-tran",
         extra={
