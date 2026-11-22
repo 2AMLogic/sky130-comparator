@@ -8,10 +8,9 @@
 * their schematic counterparts via layout/lvs-report.json's 12/12 net
 * correspondence, device instances renamed to the schematic instance they
 * pair with structurally. No R, C, or device parameter value is altered.
-* See layout/extract_pex.py's module docstring for the full derivation, for
-* why `klt pex` is not the path here, and for the disclosed res_high_po
-* w=0.42um-drawn vs w=0.35um-schematic delta this fragment deliberately
-* carries through.
+* The #123 re-draw used 0.35 um res_high_po resistors. The instance w values
+* below are carried through from the extraction.
+* See layout/extract_pex.py for the derivation and resistor re-draw history.
 *
 * --- extractor's own parasitic-model disclosure, verbatim ---
 * extracted by klt extract --deck sky130

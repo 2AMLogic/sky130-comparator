@@ -49,17 +49,8 @@ DUT_FRAGMENT = TESTBENCH_DIR / "comparator_core.spice"
 # Both fragments are FLAT device-level SPICE that inlines at the same place in
 # every deck the sibling experiment modules build, expose the same node names (CLK/VDD/GND/VINP/VINN/OUTP/
 # OUTN plus the internal TAILP/OUTP1/OUTN1/TAIL2/CLKT), and are selected by
-# `--dut`. The post-layout pair is generated and documented by
-# `layout/extract_pex.py` -- read that module's docstring for the derivation,
-# for why `klt pex` is not the path here, and for the disclosed res_high_po
-# drawn-width delta the extracted fragment deliberately carries.
-#
-# The schematic path is BYTE-IDENTICAL to what it was before this switch
-# existed: `--dut schematic` (the default) inlines exactly the same fragment
-# into exactly the same deck text, so a post-layout figure and the committed
-# schematic-level record it is differenced against come from decks that
-# differ only in the DUT. That is the whole point of the comparison, so it is
-# a property worth stating rather than assuming.
+# `--dut`. See layout/extract_pex.py for the derivation and resistor re-draw
+# history. Stored schematic runs can use a different PDK or simulator.
 REPO_ROOT = EXPERIMENT_DIR.parent.parent
 LAYOUT_DIR = REPO_ROOT / "layout"
 PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
@@ -349,6 +340,13 @@ SCHEMATIC_NETLIST_PROVENANCE = (
     "(`design/comparator.sch` -> `./design/netlist.sh` -> "
     "`sim/comparator-decision/testbench/comparator_core.spice`)"
 )
+
+
+def extraction_versions(report: dict) -> str:
+    provenance = report["provenance"]
+    return f"klt {provenance['klt_version']} on klayout {provenance['klayout_version']}"
+
+
 def extracted_netlist_provenance() -> str:
     """The POST-LAYOUT provenance line, with its RC summary and TOOL PIN read
     out of the committed `layout/extract-parasitics.json` rather than
@@ -365,13 +363,11 @@ def extracted_netlist_provenance() -> str:
     """
     report = json.loads(PEX_ENVELOPE.read_text())
     par = report["parasitics"]
-    prov = report["provenance"]
     return (
         "- **Netlist provenance**: POST-LAYOUT / EXTRACTED "
         "(`layout/comparator.gds` -> `klt extract --parasitics` -> "
         "`layout/comparator.extract.spice` -> `layout/extract_pex.py` -> "
-        f"`layout/comparator.pex.spice`), extracted by klt "
-        f"{prov['klt_version']} on klayout {prov['klayout_version']} -- the "
+        f"`layout/comparator.pex.spice`), extracted by {extraction_versions(report)} -- the "
         "pin `docs/environment-setup.md` records and CI installs, asserted "
         "by `layout/extract_pex.py` because extracted resistances are not "
         f"stable across builds. Lumped-RC parasitics: {par['r_count']} star "
@@ -388,10 +384,9 @@ def extracted_netlist_provenance() -> str:
         "Net names are the SCHEMATIC names, carried across by the 12/12 net "
         "correspondence in the committed `layout/lvs-report.json`, so every "
         "probe in this deck names the same circuit node the schematic-level "
-        "record's probe named. This fragment deliberately carries the "
-        "`res_high_po` w=0.42 um drawn vs. w=0.35 um schematic delta disclosed "
-        "by PR #55 / `layout/lvs-coverage-probe.json` -- it is what the layout "
-        "actually draws, so it is what a post-layout measurement must see."
+        "record's probe named. The #123 re-draw used 0.35 um `res_high_po` "
+        "resistors. The XR_ instance parameters in the snapshot preserve "
+        "the extracted widths."
     )
 
 
@@ -431,10 +426,9 @@ def _record_header(
 # (issue #57 acceptance criteria: "each post-layout record documents its
 # schematic-level counterpart record path AND the numeric delta -- not just
 # the new number in isolation"). Every entry names a COMMITTED record under
-# records/ measured at the same corner/temperature/methodology constants by
-# the same sub-command, so the difference is attributable to the DUT and not
-# to the bench. Values are transcribed from those records (and are the same
-# figures the top-level README's target-spec rows cite). ---
+# records/ measured by the same sub-command at the same corner and temperature.
+# The PDK, simulator and sample counts can differ. Values are transcribed
+# from the named records. ---
 @dataclass(frozen=True)
 class Baseline:
     record_id: str
@@ -524,7 +518,7 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "18 probes, tolerance 0.1 mV",
     ),
     ("kickback", "tt", 27.0): Baseline(
-        "20260922-070119-e084b55", "peak `loaded` input-node disturbance",
+        "20261120-224448-059ee87", "peak `loaded` input-node disturbance",
         1.8902, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
@@ -624,8 +618,8 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "20260922-205857-ebea4e2",
         "decision-referred input-referred noise sigma (pick-off MC)",
         0.1213, "mV", "N=128 pick-off seeds, 95% CI [0.1084, 0.1335] mV, "
-        "gain 77.6506 V/V; the decision-transition cross-check is NOT "
-        "MEASURABLE at this corner (every pair degenerate -- the "
+        "gain 77.6506 V/V, 64 seeds/sign/point. The decision-transition "
+        "cross-check is NOT MEASURABLE at this corner (every pair degenerate -- the "
         "sigma-scaled overdrives sit below this corner's "
         "resolvable-overdrive floor), so the pick-off statistic stands "
         "alone",
@@ -718,6 +712,25 @@ def subset_corner_campaign_reason() -> str:
     )
 
 
+def simulation_versions(info: pdk.PdkInfo) -> tuple[str, str]:
+    return _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown"
+
+
+def schematic_comparison(record_id: str, extracted_versions: tuple[str, str]) -> str:
+    record = (EXPERIMENT_DIR / "records" / f"{record_id}.md").read_text()
+    fields = dict(line[2:].split(": ", 1) for line in record.splitlines()
+                  if line.startswith(("- PDK: ", "- ngspice: ")))
+    schematic = fields["PDK"], fields["ngspice"]
+    if schematic == extracted_versions:
+        return (f"- **Comparison conditions**: Both DUTs used {schematic[0]} "
+                f"and {schematic[1]}.")
+    pdk_line, ngspice_line = extracted_versions
+    return ("- **Historical schematic comparison**: The schematic run used "
+            f"{schematic[0]} and {schematic[1]}. The extracted run used "
+            f"{pdk_line} and {ngspice_line}. The delta includes the change "
+            "of DUT and any effect of the different simulation environments.")
+
+
 def post_layout_delta_lines(
     mode: str, corner: str, temp_c: float, measured: float, unit_scale: float = 1.0,
 ) -> list[str]:
@@ -750,11 +763,7 @@ def post_layout_delta_lines(
         f"- **Schematic-level counterpart record**: "
         f"`sim/comparator-decision/records/{base.record_id}.md` "
         f"({base.conditions})",
-        "- **What differs between the two runs**: the DUT fragment, and "
-        "nothing else. Same sub-command, same corner/temperature/supply, "
-        "same methodology constants, same deck template -- the "
-        "schematic-side deck text is byte-identical to the one that "
-        "produced the counterpart record.",
+        schematic_comparison(base.record_id, simulation_versions(pdk.resolve())),
     ])
     return out
 
@@ -941,9 +950,9 @@ def _finalize_record(
     write the record. `cmd` is the subcommand name, used in the "Written by"
     attribution. The PDK and ngspice identity lines are resolved here from
     `info` so no caller has to repeat that derivation."""
+    pdk_line, ngspice_line = simulation_versions(info)
     lines.extend(evidence.environment_block(
-        pdk_line=_resolve_pdk_line(info),
-        ngspice_line=toolchain._ngspice_version() or "unknown",
+        pdk_line=pdk_line, ngspice_line=ngspice_line,
         netlist_sha256=netlist_sha,
         extra=extra,
     ))

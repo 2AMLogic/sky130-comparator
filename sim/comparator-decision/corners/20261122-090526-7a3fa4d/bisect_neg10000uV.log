@@ -1,0 +1,59 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=-10.0mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.72640e-09
+ Reference value :  9.39250e-09
+ Reference value :  1.41075e-08
+ Reference value :  1.88125e-08
+ Reference value :  2.35125e-08
+ Reference value :  2.82175e-08
+ Reference value :  3.29325e-08
+ Reference value :  3.76225e-08
+ Reference value :  4.23325e-08
+ Reference value :  4.70275e-08
+ Reference value :  5.17225e-08
+ Reference value :  5.64175e-08
+ Reference value :  6.11125e-08
+ Reference value :  6.58325e-08
+ Reference value :  7.05525e-08
+ Reference value :  7.52525e-08
+ Reference value :  7.99525e-08
+ Reference value :  8.46325e-08
+ Reference value :  8.92775e-08
+ Reference value :  9.39275e-08
+ Reference value :  9.85925e-08
+ Reference value :  1.03258e-07
+ Reference value :  1.07928e-07
+ Reference value :  1.12598e-07
+ Reference value :  1.17263e-07
+ Reference value :  1.21933e-07
+ Reference value :  1.26603e-07
+ Reference value :  1.31268e-07
+ Reference value :  1.35938e-07
+ Reference value :  1.40598e-07
+ Reference value :  1.45273e-07
+ Reference value :  1.49948e-07
+ Reference value :  1.54613e-07
+ Reference value :  1.59263e-07
+ Reference value :  1.63938e-07
+ Reference value :  1.68623e-07
+ Reference value :  1.73313e-07
+ Reference value :  1.78013e-07
+ Reference value :  1.82678e-07
+ Reference value :  1.87348e-07
+ Reference value :  1.92018e-07
+ Reference value :  1.96688e-07
+ Reference value :  2.01358e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 

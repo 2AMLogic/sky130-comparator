@@ -473,11 +473,8 @@ class TestRunManyTsRetryParallelSeam(unittest.TestCase):
 class TestDutProvenance(unittest.TestCase):
     """`--dut schematic|extracted` -- the post-layout swap (issue #57).
 
-    The whole value of the post-layout comparison is that the ONLY thing
-    differing between a schematic-level record and its post-layout
-    counterpart is the DUT. These tests pin that: the schematic deck text is
-    unchanged by the switch existing, and the extracted deck really does
-    carry the extracted netlist (and its parasitics).
+    Check that the switch preserves the schematic deck and selects the
+    extracted devices and parasitics for a post-layout deck.
     """
 
     def setUp(self):
@@ -517,6 +514,25 @@ class TestDutProvenance(unittest.TestCase):
                        "XM_LATP_P", "XM_LATP_N", "XM_RST_P", "XM_RST_N",
                        "XR_CLKS", "XM_CLKCAP"):
             self.assertNotIn(absent, deck)
+
+    def test_extracted_noise_record_preserves_both_output_voltages_and_tool_pin(self):
+        cd_run.set_dut_provenance("extracted")
+        result = cd_run.noise.NoiseResult(
+            single_ended_rms_v=0.00046, differential_rms_v=0.00065,
+            op_tailp_v=0.18, op_outp1_v=1.203299, op_outn1_v=1.208241,
+            log_text="", corner="ff", temp_c=125.0,
+        )
+        with tempfile.TemporaryDirectory() as scratch:
+            runs = Path(scratch)
+            with unittest.mock.patch.object(cd_run.noise, "_begin_dut_record",
+                    return_value=(self.info, "test", "sha", runs / "record.md", runs)), \
+                    unittest.mock.patch.object(cd_run.noise, "_finalize_record") as finish:
+                cd_run.noise.write_noise_evidence(result)
+        text = "\n".join(finish.call_args.args[0])
+        self.assertIn("| Op point: v(OUTP1) | 1.203299 V |", text)
+        self.assertIn("| Op point: v(OUTN1) | 1.208241 V |", text)
+        provenance = json.loads(cd_run._shared.PEX_ENVELOPE.read_text())["provenance"]
+        self.assertIn(f"klt {provenance['klt_version']} on klayout {provenance['klayout_version']}", text)
 
     def test_unknown_provenance_raises(self):
         with self.assertRaises(ValueError):
@@ -797,6 +813,20 @@ class TestPostLayoutDelta(unittest.TestCase):
         self.assertIn("0.4025 ns", text)
         self.assertIn("+0.0400 ns", text)
         self.assertIn("1.099x", text)
+
+    def test_comparison_reports_each_records_environment(self):
+        extracted = ("sky130A @ f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7", "ngspice-47")
+        for record_id in (cd_run._shared.RESET_SCHEMATIC_COUNTERPART,
+                          cd_run.baseline_for("regen", "tt", 27).record_id):
+            with self.subTest(record_id=record_id):
+                text = cd_run._shared.schematic_comparison(record_id, extracted)
+                self.assertIn("c6d73a3", text)
+                self.assertIn("ngspice-46", text)
+                self.assertIn(extracted[0], text)
+                self.assertIn(extracted[1], text)
+        nominal = cd_run.baseline_for("kickback", "tt", 27)
+        self.assertIn("Both DUTs used", cd_run._shared.schematic_comparison(
+            nominal.record_id, extracted))
 
     def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
         # `noise` (the AC loop-broken sub-model) has a committed

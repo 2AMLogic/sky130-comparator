@@ -1,0 +1,59 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=1.25mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.69140e-09
+ Reference value :  9.41250e-09
+ Reference value :  1.41825e-08
+ Reference value :  1.89625e-08
+ Reference value :  2.37325e-08
+ Reference value :  2.85025e-08
+ Reference value :  3.32675e-08
+ Reference value :  3.80325e-08
+ Reference value :  4.27925e-08
+ Reference value :  4.75525e-08
+ Reference value :  5.23125e-08
+ Reference value :  5.70725e-08
+ Reference value :  6.18375e-08
+ Reference value :  6.66075e-08
+ Reference value :  7.13675e-08
+ Reference value :  7.61325e-08
+ Reference value :  8.08925e-08
+ Reference value :  8.56475e-08
+ Reference value :  9.03925e-08
+ Reference value :  9.51425e-08
+ Reference value :  9.98825e-08
+ Reference value :  1.04593e-07
+ Reference value :  1.09338e-07
+ Reference value :  1.14078e-07
+ Reference value :  1.18813e-07
+ Reference value :  1.23553e-07
+ Reference value :  1.28283e-07
+ Reference value :  1.33018e-07
+ Reference value :  1.37763e-07
+ Reference value :  1.42498e-07
+ Reference value :  1.47228e-07
+ Reference value :  1.51953e-07
+ Reference value :  1.56683e-07
+ Reference value :  1.61398e-07
+ Reference value :  1.66118e-07
+ Reference value :  1.70838e-07
+ Reference value :  1.75568e-07
+ Reference value :  1.80283e-07
+ Reference value :  1.85023e-07
+ Reference value :  1.89748e-07
+ Reference value :  1.94488e-07
+ Reference value :  1.99228e-07
+ Reference value :  2.03978e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 
