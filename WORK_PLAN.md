@@ -50,6 +50,7 @@ PRs waiting on Judge (`loom:review-requested`).
 - **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
 - **#366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **#369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **#371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
 
 ## Approved (Awaiting Merge)
 
@@ -94,7 +95,7 @@ _None._
 | Important | 3 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
 | In Progress (`loom:building`) | 8 |
-| PRs awaiting review | 3 |
+| PRs awaiting review | 4 |
 | Approved PRs awaiting merge | 2 |
 | Curated | 10 |
 | Architect / Hermit proposals | 5 |
