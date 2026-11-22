@@ -1,0 +1,58 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=5.0mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.71140e-09
+ Reference value :  9.54250e-09
+ Reference value :  1.44425e-08
+ Reference value :  1.93525e-08
+ Reference value :  2.42575e-08
+ Reference value :  2.91375e-08
+ Reference value :  3.39775e-08
+ Reference value :  3.88175e-08
+ Reference value :  4.36375e-08
+ Reference value :  4.84675e-08
+ Reference value :  5.33175e-08
+ Reference value :  5.81725e-08
+ Reference value :  6.30275e-08
+ Reference value :  6.78775e-08
+ Reference value :  7.27325e-08
+ Reference value :  7.76375e-08
+ Reference value :  8.25075e-08
+ Reference value :  8.73175e-08
+ Reference value :  9.21175e-08
+ Reference value :  9.69125e-08
+ Reference value :  1.01713e-07
+ Reference value :  1.06508e-07
+ Reference value :  1.11303e-07
+ Reference value :  1.16098e-07
+ Reference value :  1.20883e-07
+ Reference value :  1.25673e-07
+ Reference value :  1.30483e-07
+ Reference value :  1.35333e-07
+ Reference value :  1.40153e-07
+ Reference value :  1.44963e-07
+ Reference value :  1.49773e-07
+ Reference value :  1.54583e-07
+ Reference value :  1.59398e-07
+ Reference value :  1.64203e-07
+ Reference value :  1.69038e-07
+ Reference value :  1.73858e-07
+ Reference value :  1.78673e-07
+ Reference value :  1.83478e-07
+ Reference value :  1.88293e-07
+ Reference value :  1.93113e-07
+ Reference value :  1.97863e-07
+ Reference value :  2.02643e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 
