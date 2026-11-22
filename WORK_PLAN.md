@@ -20,9 +20,10 @@ _None._
 
 `loom:important`; taken before unlabelled work.
 
-- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
+- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(held)*
 - **#177**: Re-pin open_pdks to f6eeac7 (ciel) — fleet retires volare c6d73a3 *(held)*
 - **#179**: Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2) *(held)*
+- **#361**: Re-qualification campaign, final step: rebuild the characterization report, envelope and integrator view from the new-pin records; write the old/new decision record *(held)*
 
 ## Ready
 
@@ -34,7 +35,6 @@ _None._
 
 Issues currently being built (`loom:building`).
 
-- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
@@ -50,7 +50,6 @@ PRs waiting on Judge (`loom:review-requested`).
 - **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
 - **#366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **#369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
-- **#371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
 
 ## Approved (Awaiting Merge)
 
@@ -92,10 +91,10 @@ _None._
 |------|-------|
 | Operator merge-risk holds | 2 |
 | Very important | 0 |
-| Important | 3 |
+| Important | 4 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
-| In Progress (`loom:building`) | 8 |
-| PRs awaiting review | 4 |
+| In Progress (`loom:building`) | 7 |
+| PRs awaiting review | 3 |
 | Approved PRs awaiting merge | 2 |
 | Curated | 10 |
 | Architect / Hermit proposals | 5 |

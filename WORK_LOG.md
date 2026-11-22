@@ -8,6 +8,7 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-22
 
+- **PR #371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
 - **PR #368**: fix: require RS_SOURCE_COMMIT to be a full 40-hex commit ID before stamping provenance
 - **Issue #365** (closed): git_info() accepts any RS_SOURCE_COMMIT shape; validate it before stamping provenance
 
