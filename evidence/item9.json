@@ -129,7 +129,7 @@
         "role": "testbench",
         "path": "sim/harness/evidence.py",
         "passed": true,
-        "content_hash": "sha256:3df1d65a5fa34fe95b0dc15e9f51881f7c57cb877f2141a471976fe783f51262"
+        "content_hash": "sha256:47609ad61adf0c472b8661147673f0261b68881fa6e951408d325d1473fd9cd6"
       },
       {
         "check": "present",
