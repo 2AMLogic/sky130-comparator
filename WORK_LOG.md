@@ -8,14 +8,27 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-23
 
-- **Issue #475** (closed): Share the klt client version check across three simulation campaigns
-- **PR #477**: refactor(sim): share the klt client version-floor check across campaigns
-- **Issue #282** (closed): Simplify rederive_nf_fixed_t0.py: the round-trip identity guard is algebraically vacuous
-- **PR #485**: sim: drop the vacuous round-trip identity guard from rederive_nf_fixed_t0
-- **Issue #482** (closed): Retire the test-only S-parameter log reader after the coverage migration
-- **PR #484**: sim: remove unused lenient parse_sp_log reader and migrate its tests
-- **Issue #480** (closed): Share klt sim corner-report cell validation between variant and core-envelope reducers
-- **PR #481**: sim: dedupe the corner-report cell validator shared by both reducers
+- **Issue #398** (closed): characterization-report: "the two hot skew corners fell" contradicts the sf/125 °C rise named in the same sentence
+- **PR #403**: fix: relabel two noise-tran figures that fell past their old CIs
+- **Issue #396** (closed): ladder.py grade: a response JSON missing the `corners` key raises an uncaught KeyError instead of the exit-2 input error
+- **PR #401**: fix: reject a grade response with no corners key (exit 2, naming the file)
+- **Issue #399** (closed): check-main-clean.sh exit 3: daemon-written .loom/account-ranking.<runtime> is not on the Loom-owned list
+- **PR #400**: fix: ignore daemon-written .loom/account-ranking.* in gitignore
+- **PR #383**: docs: Guide document maintenance update
+- **Issue #384** (closed): Reject zero-corner responses before selecting a regeneration ladder grade
+- **PR #387**: fix: reject zero-corner grade input as an error in all ladder modes
+- **Issue #395** (closed): Correct three derived-summary figures in the f6eeac7 re-qualification write-up (DR-012 + characterization report)
+- **PR #397**: fix: correct three derived-summary figures in re-qualification write-up
+- **Issue #361** (closed): Re-qualification campaign, final step: rebuild the characterization report, envelope and integrator view from the new-pin records; write the old/new decision record
+- **PR #394**: feat: rebuild the characterization evidence from the f6eeac7 records; record the old/new movement in DR-012
+- **Issue #389** (closed): Share stored-manifest validation so the evidence writer rejects duplicate names before CI
+- **PR #393**: fix(sim): share the stored-manifest schema with the evidence writer
+- **Issue #391** (closed): Documented item-9 re-mint command omits SELFTEST_ITEM9_REENTRY=1, so it always fails on a drifted envelope
+- **PR #392**: docs: prefix item-9 re-mint command with SELFTEST_ITEM9_REENTRY=1
+- **Issue #360** (closed): Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
+- **PR #388**: fix(sim): re-point schematic baselines at the f6eeac7 re-qualification records
+- **PR #369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **PR #379**: docs: Guide document maintenance update
 - **PR #381**: docs: date-stamp item 8's no-provenance rationale to the klt 0.6.0 era
 - **PR #366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **PR #376**: fix: validate the append-only waiver manifest on every gate run
@@ -28,96 +41,44 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-22
 
-- **Issue #476** (closed): Byte-compare recommendation.json in the match replay test
-- **PR #479**: test: byte-compare regenerated recommendation.json in match replay
-- **Issue #450** (closed): Share the matching-study preflight across the feed, Le and Q runners
-- **PR #459**: refactor(sim): share the matching-study preflight across the feed, Le and Q runners
-- **Issue #468** (closed): Share broadband stability reduction between feed scans and matching verification
-- **PR #471**: sim: share the broadband stability table reduction between reducers
+- **PR #374**: docs: Guide document maintenance update
+- **PR #372**: docs: Guide document maintenance update
+- **PR #370**: docs: Guide document maintenance update
 - **PR #371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
 - **PR #368**: fix: require RS_SOURCE_COMMIT to be a full 40-hex commit ID before stamping provenance
 - **Issue #365** (closed): git_info() accepts any RS_SOURCE_COMMIT shape; validate it before stamping provenance
 
 ### 2026-11-21
 
+- **PR #367**: docs: Guide document maintenance update
+- **PR #364**: docs: Guide document maintenance update
 - **PR #363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
 - **Issue #358** (closed): Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
 
 ### 2026-11-20
 
-- **Issue #449** (closed): Reuse the Q-study boundary reduction for both metrics and band data
-- **PR #456**: refactor(sim): reuse the q-study reduction's band in the boundary loop
-- **Issue #470** (closed): chore: gitignore the runtime-owned .loom/account-ranking.* state files
-- **PR #473**: chore: ignore runtime-owned .loom/account-ranking.* state files
-- **Issue #461** (closed): Remove the unusable dpkg-deb workaround from the OSDI build error
-- **PR #469**: fix: drop the unusable dpkg-deb workaround from the OSDI build error
-- **Issue #438** (closed): ERC negative-control break layer is declared twice: run_flow.sh hardcodes 6/0, erc_control.py records its own constant
-- **PR #467**: layout: take the ERC control break layer/box from erc_control.py
-- **Issue #454** (closed): Share batch-set report collection between the variant and IIP3 runners
-- **PR #464**: refactor(sim): share the batch-set report collector between the variant and IIP3 runners
-- **Issue #433** (closed): docs: README.md:3-4 lede duplicates the PDK name ("on IHP SG13G2 on [IHP SG13G2]")
-- **PR #462**: docs: name the PDK once in the README and CLAUDE.md ledes
-- **Issue #439** (closed): Share the per-point IIP3 measurement calculation across both reducers
-- **PR #444**: refactor: share the per-point IIP3 measurement across both reducers
-- **Issue #446** (closed): check-signoff.sh does not gate on a T1 met-count regression
-- **PR #455**: feat: gate check-signoff.sh on T1 met-item regressions vs the merge base
-- **Issue #452** (closed): test_usage_errors' seg() == [] assertion is vacuous: class 2's non-archival is still unguarded
-- **PR #457**: test: seed a previous pair so usage errors' no-archive assertion can fail
-- **Issue #447** (closed): Pin the campaign IIP3 CSV column order in a test (the agreement-column splice is unguarded)
-- **PR #453**: test: pin the campaign iip3.csv column order against the committed record header
-- **Issue #443** (closed): No test covers native DRC exit class 7 (E_SELFCHECK), whose non-archival invariant is now a set-membership test
-- **PR #451**: test: cover native DRC exit class 7's non-archival invariant
-- **Issue #35** (closed): T1 item 11 (power delivery, structural): klt erc supply spec + LVS supply pairing — unmet until layout exists
-- **PR #434**: feat(signoff): T1 item-11 power-delivery ERC evidence -- supply spec, negative controls, compound citation
-- **Issue #425** (closed): Reuse the validated S-parameter log for the 290 K noise-figure cross-check
-- **PR #445**: fix: reuse validated S-parameter measurements for the 290 K NF cross-check
-- **Issue #437** (closed): Item-9 fixture suite has no case that fails when tree_digest's hash input changes
-- **PR #442**: test: pin the item-9 corners tree digest against an independent sha256
-- **Issue #435** (closed): Centralize native DRC cleanup so a failed klt version probe archives the previous report
-- **PR #440**: fix: archive the previous native DRC pair at one exit point, not nine
-- **Issue #428** (closed): Reuse the collected record paths for item 9 tree digests
-- **PR #436**: refactor: reuse the evidence_files paths for item-9 tree digests
-- **Issue #430** (closed): Root README status paragraph is stale: understates T1 met count and still calls the layout a partial bring-up with DRC not clean
-- **PR #431**: docs: refresh stale README status paragraph and regenerate hygiene attest cascade
-- **Issue #424** (closed): Gate extract_report.json connectivity (split_net_labels / merged_net_labels) in CI: an opened net is currently silent
-- **PR #429**: feat: gate extract_report connectivity in the layout-freshness check
-- **Issue #229** (closed): T1 item 3 (DRC clean): clean klt drc on the full-block GDS with coverage disclosed
-- **PR #427**: feat(signoff): re-cite T1 item 3 (DRC clean) on the full-block GDS
-- **Issue #228** (closed): T1 item 2 (layout): full-block LNA layout generator and GDS, beyond the 6-of-30-instance bring-up
-- **PR #423**: feat(layout): assemble the full LNA block -- pads, inter-block routing, T1 item-2 evidence
+- **PR #362**: docs: Guide document maintenance update
+- **PR #357**: docs: Guide document maintenance update
+- **PR #354**: docs: Guide document maintenance update
 - **PR #356**: docs: point README campaign status at the verified fleet batch route
 - **Issue #355** (closed): Update README campaign status now that the batch execution route is verified
 
+### 2026-11-19
+
+- **PR #353**: docs: Guide document maintenance update
+- **PR #352**: docs: Guide document maintenance update
+
 ### 2026-11-18
 
-- **Issue #82** (closed): Auditor Capability Request: Python 3 unavailable on audit host
-- **Issue #410** (closed): inductance_lowfreq.py: netlist_values() is a second gate-side copy with no parity pin (unlike l_lowfreq)
-- **PR #419**: refactor: extract netlist value parse and pin parity with gate copy
-- **Issue #403** (closed): check-layout-freshness: the netlist half of inductance_report.json is still ungated
-- **PR #407**: feat: gate re-derives netlist_H and drawn_over_netlist in inductance report
-- **Issue #414** (closed): repo-hygiene: 10 more CI-run gate self-tests are undeclared and unhashed (the #411 class)
-- **PR #417**: chore(hygiene): hash eleven more CI-run gate self-tests in the item-10 envelope
-- **Issue #412** (closed): Router pin-collision guard accepts different-net stubs abutting at exactly the stub pitch
-- **PR #415**: fix(layout): reject router pin pairs closer than stub pitch plus Metal2 space
-- **Issue #411** (closed): repo-hygiene: test-check-layout-freshness.sh is run by CI but absent from DECLARED_COMMANDS
-- **PR #413**: chore(hygiene): hash the layout-freshness self-test in the item-10 envelope
-- **Issue #406** (closed): layout: Router asserts no two bias pins share an x, but never checks it
-- **PR #409**: feat: Router fails loudly when different-net Metal2 stubs would overlap
-- **Issue #404** (closed): repo-hygiene: inductance_lowfreq.py is not in HYGIENE_FILES, unlike native_drc_pair.py
-- **PR #408**: chore(signoff): hash inductance_lowfreq.py in the repo-hygiene inventory
-- **Issue #346** (closed): T1 item 2 (layout) part A: draw the bias-side instances (DR-0003 reference core, vb2 divider, decoupling) in lna_core
-- **PR #405**: feat(layout): draw the bias side with routed intra-block wiring
-- **Issue #400** (closed): check-layout-freshness does not cover inductance_report.json
-- **PR #402**: feat: gate verifies inductance report against realization geometry
-- **Issue #347** (closed): T1 item 2 (layout) part B: draw the matching network (inductors via inductor2 PyCell, caps) and settle the loss-resistor partition
-- **PR #399**: feat(layout): draw the matching network and add a modeled_in_device scope category
-- **Issue #395** (closed): check-repo-hygiene.py: a blank line truncates a block-scalar run: body
-- **PR #397**: fix: blank lines in a run: block no longer truncate its collected commands
-- **Issue #391** (closed): Merge queue: add the merge_group trigger and adapt the PR-metadata gates
-- **PR #394**: ci: report required checks on merge-group runs
-- **Issue #386** (closed): native-DRC pair check: non-dict provenance crashes, and null deck/pdk bindings are accepted
-- **PR #389**: fix: native-DRC pair check rejects non-dict provenance and null bindings
-- **PR #385**: refactor: one native-DRC pair check, path-loaded by gate and layout
+- **PR #351**: docs: Guide document maintenance update
+- **PR #350**: docs: Guide document maintenance update
+- **PR #346**: docs: Guide document maintenance update
+- **PR #343**: docs: Guide document maintenance update
+- **PR #342**: docs: Guide document maintenance update
+- **PR #341**: docs: Guide document maintenance update
+- **PR #340**: docs: Guide document maintenance update
+- **PR #338**: docs: Guide document maintenance update
+- **PR #335**: docs: Guide document maintenance update
 - **PR #345**: gate: fail CI when WORK_PLAN.md's plan-body region carries a _Generated stamp
 - **Issue #344** (closed): Guide docs ticks keep re-adding a _Generated: stamp inside the guide:plan-body region, defeating the WORK_PLAN debounce
 - **PR #339**: docs: make the campaign spend quote unconditional, gate only the wait on ~$50
@@ -127,47 +88,13 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-17
 
-- **Issue #300** (closed): Consolidate five duplicated run_deck() gates in lna-matching-feasibility runners into sim/env.sh
-- **PR #315**: refactor: consolidate five run_deck() deck gates into one sim_run_deck helper
-- **Issue #376** (closed): ci: the exec-bit assertion does not cover a basename-only documented command word (reduce_biasop.py)
-- **PR #377**: ci: resolve bare cold-start command words by basename in the exec-bit assertion
-- **Issue #372** (closed): ci: no guard keeps a documented bare-path .py command executable (class of #367/#369)
-- **PR #375**: ci: key the testbench-inventory executable-bit assertion on the command word, any extension
-- **Issue #369** (closed): Second instance of #367: rederive_nf_fixed_t0.py documented as a bare-path replay command but not executable
-- **Issue #233** (closed): T1 item 8 (characterization): one-command characterization report with generic envelope
-- **PR #370**: feat(signoff): generate the item-8 characterization report with a mechanically derived envelope
-- **Issue #367** (closed): README reviewer-replay command fails as written: lna_variant_campaign.py is not executable
-- **PR #353**: sim: matched-DUT two-tone IIP3 on the ratified protocol (93 pts + 45 op corners, 45-cell PVT box)
-- **Issue #363** (closed): Envelope generator's rationale for the untagged nf measurement is refuted by the pinned klt render
-- **PR #365**: docs: correct the nf spec_row rationale to match the pinned klt render
-- **Issue #364** (closed): Ratified-row envelope bench has no CI replay gate or unit tests, unlike every sibling reducer
-- **Issue #352** (closed): run_lna_variant.sh record Claim/Reduction lines name the requested --temps slice on a smoke run, where the cell is 27 C
-- **PR #354**: run_lna_variant: smoke-aware Claim/Reduction record lines
-- **Issue #350** (closed): README.md:81,192 group records 20261114-025351-7a54cc2 and 20261101-023246-5bbb70c under 'the matched DUT now on main', but both ran on the superseded pre-bleed netlist
-- **PR #355**: docs: mark pre-bleed characterization records superseded in root README
-- **PR #358**: chore(loom): resync installed Loom to v0.19.1306
-- **Issue #357** (closed): run-local-checks.sh always skips the attest steps on workers (exact klt version match), hiding stale pinned manifests
-- **PR #362**: fix: run gated attest/signoff local checks via a pinned uvx klt fallback
-- **PR #361**: sim: cite T1 item 5 with ratified-row klt sim corner envelopes
-- **Issue #324** (closed): test-design-source-audit.sh header comment still describes absent klt as SKIP-only (stale after #323)
-- **PR #360**: docs: align audit self-test header with post-#323 klt SKIP/FAIL policy
-- **PR #351**: fix: TEMPERATURE SLICE disclosure names the grid's temperatures, not the requested slice
-- **PR #349**: fix(sim): make sim_record_paths reservation monotonic, split its two mkdir failure modes
-- **Issue #327** (closed): signoff/README.md:97 calls record 20261114-025351-7a54cc2 'historical-dut' where sim/lna-characterization/README.md calls it 'variant-exploration'
-- **PR #348**: signoff: state taxonomy precedence for a variant study on a superseded DUT
-- **Issue #342** (closed): evidence: issue-27 probe record's |S22|>1 / mu<1 point counts are table recounts that disagree with the committed ngspice log (325 vs 334, 364 vs 365)
-- **Issue #27** (closed): design: LNA has no input/output matching network — S11 = -2.96 dB, S22 = -0.003 dB, broadband mu < 1 at 45/45 PVT cells (DR-0003 core)
-- **PR #334**: records: matched-DUT 45-cell PVT verdict; |S22|>1 anomaly closed by fine-sweep probe
-- **Issue #341** (closed): check-klt-pin.sh: two bare klt-pin restatements remain ungated (README.md:122, signoff/README.md:8)
-- **PR #343**: docs: reword the last two bare klt-pin restatements into the gated klayout-tools== form
-- **Issue #339** (closed): check-klt-pin.sh still misses two klt/KLayout pin literals: run_native_drc.py's docstring and README.md:80's bare backticked versions
-- **PR #340**: fix: gate run_native_drc.py's docstring klt pin, restate README pins prefixed only
-- **Issue #320** (closed): check-klt-pin.sh's file loop still misses README.md and layout/README.md, so the prose klt/KLayout pins can drift
-- **PR #338**: feat: gate the README prose klt/KLayout pins in check-klt-pin.sh
-- **Issue #321** (closed): run_native_drc.py's not-full-scope NOTE hardcodes a fourth status subset that no test pins
-- **PR #331**: fix: derive native DRC full-scope NOTE from FULL_SCOPE_STATUSES, pin in tests
-- **Issue #305** (closed): design/README.md misstates which xschem generated the committed netlist
-- **PR #335**: docs: state the pin-move netlist claims as evidence, not a 3.4.4-era attribution
+- **PR #333**: docs: Guide document maintenance update
+- **PR #331**: docs: Guide document maintenance update
+- **PR #330**: docs: Guide document maintenance update
+- **PR #327**: docs: Guide document maintenance update
+- **PR #324**: docs: Guide document maintenance update
+- **PR #323**: docs: Guide document maintenance update
+- **PR #300**: docs: Guide document maintenance update
 - **PR #332**: ci: report the sim/ append-only gate on merge_group commits (merge queue step 1)
 - **Issue #329** (closed): WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation)
 - **PR #319**: feat: re-derive and byte-compare the five ungated layout evidence artifacts in --check
@@ -193,19 +120,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-16
 
-- **PR #317**: chore(loom): resync installed Loom to v0.19.1302
-- **Issue #306** (closed): lna_variant_campaign: --temps slicing has no unit test; a narrower summarize slice under-checks coverage silently
-- **Issue #318** (closed): sim/lna-characterization/README.md's "Which DUT each record describes" table is stale: 3 of 9 records, and the one it calls "current main" is superseded
-- **PR #326**: docs(sim): index all 11 lna-characterization records by DUT and retire the stale 'current' labels
-- **Issue #307** (closed): test-design-source-audit.sh still SKIPs green in CI when klt is absent from PATH (not just wrong-version)
-- **PR #323**: ci: fail audit suite on absent klt under CI
-- **Issue #312** (closed): layout/README.md and run_native_drc.py docstring overstate clean_partial reachability: klt 0.9.2's klayout engine cannot emit it
-- **Issue #294** (closed): check-klt-pin.sh cannot gate test-design-source-audit.sh's klt version strings, so a future bump silently disables its klt cases
-- **PR #304**: ci: gate KLAYOUT_PIN and derive the audit suite's expected klt release
-- **Issue #258** (closed): design: give the output-match node xout a DC path and re-run the matched DUT's 125 C cells
-- **Issue #301** (closed): signoff/README.md item 5 says no klt sim envelope exists for the current DUT, three sentences before naming the one that does
-- **PR #281**: refactor(core-envelope): name the in-band gain metric and split parse_core_envelope main()
-- **Issue #302** (closed): signoff checkers: main() is still duplicated after #274 (the largest remaining shared block)
+- **PR #297**: docs: Guide document maintenance update
+- **PR #261**: docs: Guide document maintenance update
 - **PR #294**: chore(loom): resync installed Loom to v0.19.1302
 - **PR #316**: feat: extend toolchain-pin gate to the workflow's xschem literals
 - **PR #314**: test: hoist mutated-table parse out of assertRaises in the #290 guard negative tests
@@ -248,17 +164,6 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-15
 
-- **Issue #279** (closed): sim: unit-test the variant campaign's bias-attribution claim generator (ic1_pct, span_scaled, the ±0.05 % branch)
-- **PR #259**: design: add DC bleed on xout, floating-node guard, 125 C batch record
-- **Issue #287** (closed): sim: reduce_biasref.py still holds a private copy of the corner-label -> MOS-section map that #283 consolidated on the shell side
-- **PR #297**: test: pin Python corner-section map copies to sim/env.sh (#287)
-- **Issue #277** (closed): sim-core-envelope-lifecycle-tests fails intermittently: XQ1 geometry substitution did not match scratch netlist
-- **PR #292**: sim: validate core-envelope base-netlist anchors up front and print per-variant substitution evidence
-- **PR #284**: refactor(signoff): consolidate inventory/envelope scaffolding into signoff_common.py
-- **Issue #280** (closed): Finish #160: dedupe the startup verdict rule and its thresholds across the two sim reducers
-- **Issue #289** (closed): check-klt-pin.sh does not gate KLAYOUT_PIN, so the engine pin can skew between run_flow.sh and run_native_drc.py
-- **Issue #272** (closed): Bump the klayout-tools pin 0.8.0 -> current release and regenerate layout and signoff evidence
-- **PR #285**: chore: bump pinned klayout-tools to 0.9.2 and regenerate layout and signoff evidence
 - **PR #272**: docs(layout): repoint three dead README citation pointers to real headings
 - **PR #267**: docs(manifests): state the honest-null convention by reference, dropping the stale null-field enumeration
 - **PR #265**: fix: drop two klt-pilot dry-run artifacts with wrong netlist provenance
@@ -284,10 +189,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-14
 
-- **PR #286**: sim: move the corner-label -> PDK-section maps into sim/env.sh
-- **Issue #273** (closed): Remove package.json placeholder scripts: npm test/check:ci/check:all/lint exit 0 without verifying anything
-- **PR #275**: sim: run the inductor-loss variant campaign on the fleet and record 45 cells
-- **PR #270**: docs: roadmap as of 2026-11-13
+- **PR #251**: docs: Guide document maintenance update
+- **PR #223**: docs: Guide document maintenance update
 - **PR #238**: refactor(sim): split the comparator-decision driver into sibling experiment modules
 - **PR #233**: refactor: bind layout envelope to a scalar GDS path, not a one-element list
 - **PR #230**: refactor: route check-artifact-manifests selftest through _gate_common.report_cases
@@ -307,41 +210,19 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-06
 
-- **Issue #255** (closed): Simplify: 8 inline importlib loaders replaced a one-line sha256 helper (+34 net LOC)
 - **PR #212**: sim: pilot kickback as a klt sim request on the batch fleet
 - **Issue #211** (closed): Pilot: express the kickback measurement as a klt sim request and run tt/27 C on the batch fleet
 
 ### 2026-11-05
 
-- **Issue #90** (closed): sim: measure full-DUT DC mismatch spread with a seeded fleet campaign and controls
-- **Issue #253** (closed): Dedupe the file-SHA-256 helper copied across nine sim scripts
 - **PR #208**: fix(layout): widen router metal for klt 0.8.0 via enclosure; retire 0.7.0 side venv
 - **Issue #207** (closed): Bump klayout-tools pin 0.7.0 → 0.8.0
 
-### 2026-11-01
-
-- **PR #249**: feat(sim): add matched-DUT variant to the LNA PVT variant campaign
-
-### 2026-10-29
-
-- **Issue #238** (closed): T1 grading: attest items 1, 9, 10 with klt signoff --attest and re-grade against the current tiers doc
-- **PR #240**: feat: attest T1 items 1, 9, 10 with klt signoff --attest
-
-### 2026-10-28
-
-- **Issue #241** (closed): test flake: sim-record-paths concurrency case fails intermittently (wins=1 losses=7)
-- **PR #242**: test: report which term fails in sim_record_paths concurrency case
-
 ### 2026-10-27
 
-- **PR #236**: chore: bump pinned klayout-tools to 0.8.0 and regenerate layout evidence
 - **PR #205**: build: re-measure LVS/ERC/extraction envelopes under klt 0.8.0
 - **Issue #204** (closed): Bump klayout-tools pin 0.7.0 → 0.8.0
 - **PR #201**: feat: attest T1 item 10 with klt 0.8.0 and gate it in CI
-
-### 2026-10-24
-
-- **PR #223**: feat: manifest-forward artifact store writer and CI check for new sim evidence
 
 ### 2026-10-23
 
@@ -511,3 +392,4 @@ Chronological record of merged pull requests and closed issues, maintained by th
 - **PR #48**: layout: commit the DRC signoff envelope and cite it for T1 item 3
 - **Issue #47** (closed): chore: bump the klt pin off 0.5.0 to pick up input_verified + citation.coverage
 - **Issue #46** (closed): layout: DRC-clean signoff citation for the comparator (T1 item 3)
+
