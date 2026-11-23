@@ -6,6 +6,14 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-23
+
+- **PR #376**: fix: validate the append-only waiver manifest on every gate run
+- **PR #347**: feat: add operator-gated removal waiver manifest to sim append-only gate
+- **Issue #349** (closed): Waiver manifest follow-ups: lazy manifest validation, weak bytes-differ selftest, missing manifests/README row
+- **Issue #348** (closed): Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
+- **Issue #326** (closed): Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
+
 ### 2026-11-22
 
 - **PR #371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
