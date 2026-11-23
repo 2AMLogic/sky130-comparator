@@ -184,7 +184,7 @@ state none; their movements are recorded above as measured.
    figure in the report (margin improves from 3.94× to 5.13×).
 4. **Post-layout `noise-tran` `ff`/125 °C — below the old record's 95 % CI.**
    0.1956 → 0.1560 mV against CI lower bound 0.1606 (−20.2 %).
-5. **Post-layout `offset-bisect` `tt`/27 °C — moved 1.80 mV, past the 0.1 mV
+5. **Post-layout `offset-bisect` `tt`/27 °C — moved 1.875 mV, past the 0.1 mV
    bisection tolerance.** The extracted systematic decision offset goes from
    +1.8359 mV to −0.0391 mV: at the new geometry/pins the `tt`-corner
    extracted systematic essentially vanishes.

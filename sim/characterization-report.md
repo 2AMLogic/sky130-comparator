@@ -320,9 +320,13 @@ All seven graded corners carry a post-layout `noise-tran` record, as before.
 The re-qualification moved this row's figures more than any other: the two hot
 skew corners fell **past their superseded records' stated 95 % CIs**
 (`fs`/125 °C 0.2540 → 0.1951 mV, old CI lower bound 0.1961; `ff`/125 °C
-0.1956 → 0.1560 mV, old CI lower bound 0.1606), the two cold skews rose
-9–10 %, and `tt`/−40 °C-type schematic figures moved 6–7 % upward (one
-schematic figure, `ff`/125 °C 0.1754 → 0.1554 mV, also fell past its old CI).
+0.1956 → 0.1560 mV, old CI lower bound 0.1606), the two `sf` corners rose
+9–10 % (`sf`/−40 °C 0.0929 → 0.1013 mV, +9.0 %; `sf`/125 °C 0.1682 →
+0.1852 mV, +10.1 %; the other cold skew, `fs`/−40 °C, rose 3.2 %), and the
+schematic figures at `tt`/27 °C and `ss`/−40 °C moved 6–7 % upward
+(`tt`/27 °C 0.1362 → 0.1457 mV, +7.0 %; `ss`/−40 °C 0.1213 → 0.1292 mV,
++6.5 %; one schematic figure, `ff`/125 °C 0.1754 → 0.1554 mV, also fell
+past its old CI).
 DR-012 lists each. The pick-off statistic (a) remains the primary figure in
 every record; the cross-check column (b) is stated at its own face below.
 
