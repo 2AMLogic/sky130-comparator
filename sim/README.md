@@ -354,6 +354,17 @@ unavailable base also fails explicitly. To correct a result, mint a new record
 and cite the old one in `Supersedes`. Self-test:
 `python3 scripts/check-sim-append-only.py selftest`.
 
+**Waivers (issue #326, DR-011).** A *removal* (never a modification or type
+change) of a protected path may be waived by an exact-path entry in
+`manifests/append-only-waivers.json` (`decision_record`, `paths`, `base_sha`).
+It passes only if the cited record, **as read at the comparison base**, has a
+`Status` beginning `ratified` AND contains the waived path as a literal string
+(condition 4, issue #348 -- so a PR can neither ratify its own waiver nor add
+the path to the record in the same diff, and a waiver can only cite a record
+that ruled on that path), and the path's bytes at the base equal those at
+`base_sha`; applied waivers are printed on the gate's `ok:` line.
+Anything else fails as above.
+
 ### The one derived artifact, and why the rule does not apply to it
 
 `sim/characterization-report.md` (issue #86) is the aggregated,
