@@ -1926,5 +1926,77 @@ class TestOffsetBisectCli(unittest.TestCase):
         self.assertIn("offset-bisect", buf.getvalue())
 
 
+class TestPowerIntegration(unittest.TestCase):
+    """`power` windowing against analytically known waveforms (issue #134)."""
+
+    VDD = 1.8
+    P = 10e-9
+    DUTY = 0.5
+    I_EVAL = 200e-6   # A drawn during evaluate
+    I_RST = 50e-6     # A drawn during reset
+    N = 6
+
+    def _wave(self, startup_extra=0.0, sign=-1.0):
+        # Piecewise-constant square current with samples ON each edge so the
+        # trapezoid rule is exact. Period k starts at t0 + k*P, t0 = P.
+        eps = 1e-15
+        t, i = [0.0], [sign * self.I_RST]
+        for k in range(self.N + 1):
+            a = self.P * (1 + k)
+            extra = startup_extra if k == 0 else 0.0
+            mid = a + self.DUTY * self.P
+            for tt, v in ((a, self.I_RST), (a + eps, self.I_EVAL + extra),
+                          (mid, self.I_EVAL + extra), (mid + eps, self.I_RST)):
+                t.append(tt)
+                i.append(sign * v)
+        return t, i
+
+    def _run(self, **kw):
+        t, i = self._wave(**{k: kw.pop(k) for k in ("startup_extra", "sign") if k in kw})
+        return cd_run.power.analyze_power(
+            t, i, t0_s=self.P, period_s=self.P, duty=self.DUTY, n_periods=self.N,
+            settle=kw.pop("settle", 2), **kw)
+
+    def test_energies_match_analytic_values(self):
+        r = self._run()
+        e_eval = self.VDD * self.I_EVAL * self.DUTY * self.P
+        e_rst = self.VDD * self.I_RST * (1 - self.DUTY) * self.P
+        self.assertAlmostEqual(r.mean_eval_j / e_eval, 1.0, places=6)
+        self.assertAlmostEqual(r.mean_reset_j / e_rst, 1.0, places=6)
+        self.assertAlmostEqual(r.mean_energy_j / (e_eval + e_rst), 1.0, places=6)
+        self.assertAlmostEqual(r.average_power_w, (e_eval + e_rst) / self.P, delta=1e-12)
+        self.assertEqual(r.problems, [])
+
+    def test_negative_control_sign_error_detected(self):
+        r = self._run(sign=+1.0)
+        self.assertTrue(any(p.startswith("SIGN") for p in r.problems))
+
+    def test_negative_control_window_error_detected(self):
+        # A window shifted half a duty off the edges mis-splits reset/eval:
+        # the analytic split no longer matches.
+        t, i = self._wave()
+        shifted = cd_run.power.analyze_power(
+            t, i, t0_s=self.P + 0.25 * self.P, period_s=self.P, duty=self.DUTY,
+            n_periods=self.N - 1, settle=1)
+        e_eval = self.VDD * self.I_EVAL * self.DUTY * self.P
+        self.assertGreater(abs(shifted.mean_eval_j / e_eval - 1.0), 0.1)
+
+    def test_startup_energy_flagged_without_settling_exclusion(self):
+        self.assertEqual(self._run(startup_extra=300e-6, settle=1).problems, [])
+        r = self._run(startup_extra=300e-6, settle=0)
+        self.assertTrue(any(p.startswith("CONVERGENCE") for p in r.problems))
+
+    def test_window_outside_samples_is_refused(self):
+        with self.assertRaises(ValueError):
+            cd_run.power.integrate([0.0, 1.0], [1.0, 1.0], 0.0, 2.0)
+
+    def test_deck_has_clock_loads_and_supply_probe(self):
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8)
+        self.assertIn("PULSE(0 {vdd_val} 10.0n", deck)
+        self.assertIn("Cloadp OUTP 0 10.0f", deck)
+        self.assertIn("wrdata x.csv i(Vdd)", deck)
+
 if __name__ == "__main__":
     unittest.main()

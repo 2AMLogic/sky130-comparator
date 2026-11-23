@@ -17,6 +17,7 @@ python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
 python3 sim/comparator-decision/run.py noise    --record
 python3 sim/comparator-decision/run.py reset    --record
 python3 sim/comparator-decision/run.py kickback --record
+python3 sim/comparator-decision/run.py power    --record --corner tt --temp 27   # one corner per call
 ```
 
 See `sim/README.md` for the general `sim/` evidence-record and directory
@@ -1866,3 +1867,17 @@ The twelve-record list is exactly the set matched, at `72504f6`
 ```bash
 for f in $(git grep -l "PVT coverage remains open work" origin/main -- sim/comparator-decision/records | sed 's/^origin\/main://'); do git show origin/main:$f | grep -q "tt/27C" && basename $f; done
 ```
+
+## `power`: supply energy and average power (issue #134)
+
+`power.py` integrates the energy the supply delivers over complete, settled
+clock periods (`E = -VDD * integral(i(Vdd) dt)`; ngspice's `i(Vdd)` is
+negative when the supply delivers) and reports per-period energy, the
+reset/evaluate split, average power (`E / period`) and energy per decision
+(one decision per period). Defaults -- 10 ns period, 50% evaluate duty,
++10 mV differential input, 10 fF per output -- are recorded experiment
+conditions, not a ratified clock rate or load. The first 3 of 8 periods are
+excluded as settling; the run fails if retained-period energy does not
+converge within 1% or if reset + evaluate differs from the full period. It
+selects no spec bound and leaves the DRAFT/OPEN power row unratified.
+A multi-corner grid must go through the batch route above, not a local loop.

@@ -23,6 +23,7 @@ fragment's own device lines, so it tracks the schematic automatically.
     python3 sim/comparator-decision/run.py noise-tran --record --n 128
     python3 sim/comparator-decision/run.py reset    --record
     python3 sim/comparator-decision/run.py kickback --record
+    python3 sim/comparator-decision/run.py power --record
 
 Provenance (per sim/comparator-decision/README.md, in full): the bespoke
 regen/offset/noise MEASUREMENT METHODOLOGY (in the sibling modules listed
@@ -68,6 +69,7 @@ is the CLI over them):
     noise_tran.py  `noise-tran`, and its chunked/resumable campaign driver
     reset.py       `reset`
     kickback.py    `kickback`
+    power.py       `power` (supply energy / average power, issue #134)
 
 They are reached through sys.path, not as a package -- this directory's
 hyphenated name is not a legal package name, so this file is loaded by path.
@@ -95,6 +97,7 @@ import noise  # noqa: E402
 import noise_tran  # noqa: E402
 import reset  # noqa: E402
 import kickback  # noqa: E402
+import power  # noqa: E402
 # `pdk` is not used in this module: it is here for the re-export surface
 # below. Every module in this directory resolves the PDK through this one
 # module object, so patching `run.py`'s `pdk` attribute does reach them all.
@@ -198,7 +201,7 @@ from kickback import (  # noqa: E402,F401
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "offset-bisect", "noise", "noise-tran", "reset", "kickback"],
+        "mode", nargs="?", choices=["regen", "offset", "offset-bisect", "noise", "noise-tran", "reset", "kickback", "power"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
@@ -359,6 +362,17 @@ def main(argv: list[str] | None = None) -> int:
         points = kickback.run_kickback(corner=args.corner, temp_c=args.temp, quiet=args.quiet, jobs=args.jobs)
         if args.record:
             path = kickback.write_kickback_evidence(points, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if all(p.ok for p in points) else 1
+
+    if args.mode == "power":
+        # One corner per invocation (a multi-corner grid goes to the batch
+        # route, not a local loop); defaults to the tt/27C anchor.
+        points = power.run_power(
+            points=[(args.corner, args.temp)], quiet=args.quiet,
+        )
+        if args.record:
+            path = power.write_power_evidence(points, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
         return 0 if all(p.ok for p in points) else 1
 
