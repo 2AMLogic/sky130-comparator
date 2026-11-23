@@ -80,8 +80,9 @@ PROTECTED_RE = re.compile(
 ZERO_SHA = "0" * 40
 WAIVER_MANIFEST = "manifests/append-only-waivers.json"
 DR_DIR = "spec/decision-records/"
-STATUS_RE = re.compile(r"^- \*\*Status\*\*:\s*(.*)$", re.M)
-RATIFIED_RE = re.compile(r"ratified(?: |\(|$)")
+STATUS_RE = re.compile(r"^- \*\*Status\*\*:[ \t]*(.*)$", re.M)
+# The token, optionally wrapped in matching `*` emphasis, then a delimiter.
+RATIFIED_RE = re.compile(r"(?:(\*{1,3})ratified\1|ratified)(?: |\(|\r?$)")
 STATUS_NAMES = {"M": "modified", "D": "removed", "T": "file-type changed"}
 
 
@@ -224,10 +225,10 @@ def record_ratified_at(repo, base_sha, record, path=None):
         return False, f"record {record} is missing at the base"
     text = out.decode("utf-8", "replace")
     m = STATUS_RE.search(text)
-    status = m.group(1).replace("*", "").strip().lower() if m else ""
+    status = m.group(1).lower() if m else ""
     if not RATIFIED_RE.match(status):
         return False, (f"record {record} is not ratified at the base "
-                       f"(Status: {status or 'absent'})")
+                       f"(Status: {status.strip() or 'absent'})")
     if path is not None and not re.search(
             rf"(?<![A-Za-z0-9._/-]){re.escape(path)}(?![A-Za-z0-9._/-])", text):
         return False, f"record {record} does not name {path} at the base"
@@ -535,6 +536,23 @@ def run_selftest(_args):
         expect(f"waiver: Status 'ratified' followed by {tag} fails",
                wrun(lambda r: _rm(r, REC), entry, status=st)[0],
                [REC, "not ratified"])
+    for tag, st in (("a mid-token asterisk", "rati*fied"),
+                    ("a trailing tab", "ratified\t"),
+                    ("a trailing nonbreaking space", "ratified "),
+                    ("mismatched emphasis", "**ratified*")):
+        expect(f"waiver: Status with {tag} fails",
+               wrun(lambda r: _rm(r, REC), entry, status=st)[0],
+               [REC, "not ratified"])
+    for tag, st in (("plain token", "ratified"),
+                    ("bold token", "**ratified**"),
+                    ("italic token", "*ratified*")):
+        cases.append((f"waiver: Status as {tag} passes",
+                      waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                     status=st), REC)))
+    expect("waiver: empty Status line followed by prose fails",
+           wrun(lambda r: _rm(r, REC), entry,
+                status="\n\nRatified records are listed below.")[0],
+           [REC, "not ratified"])
     expect("waiver: Status 'ratified-then-withdrawn' fails",
            wrun(lambda r: _rm(r, REC), entry,
                 status="**ratified-then-withdrawn**")[0],
