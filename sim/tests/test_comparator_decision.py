@@ -39,6 +39,7 @@ import importlib.util
 import io
 import json
 import math
+import os
 import re
 import sys
 import tempfile
@@ -826,6 +827,26 @@ class TestPostLayoutDelta(unittest.TestCase):
         nominal = cd_run.baseline_for("kickback", "tt", 27)
         self.assertIn("Both DUTs used", cd_run._shared.schematic_comparison(
             nominal.record_id, extracted))
+
+    def test_comparison_reports_differing_environments_as_historical(self):
+        nominal = cd_run.baseline_for("kickback", "tt", 27)
+        extracted = ("sky130A @ test-extracted-revision", "ngspice-46")
+        text = cd_run._shared.schematic_comparison(nominal.record_id, extracted)
+        self.assertNotIn("Both DUTs used", text)
+        self.assertIn("Historical schematic comparison", text)
+        schematic_sentence, extracted_sentence = text.split("The extracted run used ")
+        # The record's own environment belongs to the schematic run ...
+        self.assertIn("The schematic run used sky130A @ f6eeac7", schematic_sentence)
+        self.assertIn("ngspice-47", schematic_sentence)
+        self.assertNotIn("test-extracted-revision", schematic_sentence)
+        self.assertNotIn("ngspice-46", schematic_sentence)
+        # ... and the supplied tuple to the extracted run.
+        self.assertTrue(extracted_sentence.startswith(
+            "sky130A @ test-extracted-revision and ngspice-46."))
+        self.assertNotIn("f6eeac7", extracted_sentence)
+        self.assertNotIn("ngspice-47", extracted_sentence)
+        self.assertIn("The delta includes the change of DUT and any effect "
+                      "of the different simulation environments.", text)
 
     def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
         # `noise` (the AC loop-broken sub-model) has a committed
@@ -1924,6 +1945,159 @@ class TestOffsetBisectCli(unittest.TestCase):
                 cd_run.main(["offset-bisect", "--help"])
         self.assertEqual(cm.exception.code, 0)
         self.assertIn("offset-bisect", buf.getvalue())
+
+
+class TestOffsetResumableCampaign(unittest.TestCase):
+    """`offset --resume-dir/--chunk-decks`: the resumable serial campaign
+    (issue #154). Hermetic: ngspice and the PDK are faked; every deck's value
+    is a pure function of its name, as it is on the real bench (each Monte
+    Carlo deck pins its own rndseed)."""
+
+    N = 5
+
+    def setUp(self):
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+        self.fake = _FakeOffsetDecks()
+
+    @contextlib.contextmanager
+    def _stubbed(self, pdk_line="fake-pdk"):
+        with contextlib.ExitStack() as stack:
+            patch = stack.enter_context
+            patch(unittest.mock.patch.object(cd_run._shared, "_run", self.fake))
+            patch(unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise", lambda: FakePdkInfo()))
+            patch(unittest.mock.patch.object(
+                cd_run.offset, "simulation_versions", lambda info: (pdk_line, "ngspice-fake")))
+            yield
+
+    def _run(self, **kw):
+        kw.setdefault("n", self.N)
+        return cd_run.run_offset_mc(corner="tt", temp_c=27.0, seed=1, quiet=True, **kw)
+
+    def _finish_in_chunks(self, resume_dir, chunk_decks):
+        invocations = 0
+        while True:
+            invocations += 1
+            self.assertLess(invocations, 100, "campaign never completed")
+            try:
+                return self._run(resume_dir=resume_dir, chunk_decks=chunk_decks), invocations
+            except cd_run.OffsetCampaignIncomplete:
+                pass
+
+    def test_interrupted_and_resumed_matches_uninterrupted(self):
+        with self._stubbed():
+            plain = self._run()
+            plain_calls = list(self.fake.calls)
+            self.fake.calls.clear()
+            with tempfile.TemporaryDirectory() as tmp:
+                resumed, invocations = self._finish_in_chunks(Path(tmp), 3)
+        self.assertGreater(invocations, 1)
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(resumed))
+        # No deck dropped and none repeated across all the chunks.
+        self.assertEqual(sorted(self.fake.calls), sorted(plain_calls))
+        self.assertEqual(len(self.fake.calls), len(set(self.fake.calls)))
+        self.assertEqual(len(self.fake.calls), 4 + 2 * self.N)
+
+    def test_completed_negative_control_is_part_of_the_resumed_result(self):
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            result, _ = self._finish_in_chunks(Path(tmp), 4 + self.N + 1)
+        self.assertEqual(len(result.negctrl_offset_v), self.N)
+        self.assertEqual(len(set(result.negctrl_offset_v)), 1)
+        self.assertEqual(len(result.draws_offset_v), self.N)
+
+    def test_incomplete_campaign_writes_no_record_and_exits_resumable(self):
+        writer = unittest.mock.Mock()
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(cd_run.offset, "write_offset_evidence", writer), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc = cd_run.main(["offset", "--n", str(self.N), "--record", "--quiet",
+                              "--resume-dir", tmp, "--chunk-decks", "5"])
+        self.assertEqual(rc, cd_run.OFFSET_INCOMPLETE_EXIT)
+        writer.assert_not_called()
+
+    def test_incompatible_checkpoint_is_refused(self):
+        variants = [dict(n=self.N + 1), dict(seed=2), dict(corner="ss"), dict(temp_c=-40.0)]
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(cd_run.OffsetCampaignIncomplete):
+                self._run(resume_dir=Path(tmp), chunk_decks=2)
+            for change in variants:
+                args = dict(corner="tt", temp_c=27.0, seed=1, n=self.N, quiet=True,
+                            resume_dir=Path(tmp))
+                args.update(change)
+                with self.assertRaisesRegex(RuntimeError, "DIFFERENT campaign"):
+                    cd_run.run_offset_mc(**args)
+        # PDK identity and netlist hash are bound too.
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(cd_run.OffsetCampaignIncomplete):
+                self._run(resume_dir=Path(tmp), chunk_decks=2)
+            with self._stubbed(pdk_line="other-pdk"):
+                with self.assertRaisesRegex(RuntimeError, "pdk"):
+                    self._run(resume_dir=Path(tmp))
+            with unittest.mock.patch.object(
+                    cd_run.offset.evidence, "sha256_file", lambda p: "0" * 64):
+                with self.assertRaisesRegex(RuntimeError, "netlist_sha256"):
+                    self._run(resume_dir=Path(tmp))
+
+    def test_interrupted_checkpoint_write_loses_nothing(self):
+        real_replace = os.replace
+        state = {"armed": True}
+
+        def flaky_replace(src, dst):
+            if state["armed"] and str(dst).endswith("draw_2.json"):
+                state["armed"] = False
+                raise OSError("simulated kill during checkpoint write")
+            return real_replace(src, dst)
+
+        with self._stubbed():
+            plain = self._run()
+            self.fake.calls.clear()
+            with tempfile.TemporaryDirectory() as tmp:
+                with unittest.mock.patch.object(cd_run.offset.os, "replace", flaky_replace):
+                    with self.assertRaises(OSError):
+                        self._run(resume_dir=Path(tmp))
+                # The half-written deck is not a checkpoint; its temp file is inert.
+                decks = Path(tmp) / "decks"
+                self.assertFalse((decks / "draw_2.json").exists())
+                resumed = self._run(resume_dir=Path(tmp))
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(resumed))
+        self.assertEqual(self.fake.calls.count("draw_2"), 2)  # re-run once
+        self.assertEqual(self.fake.calls.count("draw_1"), 1)  # not repeated
+
+    def test_truncated_deck_file_is_rerun_not_trusted(self):
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            plain = self._run(resume_dir=Path(tmp))
+            (Path(tmp) / "decks" / "draw_1.json").write_text("{\"deck\": \"dr")
+            self.fake.calls.clear()
+            again = self._run(resume_dir=Path(tmp))
+        self.assertEqual(self.fake.calls, ["draw_1"])
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(again))
+
+    def test_chunk_flags_still_refused_for_other_modes(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            cd_run.main(["regen", "--resume-dir", "x"])
+
+
+class _FakeOffsetDecks:
+    GAIN_V_PER_V = 50.0
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    def __call__(self, deck_text: str, scratch_dir: Path, log_name: str) -> str:
+        self.calls.append(log_name)
+        if log_name.startswith("gaincal_"):
+            diff = self.GAIN_V_PER_V * float(log_name[len("gaincal_"):-len("mV")]) / 1000.0
+        elif log_name.startswith("draw_"):
+            digest = hashlib.sha256(log_name.encode()).digest()
+            diff = 1e-3 * (int.from_bytes(digest[:8], "big") / 2.0 ** 64 - 0.5)
+        elif log_name.startswith("negctrl_"):
+            diff = 2e-4
+        else:
+            raise AssertionError(f"unexpected deck {log_name!r}")
+        target_s = (cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.PICKOFF_NS) * 1e-9
+        rows = [(0.0, 0.0), (target_s, diff), (10.0 * target_s, diff)]
+        (scratch_dir / f"{log_name}.csv").write_text(
+            "".join(f"{t:.12g} {v:.12g} {t:.12g} 0\n" for t, v in rows))
+        return f"* fake ngspice log for {log_name}\n"
 
 
 if __name__ == "__main__":
