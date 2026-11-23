@@ -8,6 +8,23 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-23
 
+- **PR #401**: fix: reject a grade response with no corners key (exit 2, naming the file)
+- **PR #400**: fix: ignore daemon-written .loom/account-ranking.* in gitignore
+- **PR #397**: fix: correct three derived-summary figures in re-qualification write-up
+- **PR #394**: feat: rebuild the characterization evidence from the f6eeac7 records; record the old/new movement in DR-012
+- **PR #393**: fix(sim): share the stored-manifest schema with the evidence writer
+- **PR #392**: docs: prefix item-9 re-mint command with SELFTEST_ITEM9_REENTRY=1
+- **PR #388**: fix(sim): re-point schematic baselines at the f6eeac7 re-qualification records
+- **PR #387**: fix: reject zero-corner grade input as an error in all ladder modes
+- **PR #369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **Issue #399** (closed): check-main-clean.sh exit 3: daemon-written .loom/account-ranking.<runtime> is not on the Loom-owned list
+- **Issue #396** (closed): ladder.py grade: a response JSON missing the `corners` key raises an uncaught KeyError instead of the exit-2 input error
+- **Issue #395** (closed): Correct three derived-summary figures in the f6eeac7 re-qualification write-up (DR-012 + characterization report)
+- **Issue #391** (closed): Documented item-9 re-mint command omits SELFTEST_ITEM9_REENTRY=1, so it always fails on a drifted envelope
+- **Issue #389** (closed): Share stored-manifest validation so the evidence writer rejects duplicate names before CI
+- **Issue #384** (closed): Reject zero-corner responses before selecting a regeneration ladder grade
+- **Issue #361** (closed): Re-qualification campaign, final step: rebuild the characterization report, envelope and integrator view from the new-pin records; write the old/new decision record
+- **Issue #360** (closed): Re-qualification campaign, step 2/3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
 - **PR #381**: docs: date-stamp item 8's no-provenance rationale to the klt 0.6.0 era
 - **PR #366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **PR #376**: fix: validate the append-only waiver manifest on every gate run
