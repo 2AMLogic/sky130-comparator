@@ -358,10 +358,12 @@ and cite the old one in `Supersedes`. Self-test:
 change) of a protected path may be waived by an exact-path entry in
 `manifests/append-only-waivers.json` (`decision_record`, `paths`, `base_sha`).
 It passes only if the cited record, **as read at the comparison base**, has a
-`Status` beginning `ratified` AND contains the waived path as a literal string
+`Status` of `ratified` followed by a space, `(` or end of line AND contains
+the waived path as a literal whole token -- not preceded or followed by a
+path character, so a longer path such as `.../a.md.bak` does not count
 (condition 4, issue #348 -- so a PR can neither ratify its own waiver nor add
 the path to the record in the same diff, and a waiver can only cite a record
-that ruled on that path), and the path's bytes at the base equal those at
+that names the path as a whole token), and the path's bytes at the base equal those at
 `base_sha`; applied waivers are printed on the gate's `ok:` line.
 Anything else fails as above.
 
