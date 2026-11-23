@@ -74,6 +74,18 @@ def _response(process_scale=1.0, reverse=None, **override):
     return {"corners": corners}
 
 
+def _grade_cli(tmp, responses, flags):
+    paths = []
+    for name, obj in responses:
+        p = Path(tmp) / name
+        p.write_text(json.dumps(obj))
+        paths.append(str(p))
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        rc = ladder.main(["grade", *paths, *flags])
+    return rc, out.getvalue(), err.getvalue()
+
+
 class RequestShape(unittest.TestCase):
     def test_measure_names_match_gf180_forward_ladder(self):
         m = ladder.load_manifest()
@@ -345,15 +357,7 @@ class GradeCLIEmptyCorners(unittest.TestCase):
     control needs an observed measurement failure to succeed."""
 
     def _grade(self, tmp, responses, flags):
-        paths = []
-        for name, obj in responses:
-            p = Path(tmp) / name
-            p.write_text(json.dumps(obj))
-            paths.append(str(p))
-        out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            rc = ladder.main(["grade", *paths, *flags])
-        return rc, out.getvalue(), err.getvalue()
+        return _grade_cli(tmp, responses, flags)
 
     def test_empty_corners_is_an_input_error_in_all_four_modes(self):
         for flags in ([], ["--reverse"], ["--expect-fail"],
@@ -373,6 +377,35 @@ class GradeCLIEmptyCorners(unittest.TestCase):
                 tmp, [("empty.json", {"corners": []}), ("good.json", _response())], [])
         self.assertEqual(rc, 0)
         self.assertIn("PASS", out)
+
+
+class GradeCLIKeylessResponse(unittest.TestCase):
+    """Issue #396: a response JSON without a `corners` key hit the
+    unguarded subscript in merge_responses and died with a raw KeyError
+    (exit 1). The CLI rejects it at load as an input error naming the
+    offending file, in every flag combination, like the zero-corner
+    shape before it (#384)."""
+
+    def _grade(self, tmp, responses, flags):
+        return _grade_cli(tmp, responses, flags)
+
+    def test_missing_corners_key_is_an_input_error_in_all_four_modes(self):
+        for flags in ([], ["--reverse"], ["--expect-fail"],
+                      ["--reverse", "--expect-fail"]):
+            with self.subTest(flags=flags):
+                with tempfile.TemporaryDirectory() as tmp:
+                    rc, out, err = self._grade(tmp, [("nokey.json", {})], flags)
+                self.assertEqual(rc, 2)
+                self.assertIn("nokey.json", err)
+                self.assertNotIn("PASS", out)
+
+    def test_diagnostic_names_the_keyless_file_not_the_good_one(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out, err = self._grade(
+                tmp, [("good.json", _response()), ("nokey.json", {})], [])
+        self.assertEqual(rc, 2)
+        self.assertIn("nokey.json", err)
+        self.assertNotIn("good.json", err)
 
 
 if __name__ == "__main__":
