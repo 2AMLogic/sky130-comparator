@@ -331,7 +331,14 @@ def main(argv: list[str] | None = None) -> int:
             (out / f"request-{name}.json").write_text(json.dumps(req, indent=2) + "\n")
         print(f"wrote {out}/request-{{process,temperature,supply,graded-cold,graded-hot}}.json")
         return 0
-    merged = merge_responses([json.loads(Path(x).read_text()) for x in args.response])
+    responses = []
+    for x in args.response:
+        r = json.loads(Path(x).read_text())
+        if "corners" not in r:
+            print(f'ladder.py: {x}: response has no "corners" key', file=sys.stderr)
+            return 2
+        responses.append(r)
+    merged = merge_responses(responses)
     if not merged["corners"]:
         print("ladder.py: no corners to grade", file=sys.stderr)
         return 2
