@@ -402,7 +402,7 @@ issue's acceptance criteria ask for:
 
 | Stage | What it proves | Needs PDK? |
 | --- | --- | --- |
-| 1/4 | `sim/harness/*` unit tests (`sim/tests/`) **plus the pin-freshness gates**: the characterization-envelope selftest + live re-hash and the item-10 attestation-envelope re-check (`klt` optional — its absence is a loud `SKIP`, or a failure under `--require-pdk`) — the same commands t1-signoff.yml runs, so pin drift fails locally instead of only in CI (issue #292) | no |
+| 1/4 | `sim/harness/*` unit tests (`sim/tests/`) **plus the pin-freshness gates**: the characterization-envelope selftest + live re-hash and the item-10 attestation-envelope re-check (run under the pinned klt — bare `klt` if it matches `KLT_VERSION`, else a throwaway `uvx --from klayout-tools==<pin> klt`; if neither is available, a loud `SKIP` naming both versions, or a failure under `--require-pdk`) — the same commands t1-signoff.yml runs, so pin drift fails locally instead of only in CI (issue #292) | no |
 | 2/4 | toolchain + PDK pin match `sim/toolchain.json` | — |
 | 3/4 | `harness-corner-smoke` PVT run and `mc-smoke` Monte Carlo run (incl. its negative control) both pass end to end | yes |
 | 4/4 | **negative control**: re-running `harness-corner-smoke` with `--sabotage-corners` (the process-corner `.lib` section forced to `tt`, everything else untouched) must **FAIL** its process-axis sensitivity floor | yes |
