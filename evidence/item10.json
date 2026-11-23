@@ -135,12 +135,11 @@
         "exit_status": 0,
         "passed": true
       }
-    ],
-    "description": "T1 item 10 (repo hygiene): README, LICENSE, the spec table and the CI workflow, plus the hermetic (stdlib-only) CI gates and their selftests, each of which exits non-zero on failure."
+    ]
   },
   "provenance": {
-    "klt_version": "0.9.3.dev4230+g0bc56ac8269f",
-    "klayout_version": "0.30.12",
+    "klt_version": "0.8.0",
+    "klayout_version": null,
     "pdk": null,
     "deck": null,
     "input": {
