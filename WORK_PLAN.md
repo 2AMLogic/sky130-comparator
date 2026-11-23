@@ -5,9 +5,10 @@ Live roadmap generated from GitHub label state by the Loom Guide role.
 <!-- guide:plan-body:start -->
 ## Operator Attention: Merge-Risk-Hold Pileup
 
-Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
+Judge-approved PRs awaiting an operator decision (`loom:blocked` or `loom:operator`).
 
 - **#288**: docs: condense target-spec Basis cells to method + links; file DR-009
+- **#377**: fix: match waived paths as whole tokens and ratified statuses exactly
 
 ## Very Important
 
@@ -34,10 +35,10 @@ _None._
 
 Issues currently being built (`loom:building`).
 
+- **#241**: Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable
-- **#359**: Re-qualification campaign, step 2: schematic-DUT kickback, noise, reset and regen records under open_pdks f6eeac7
 - **#360**: Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
 - **#373**: Tighten the append-only waiver matches and ratify DR-011
 
@@ -45,24 +46,26 @@ Issues currently being built (`loom:building`).
 
 PRs waiting on Judge (`loom:review-requested`).
 
-- **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010 *(held)*
-- **#366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
+- **#325**: docs: move pilot notes to unprotected sim/pilots/ per DR-010
 - **#369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **#382**: docs: date the ERC spec-pinning rationale to klt 0.6.0
 
 ## Approved (Awaiting Merge)
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
 - **#288**: docs: condense target-spec Basis cells to method + links; file DR-009 — closes #253
+- **#377**: fix: match waived paths as whole tokens and ratified statuses exactly — closes #373
 
 ## Proposed
 
 Issues carrying `loom:curated`.
 
 - **#3**: Track the gap to T1 sim-validated / bronze (klayout-tools design-evidence ladder) *(curated)* *(held)*
-- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)*
+- **#125**: Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin *(curated)* *(held)*
 - **#146**: Auditor Capability Request: worker toolchain ngspice-46 / xschem 3.4.7 to match sim/toolchain.json *(curated)* *(held)*
 - **#229**: klt-pilot: the two regen bdiff dry-run artifacts name the wrong netlist *(curated)* *(held)*
+- **#241**: Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check *(curated)*
 - **#280**: Attestation envelopes still go stale via merge-order races: nothing requires a PR's base to be current before merge *(curated)* *(held)*
 - **#282**: No gate compares a klt sim request's models.lib against sim/pdk.json's ngspice_lib *(curated)*
 - **#303**: Pilot notes live in protected sim/*/records/ but have no Record ID, so documentary errors in them are uncorrectable *(curated)*
@@ -73,8 +76,6 @@ Issues carrying `loom:curated`.
 
 - **#134**: Measure comparator supply energy and average power at stated clock conditions *(architect)* *(held)*
 - **#154**: Measure larger-sample post-layout offset with resumable serial campaigns *(architect)* *(held)*
-- **#234**: characterization-envelope.py's 'no provenance block' design rests on a klt 0.6.0 gap the pinned klt 0.8.0 no longer has *(hermit)* *(held)*
-- **#241**: Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check *(hermit)* *(held)*
 - **#253**: Condense README target-spec table Basis cells: ~35 KB of campaign history duplicated across DRs and records *(hermit)*
 - **#375**: Remove run.py compatibility re-exports in comparator-decision (test-only shim from #224) *(hermit)* *(held)*
 
@@ -86,14 +87,14 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 1 |
+| Operator merge-risk holds | 2 |
 | Very important | 0 |
 | Important | 4 |
 | Ready (`loom:issue`, net of holds/building/merge-pending) | 0 |
 | In Progress (`loom:building`) | 6 |
 | PRs awaiting review | 3 |
-| Approved PRs awaiting merge | 1 |
-| Curated | 9 |
-| Architect / Hermit proposals | 6 |
+| Approved PRs awaiting merge | 2 |
+| Curated | 10 |
+| Architect / Hermit proposals | 4 |
 | Active epics | 0 |
 <!-- guide:plan-body:end -->

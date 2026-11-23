@@ -8,8 +8,12 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-23
 
+- **PR #381**: docs: date-stamp item 8's no-provenance rationale to the klt 0.6.0 era
+- **PR #366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **PR #376**: fix: validate the append-only waiver manifest on every gate run
 - **PR #347**: feat: add operator-gated removal waiver manifest to sim append-only gate
+- **Issue #234** (closed): characterization-envelope.py's 'no provenance block' design rests on a klt 0.6.0 gap the pinned klt 0.8.0 no longer has
+- **Issue #359** (closed): Re-qualification campaign, step 2: schematic-DUT kickback, noise, reset and regen records under open_pdks f6eeac7
 - **Issue #349** (closed): Waiver manifest follow-ups: lazy manifest validation, weak bytes-differ selftest, missing manifests/README row
 - **Issue #348** (closed): Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
 - **Issue #326** (closed): Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
@@ -334,11 +338,4 @@ Chronological record of merged pull requests and closed issues, maintained by th
 - **PR #48**: layout: commit the DRC signoff envelope and cite it for T1 item 3
 - **Issue #47** (closed): chore: bump the klt pin off 0.5.0 to pick up input_verified + citation.coverage
 - **Issue #46** (closed): layout: DRC-clean signoff citation for the comparator (T1 item 3)
-
-### 2026-09-23
-
-- **PR #45**: feat: add klt-generated comparator GDS layout with device-count CI gate
-- **Issue #44** (closed): layout: create GDS/OASIS for the comparator (T1 item 2)
-- **PR #43**: feat: full-corner Monte Carlo + PVT campaign (DR-005) -- ratify Decision-time, complete every row's corner set
-- **Issue #41** (closed): Run the full-corner Monte Carlo and PVT campaigns the ratified target-spec rows still lack
 
