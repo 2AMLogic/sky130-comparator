@@ -17,7 +17,7 @@
         "role": "hygiene",
         "path": ".github/workflows/t1-signoff.yml",
         "passed": true,
-        "content_hash": "sha256:33971d8ca8bbd6d4a5b3be6b900c85eeb8ad6715a27b7de6e2bf23dc047ce20c"
+        "content_hash": "sha256:7abc602eef9b7a7b75331a4e1e1208fa19484970182cb8b291a5584bc6fc2f83"
       },
       {
         "check": "present",
