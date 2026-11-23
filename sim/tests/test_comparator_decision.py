@@ -809,7 +809,7 @@ class TestPostLayoutDelta(unittest.TestCase):
         cd_run.set_dut_provenance("extracted")
         text = "\n".join(
             cd_run.post_layout_delta_lines("regen", "tt", 27.0, 0.4425))
-        self.assertIn("20260922-070800-e084b55", text)
+        self.assertIn("20261121-033724-4d73da9", text)
         self.assertIn("0.4025 ns", text)
         self.assertIn("+0.0400 ns", text)
         self.assertIn("1.099x", text)
@@ -820,8 +820,7 @@ class TestPostLayoutDelta(unittest.TestCase):
                           cd_run.baseline_for("regen", "tt", 27).record_id):
             with self.subTest(record_id=record_id):
                 text = cd_run._shared.schematic_comparison(record_id, extracted)
-                self.assertIn("c6d73a3", text)
-                self.assertIn("ngspice-46", text)
+                self.assertIn("Both DUTs used", text)
                 self.assertIn(extracted[0], text)
                 self.assertIn(extracted[1], text)
         nominal = cd_run.baseline_for("kickback", "tt", 27)
@@ -903,8 +902,8 @@ class TestPostLayoutDelta(unittest.TestCase):
         against it (issue #89 item 1's whole point)."""
         cd_run.set_dut_provenance("extracted")
         for corner, temp_c, record_id, sigma in (
-            ("ss", -40.0, "20260922-205857-ebea4e2", 0.1213),
-            ("ff", 125.0, "20260923-010427-ebea4e2", 0.1754),
+            ("ss", -40.0, "20261121-094511-4d73da9", 0.1292),
+            ("ff", 125.0, "20261121-100659-4d73da9", 0.1554),
         ):
             with self.subTest(corner=corner, temp_c=temp_c):
                 text = "\n".join(cd_run.post_layout_delta_lines(

@@ -17,7 +17,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/_shared.py",
         "passed": true,
-        "content_hash": "sha256:33e9efcfe8e8a9ae3437d66c912687b2c69223470dfd19511b2b52883453b9b0"
+        "content_hash": "sha256:2c2a7a5cbad8d9b8bcc22779b52e0c17ba6189edff7912b483c26fb31cb9bd9b"
       },
       {
         "check": "present",

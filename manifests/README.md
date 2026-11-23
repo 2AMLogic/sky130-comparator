@@ -465,8 +465,12 @@ back, 2AMLogic/2am#7309); a post-merge auto-repair job (needs
 `permissions: contents: write` on this currently read-only workflow — CI
 pushing evidence to `main`); and accepting the recurrence. Until the queue is
 live, the response to a stale envelope on `main` stays the one-command item-9
-re-mint: `uvx --from klayout-tools==0.8.0 klt signoff --attest 9 --inventory
-attest/item9.json -o evidence/item9.json`.
+re-mint: `SELFTEST_ITEM9_REENTRY=1 uvx --from klayout-tools==0.8.0 klt signoff
+--attest 9 --inventory attest/item9.json -o evidence/item9.json`. The
+`SELFTEST_ITEM9_REENTRY=1` prefix is required because item 9's inventory
+declares `cold_start = "bash sim/selftest.sh --quick"`, and the nested `--quick`
+cold_start would otherwise gate on the very stale envelope being re-minted —
+see `sim/selftest.sh:95-104`.
 
 ## The integrator-view gate (issue #36)
 

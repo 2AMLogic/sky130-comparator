@@ -20,10 +20,11 @@ broker admits can resolve its ``uri``s.
 configured, no ``klt`` with the ``artifact`` verb, a ``klt`` older than
 klayout-tools ``7e3561f`` (it would write bucket-naming ``s3`` uris), a
 broker that cannot be reached or refuses, a put that fails part-way, a
-manifest that does not match the bytes it claims. Nothing is then installed
-under ``manifests/`` or ``sim/``; the staged bytes stay in the git-ignored
-scratch tree so the run is not lost, and the caller reports the failure.
-There is no fallback that commits the bytes instead.
+manifest that fails the stored-manifest schema (``harness.manifest_schema``,
+shared with the CI gate) or does not match the bytes it claims. Nothing is
+then installed under ``manifests/`` or ``sim/``; the staged bytes stay in the
+git-ignored scratch tree so the run is not lost, and the caller reports the
+failure. There is no fallback that commits the bytes instead.
 
 Configuration comes from the environment only (``KLT_ARTIFACT_BROKER``,
 optionally ``KLT_ARTIFACT_REPO``), read by ``klt`` itself. There is no bucket
@@ -47,6 +48,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from . import manifest_schema
+
 ENV_BROKER = "KLT_ARTIFACT_BROKER"
 ENV_REPO = "KLT_ARTIFACT_REPO"
 MANIFEST_DIR = Path("manifests") / "artifacts"
@@ -58,10 +61,6 @@ KLT_ARTIFACT_MIN_COMMIT = "7e3561f932145870b6fad917b487b468be12f3c3"
 PROBE_TIMEOUT_S = 30
 PUT_TIMEOUT_S = 900
 
-_SHA_RE = re.compile(r"^[0-9a-f]{64}$")
-#: Same grammar as ``klayout_tools.artifact_store``: ``artifact:<key>``, no
-#: other scheme.
-_URI_RE = re.compile(r"^artifact:([^/\s]\S*)$")
 #: An unroutable broker for the scheme probe: a klt that gets as far as the
 #: network has already accepted the probe's legacy-scheme uri, i.e. is too old.
 _PROBE_BROKER = "http://127.0.0.1:9"
@@ -238,24 +237,6 @@ def _klt_error(stderr: str) -> str:
         return lines[-1][:300] if lines else "no diagnostic"
 
 
-def _entry_problem(entry) -> str | None:
-    if not isinstance(entry, dict):
-        return "entry is not an object"
-    if not (isinstance(entry.get("sha256"), str) and _SHA_RE.match(entry["sha256"])):
-        return "bad sha256"
-    if entry.get("kind") != "evidence":
-        return "kind is not evidence"
-    uri = entry.get("uri")
-    m = _URI_RE.match(uri) if isinstance(uri, str) else None
-    if m is None:
-        return "uri is not artifact:<key> (klt older than klayout-tools 7e3561f?)"
-    if m.group(1).rsplit("/", 1)[-1] != entry["sha256"]:
-        return "uri key does not name the sha256"
-    if not isinstance(entry.get("producer"), dict):
-        return "no producer"
-    return None
-
-
 def put_files(files: list[tuple[Path, str]], repo_root: Path, *,
               klt: str = "klt", run=subprocess.run) -> tuple[dict, list[str]]:
     """Store every ``(path, name)`` and return ``(manifest, empty_names)``.
@@ -264,7 +245,10 @@ def put_files(files: list[tuple[Path, str]], repo_root: Path, *,
     private temporary directory (never in the repo). Zero-byte files cannot be
     stored (the store's minimum object is one byte); their names are returned
     so the summary can list them -- their content is fully known. After the
-    puts, every entry is cross-checked against a local re-hash of its file.
+    puts, the manifest must pass the stored-manifest schema -- the same
+    :func:`harness.manifest_schema.manifest_problems` the CI gate applies --
+    *before* entries are indexed by name, so no entry can hide a twin; then
+    every entry is cross-checked against a local re-hash of its file.
     Any failure raises :class:`StoreError`; the manifest is then discarded.
     """
     names = [n for _, n in files]
@@ -297,22 +281,17 @@ def put_files(files: list[tuple[Path, str]], repo_root: Path, *,
                 manifest = json.load(fh)
         except (OSError, ValueError) as exc:
             raise StoreError(f"klt wrote no readable manifest: {exc}") from None
-    entries = manifest.get("entries") if isinstance(manifest, dict) else None
-    if not isinstance(entries, list) or manifest.get("schema_version") != 1:
-        raise StoreError("klt manifest is not {schema_version: 1, entries: [...]}")
-    by_name = {}
-    for e in entries:
-        problem = _entry_problem(e)
-        if problem:
-            raise StoreError(f"klt manifest entry invalid: {problem}")
-        by_name[e.get("name")] = e
+    problems = manifest_schema.manifest_problems(manifest)
+    if problems:
+        raise StoreError(f"klt manifest is invalid: {'; '.join(problems)}")
+    by_name = {e["name"]: e for e in manifest["entries"]}
     if set(by_name) != set(expected):
         raise StoreError("klt manifest entries do not match the staged files")
     for name, (sha, size) in expected.items():
         if (by_name[name]["sha256"], by_name[name]["size"]) != (sha, size):
             raise StoreError(f"klt manifest entry for {name} does not match the file's "
                              "local sha256/size")
-    manifest["entries"] = sorted(entries, key=lambda e: e["name"])
+    manifest["entries"] = sorted(manifest["entries"], key=lambda e: e["name"])
     return manifest, sorted(empty)
 
 
