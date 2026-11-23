@@ -81,7 +81,7 @@ ZERO_SHA = "0" * 40
 WAIVER_MANIFEST = "manifests/append-only-waivers.json"
 DR_DIR = "spec/decision-records/"
 STATUS_RE = re.compile(r"^- \*\*Status\*\*:\s*(.*)$", re.M)
-RATIFIED_RE = re.compile(r"ratified(?:\s|\(|$)")
+RATIFIED_RE = re.compile(r"ratified(?: |\(|$)")
 STATUS_NAMES = {"M": "modified", "D": "removed", "T": "file-type changed"}
 
 
@@ -229,7 +229,7 @@ def record_ratified_at(repo, base_sha, record, path=None):
         return False, (f"record {record} is not ratified at the base "
                        f"(Status: {status or 'absent'})")
     if path is not None and not re.search(
-            rf"(?<![\w./-]){re.escape(path)}(?![\w./-])", text):
+            rf"(?<![A-Za-z0-9._/-]){re.escape(path)}(?![A-Za-z0-9._/-])", text):
         return False, f"record {record} does not name {path} at the base"
     return True, ""
 
@@ -258,7 +258,7 @@ def check(repo, event, **kw):
     try:
         base_sha, head_sha = resolve_base(repo, event, **kw)
         found = violations(repo, base_sha, head_sha)
-        waivers = load_waivers(repo, head_sha) if found else {}
+        waivers = load_waivers(repo, head_sha)
     except ValueError as exc:
         fail(str(exc))
         return
@@ -530,6 +530,11 @@ def run_selftest(_args):
                       "passes",
                       waived_ok(wrun(lambda r: _rm(r, REC), entry,
                                      status=st), REC)))
+    for tag, st in (("a tab", "**ratified**\t-- ruled"),
+                    ("a nonbreaking space", "**ratified**\u00a0-- ruled")):
+        expect(f"waiver: Status 'ratified' followed by {tag} fails",
+               wrun(lambda r: _rm(r, REC), entry, status=st)[0],
+               [REC, "not ratified"])
     expect("waiver: Status 'ratified-then-withdrawn' fails",
            wrun(lambda r: _rm(r, REC), entry,
                 status="**ratified-then-withdrawn**")[0],
@@ -568,6 +573,16 @@ def run_selftest(_args):
            "(a.md.bak) does not waive it (whole-token match)",
            wrun(lambda r: _rm(r, REC), entry, named=(REC + ".bak",))[0],
            [REC, "does not name"])
+    expect("waiver: path adjacent to non-ASCII text still waives "
+           "(ASCII boundary class)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(f"{REC}\u3092\u53c2\u7167",)), REC)
+           else ["x"], clean=True)
+    expect("waiver: path preceded by non-ASCII text still waives "
+           "(ASCII boundary class)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(f"\u53c2\u7167{REC}",)), REC)
+           else ["x"], clean=True)
     expect("waiver: the path as a sub-path of a longer named directory "
            "path does not waive it",
            wrun(lambda r: _rm(r, REC), entry,
@@ -585,10 +600,13 @@ def run_selftest(_args):
                   not msgs and all("waived" in o and REC in o and LOG in o
                                    for o in oks)))
 
-    def bytes_differ(b):
-        return entry("0" * 39 + "1")
-    expect("waiver: bytes differing from base_sha fail",
-           wrun(lambda r: _rm(r, REC), bytes_differ)[0], [REC, "differ"])
+    def bytes_differ(r):
+        _write(r, REC, "v2\n")
+        edited = _commit(r, "edited")
+        _write(r, WAIVER_MANIFEST, json.dumps(entry(edited)))
+        _rm(r, REC)
+    expect("waiver: bytes differing from base_sha at a real commit fail",
+           wrun(bytes_differ)[0], [REC, "differ"])
     expect("waiver: a modification of a listed path fails",
            wrun(lambda r: _write(r, REC, "edited\n"), entry)[0],
            [REC, "only removals"])
@@ -604,6 +622,9 @@ def run_selftest(_args):
                   len(msgs) == 1 and LOG in msgs[0] and REC not in msgs[0]))
     expect("waiver: malformed manifest JSON fails explicitly",
            wrun(lambda r: _rm(r, REC), "{nope")[0], ["not valid JSON"])
+    expect("waiver: malformed manifest JSON fails with no protected-path "
+           "change",
+           wrun(lambda r: None, "{nope")[0], ["not valid JSON"])
     expect("waiver: manifest without a waivers list fails explicitly",
            wrun(lambda r: _rm(r, REC), {"x": 1})[0], ["waivers"])
     expect("waiver: glob path in an entry fails explicitly",
