@@ -1,0 +1,69 @@
+"""Hermetic tests for scripts/pex-measure-command.py (issue #187): no ngspice."""
+
+from __future__ import annotations
+
+import importlib.util
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_spec = importlib.util.spec_from_file_location(
+    "pex_measure_command", REPO_ROOT / "scripts" / "pex-measure-command.py")
+pmc = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pmc)
+
+
+class _Regen:
+    def __init__(self, outcome="resolved", ns=0.5):
+        self.outcome, self.ns = outcome, ns
+
+    def run_regen_sweep(self, **kw):
+        assert kw["vindiff_sweep_mv"] == [50.0]
+        return [SimpleNamespace(outcome=self.outcome, regen_time_ns=self.ns)]
+
+
+class _Kick:
+    def run_kickback(self, **kw):
+        return [SimpleNamespace(variant="ideal", peak_dev_v=0.0),
+                SimpleNamespace(variant="loaded", peak_dev_v=2.5e-3)]
+
+
+class Tests(unittest.TestCase):
+    def test_document_shape(self):
+        doc = pmc.build_document(
+            lambda c, t: pmc.measure_corner(_Regen(), _Kick(), c, t),
+            [("tt", 27.0), ("ss", -40.0)])
+        self.assertEqual([c["corner_id"] for c in doc["corners"]],
+                         ["tt/1.800V/27C", "ss/1.800V/-40C"])
+        m = {x["name"]: x["value"] for x in doc["corners"][0]["measurements"]}
+        self.assertEqual(m[pmc.ROW_DECISION], 0.5)
+        self.assertAlmostEqual(m[pmc.ROW_KICKBACK], 2.5)
+
+    def test_unresolved_is_null_with_message(self):
+        rows = pmc.measure_corner(_Regen("non-decision", None), _Kick(), "tt", 27.0)
+        self.assertIsNone(rows[0]["value"])
+        self.assertIn("non-decision", rows[0]["message"])
+
+    def test_parse_corners(self):
+        graded = (("tt", 27.0), ("ss", -40.0))
+        self.assertEqual(pmc.parse_corners("all", graded), list(graded))
+        self.assertEqual(pmc.parse_corners("sf:125", graded), [("sf", 125.0)])
+        with self.assertRaises(ValueError):
+            pmc.parse_corners("tt", graded)
+
+    def test_extracted_netlist_must_match_committed(self):
+        self.assertIsNone(pmc.check_netlist("extracted", pmc.RAW_EXTRACT))
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "x.spice"
+            p.write_text(pmc.RAW_EXTRACT.read_text() + "* drift\n")
+            self.assertIn("differs", pmc.check_netlist("extracted", p))
+            self.assertIn("does not exist", pmc.check_netlist("extracted", Path(d) / "no"))
+            self.assertIn("unknown", pmc.check_netlist("bogus", p))
+            p.write_text("* no circuit\n")
+            self.assertIn("no .subckt", pmc.check_netlist("schematic", p))
+
+
+if __name__ == "__main__":
+    unittest.main()
