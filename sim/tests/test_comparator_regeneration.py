@@ -408,5 +408,48 @@ class GradeCLIKeylessResponse(unittest.TestCase):
         self.assertNotIn("good.json", err)
 
 
+class GradeCLIUnreadableResponse(unittest.TestCase):
+    """Issue #404: a missing, malformed or non-UTF-8 response file crashed
+    grade with a raw traceback (exit 1). It is an input error (exit 2)
+    naming the offending file, in every flag combination."""
+
+    FLAGS = ([], ["--reverse"], ["--expect-fail"],
+             ["--reverse", "--expect-fail"])
+
+    def _run(self, paths, flags):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = ladder.main(["grade", *map(str, paths), *flags])
+        return rc, out.getvalue(), err.getvalue()
+
+    def _bad_files(self, tmp):
+        t = Path(tmp)
+        (t / "bad.json").write_text("not json")
+        (t / "bin.json").write_bytes(b"\xff\xfe\x00\x01")
+        (t / "adir.json").mkdir()
+        return ["bad.json", "bin.json", "adir.json", "nope.json"]
+
+    def test_unreadable_response_is_an_input_error_in_all_four_modes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in self._bad_files(tmp):
+                for flags in self.FLAGS:
+                    with self.subTest(name=name, flags=flags):
+                        rc, out, err = self._run([Path(tmp) / name], flags)
+                        self.assertEqual(rc, 2)
+                        self.assertIn(name, err)
+                        self.assertNotIn("PASS", out)
+
+    def test_diagnostic_names_the_bad_file_not_the_good_one(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            good = Path(tmp) / "good.json"
+            good.write_text(json.dumps(_response()))
+            for name in self._bad_files(tmp):
+                with self.subTest(name=name):
+                    rc, out, err = self._run([good, Path(tmp) / name], [])
+                    self.assertEqual(rc, 2)
+                    self.assertIn(name, err)
+                    self.assertNotIn("good.json", err)
+
+
 if __name__ == "__main__":
     unittest.main()

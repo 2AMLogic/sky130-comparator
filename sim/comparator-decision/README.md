@@ -1348,10 +1348,11 @@ record is filed and DR-006's disposition is unchanged**.
 **Corner scaling on the regeneration-inclusive basis is now complete across
 all seven graded corners**: 0.0929 mV (`sf`/-40C), 0.1084 mV (`fs`/-40C),
 0.1382 mV (`ss`/-40C), 0.1448 mV (`tt`/27C), 0.1682 mV (`sf`/125C), 0.1956 mV
-(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is not simply "cold is low,
-hot is high": the two coldest skew corners (`sf`/-40C, `fs`/-40C) sit *below*
-`tt`/27C, while the two hottest skew corners (`sf`/125C, `ff`/125C) sit above
-it alongside `fs`/125C, which remains the worst corner on this row exactly as
+(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is monotone in temperature:
+all three -40C corners sit below `tt`/27C, which sits below all three 125C
+corners. Within each temperature the process corners order `sf` < `fs` < `ss`
+(cold) and `sf` < `ff` < `fs` (hot), so no single process corner is worst
+across temperature; `fs`/125C remains the worst corner on this row exactly as
 DR-006 Amendment 1 recorded.
 
 **Item 2 (full-N re-runs) and item 3 (the decision it needs first) are
@@ -1544,6 +1545,41 @@ the *whole* pick-off set, so the decision decks have no keys until statistic (a)
 is complete. A chunk that stops inside the pick-off stage simply never names
 them. This is not an extra constraint the chunking adds — it is the existing
 data dependency, made visible.
+
+### Resumable `offset` campaigns (issue #154)
+
+`offset` takes the same three flags as `noise-tran` (`--resume-dir`,
+`--chunk-decks`, `--chunk-seconds`) so a larger-sample extracted-DUT campaign
+(N=200 is `4 + 2 x 200 = 404` decks: gain calibration, mismatch draws and the
+same-seed mismatch-disabled negative control) can run as a sequence of
+identical sub-budget commands on the route in [Supported execution route (issue
+#127)](#supported-execution-route-issue-127), with `--resume-dir` carried
+between jobs as a declared shard output and `--jobs 1`.
+
+- Each deck's pick-off value **and raw ngspice log** are persisted atomically
+  (`tmp` + `os.replace`) as it completes. A truncated/unreadable deck file is
+  treated as missing and re-run; a leftover `.tmp` is inert.
+- `<resume-dir>/campaign.json` is the campaign key: DUT provenance and netlist
+  sha256, PDK and ngspice identities, corner, temperature, N, seed and seed
+  schedule (`seed + i` for draw *i* and its negative control), calibration
+  points and every pick-off/stimulus parameter. A differing key is refused
+  (`RuntimeError`) rather than mixed.
+- Exit status `3` means "incomplete, resumable, no record"; `--record` writes
+  a record only on the invocation that completes the last deck, and the
+  negative control is a campaign stage like any other, so a record cannot
+  exist without it.
+- Chunked and un-chunked runs yield identical results (pinned by
+  `TestOffsetResumableCampaign`).
+
+```sh
+# One chunk; resubmit this EXACT line until it exits 0.
+SIM_NGSPICE_TIMEOUT_S=900 python3 sim/comparator-decision/run.py offset \
+    --dut extracted --corner tt --temp 27 --n 200 --seed 1 --jobs 1 \
+    --resume-dir <scratch>/offset-tt-27 --chunk-seconds 2700 --record
+```
+
+The N=200 extracted-DUT measurements themselves are tracked separately; this
+subsection documents only the runner.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 

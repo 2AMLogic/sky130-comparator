@@ -157,8 +157,23 @@ What blocks the row today is this repo's own work, in order: **#125**
 re-measures the post-layout campaigns at the 0.35 µm geometry (the committed
 records predate the re-draw and are stale until re-measured), and then **#187**
 re-cites item 7 through `klt pex --measure-command` against those fresh
-numbers. Both are open and `loom:blocked`, and #187 is the increment that
-carries the re-citation — not this file. Until it lands the row stays
+numbers. #125 has landed (PR #371, closed); #187 is still open and is the
+increment that carries the re-citation — not this file.
+
+**Status of #187 (partial).** `scripts/pex-measure-command.py` is the
+`--measure-command` adapter: it wraps `sim/comparator-decision`'s `regen`
+(decision time at 50 mV) and `kickback` (`loaded` peak) runners per graded
+corner and prints the measurement document `klt pex` expects (hermetic tests:
+`sim/tests/test_pex_measure_command.py`). It refuses an extracted netlist that
+differs from the committed `layout/comparator.extract.spice`, and a schematic
+netlist that differs from `sim/comparator-decision/testbench/comparator_core.spice`
+(so `--reference-netlist` must be that file). Offset sigma and
+`noise-tran` are not emitted (Monte Carlo / chunked, they exceed one
+`--measure-timeout-s` call). One local probe at `tt`/27 °C, extracted leg,
+gave 0.5825 ns and 2.2931 mV (the 2.2931 mV matches the committed #125
+kickback record). **Not done:** the seven-corner `klt pex` run, the committed
+`layout/pex-report.json`, the item-7 manifest citation and the `body_bias`
+disclosure; those need the batch route and are still open on #187. Until it lands the row stays
 `unmet`/`no_evidence` rather than being decorated with a citation of the wrong
 kind.
 
