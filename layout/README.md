@@ -748,12 +748,17 @@ one a way the committed file could otherwise fail to support the claim above:
 65/44 is drawn only by the two body ties; `erc_status` is `clean` with zero
 findings; `erc_coverage.skipped` is empty **and** every declared supply and tie
 appears in `checked`; and the envelope's own `provenance.spec.content_hash`
-equals the sha256 of the committed `erc-spec.json`. That last one closes a real
-hole: `klt signoff`'s item-11 path **re-reads the spec document from disk** to
-discover which nets were declared `supply`, and (klt 0.6.0) does *not* check it
-against that recorded hash — so an edited spec would silently change what a
-citation is graded on. Filed generically as
-[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496).
+equals the sha256 of the committed `erc-spec.json`. That last one is a
+generation-time invariant — the envelope and the spec are one run's two
+halves, and the guard refuses to commit a pair whose halves disagree. It
+was written against a real hole: through klt 0.6.0, `klt signoff`'s item-11
+path **re-read the spec document from disk** to discover which nets were
+declared `supply` and did *not* check it against that recorded hash — so an
+edited spec would silently change what a citation was graded on. Filed
+generically as
+[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496),
+which the 0.8.0 pin carries: item 11 now checks the spec digest and grades
+drift as `stale_evidence`.
 
 ### Whether the supply check can fail — `erc-coverage-probe.json`
 
