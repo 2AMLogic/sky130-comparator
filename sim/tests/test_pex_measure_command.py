@@ -34,7 +34,7 @@ class Tests(unittest.TestCase):
     def test_document_shape(self):
         doc = pmc.build_document(
             lambda c, t: pmc.measure_corner(_Regen(), _Kick(), c, t),
-            [("tt", 27.0), ("ss", -40.0)])
+            [("tt", 27.0), ("ss", -40.0)], 1.8)
         self.assertEqual([c["corner_id"] for c in doc["corners"]],
                          ["tt/1.800V/27C", "ss/1.800V/-40C"])
         m = {x["name"]: x["value"] for x in doc["corners"][0]["measurements"]}
@@ -47,11 +47,13 @@ class Tests(unittest.TestCase):
         self.assertIn("non-decision", rows[0]["message"])
 
     def test_parse_corners(self):
-        graded = (("tt", 27.0), ("ss", -40.0))
+        graded = (("tt", 27.0), ("ss", -40.0), ("sf", 125.0))
         self.assertEqual(pmc.parse_corners("all", graded), list(graded))
         self.assertEqual(pmc.parse_corners("sf:125", graded), [("sf", 125.0)])
         with self.assertRaises(ValueError):
             pmc.parse_corners("tt", graded)
+        with self.assertRaises(ValueError):
+            pmc.parse_corners("zz:999", graded)
 
     def test_extracted_netlist_must_match_committed(self):
         self.assertIsNone(pmc.check_netlist("extracted", pmc.RAW_EXTRACT))
@@ -62,7 +64,11 @@ class Tests(unittest.TestCase):
             self.assertIn("does not exist", pmc.check_netlist("extracted", Path(d) / "no"))
             self.assertIn("unknown", pmc.check_netlist("bogus", p))
             p.write_text("* no circuit\n")
-            self.assertIn("no .subckt", pmc.check_netlist("schematic", p))
+            self.assertIn("differs", pmc.check_netlist("schematic", p))
+            # A subckt-bearing but wrong netlist (the extracted one) is rejected
+            # as a schematic; the measured fragment itself is accepted.
+            self.assertIn("differs", pmc.check_netlist("schematic", pmc.RAW_EXTRACT))
+        self.assertIsNone(pmc.check_netlist("schematic", pmc.SCHEMATIC_FRAGMENT))
 
 
 if __name__ == "__main__":
