@@ -300,7 +300,7 @@
       },
       {
         "path": "spec/decision-records/DR-006-post-layout-noise-headroom-reopened.md",
-        "content_hash": "sha256:bd631fe64273510078a9b6dfd0f8527ba060e3ba4e36d0f9a741eaa2d8c5ef89"
+        "content_hash": "sha256:b6cf35cc221a2e12771892b024c84cfff993be6d8fd2dd1a41e5536c82669746"
       },
       {
         "path": "spec/decision-records/DR-007-systematic-decision-offset-row.md",
