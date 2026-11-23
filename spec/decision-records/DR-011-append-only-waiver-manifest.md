@@ -1,6 +1,6 @@
 # DR-011: Operator-gated waiver manifest for the sim/ append-only gate
 
-- **Status**: proposed (changes no ratified spec row; mechanism for the CI gate only; ratification pending the two key reviews and the operator)
+- **Status**: **ratified** -- flipped from `proposed` by issue #373's acceptance criteria, via this PR as the ratification vehicle per Decision 5: two key reviews on this PR, then the operator (the 2026-08-19 ratification-via-PR ruling, as DR-002 and DR-004 before it); the approving reviews plus this PR's merge are the ratification record. Until this PR merges, `main` still carries `proposed`, and the gate reads status at the comparison base, so nothing can cite this record as ratified in between. The mechanism itself has been live since PR #347 (issues #326/#348); the whole-token and status delimiters were tightened by the PR this stacks on (issue #373).
 - **Date**: 2026-11-18
 - **Decided by**: operator ruling (rjwalters, `/fleet:decide` round 20261118-r16, q54, option (a)) on issue #326; condition 4 (record must name the waived path) added by operator ruling (same operator, same round, option (a)) on issue #348; implemented by builder agent
 
