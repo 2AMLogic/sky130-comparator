@@ -828,6 +828,26 @@ class TestPostLayoutDelta(unittest.TestCase):
         self.assertIn("Both DUTs used", cd_run._shared.schematic_comparison(
             nominal.record_id, extracted))
 
+    def test_comparison_reports_differing_environments_as_historical(self):
+        nominal = cd_run.baseline_for("kickback", "tt", 27)
+        extracted = ("sky130A @ test-extracted-revision", "ngspice-46")
+        text = cd_run._shared.schematic_comparison(nominal.record_id, extracted)
+        self.assertNotIn("Both DUTs used", text)
+        self.assertIn("Historical schematic comparison", text)
+        schematic_sentence, extracted_sentence = text.split("The extracted run used ")
+        # The record's own environment belongs to the schematic run ...
+        self.assertIn("The schematic run used sky130A @ f6eeac7", schematic_sentence)
+        self.assertIn("ngspice-47", schematic_sentence)
+        self.assertNotIn("test-extracted-revision", schematic_sentence)
+        self.assertNotIn("ngspice-46", schematic_sentence)
+        # ... and the supplied tuple to the extracted run.
+        self.assertTrue(extracted_sentence.startswith(
+            "sky130A @ test-extracted-revision and ngspice-46."))
+        self.assertNotIn("f6eeac7", extracted_sentence)
+        self.assertNotIn("ngspice-47", extracted_sentence)
+        self.assertIn("The delta includes the change of DUT and any effect "
+                      "of the different simulation environments.", text)
+
     def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
         # `noise` (the AC loop-broken sub-model) has a committed
         # schematic-level record at tt/27C only -- DR-005's corner campaign
