@@ -24,7 +24,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/kickback.py",
         "passed": true,
-        "content_hash": "sha256:85ef5eb45d5fd2f8795332813d952120307f14adb2fbebbe7044534dd54d345f"
+        "content_hash": "sha256:124575e0e3d39a63e36c96d5326fd8953de21b2a74c58d62bae0a16dc7aed15b"
       },
       {
         "check": "present",
