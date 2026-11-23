@@ -332,6 +332,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {out}/request-{{process,temperature,supply,graded-cold,graded-hot}}.json")
         return 0
     merged = merge_responses([json.loads(Path(x).read_text()) for x in args.response])
+    if not merged["corners"]:
+        print("ladder.py: no corners to grade", file=sys.stderr)
+        return 2
     if args.reverse:
         fails = grade_reverse(merged)
         for f in fails[:40]:
