@@ -192,17 +192,24 @@ class KickbackPoint:
 
 def run_kickback(
     corner: str = "tt", temp_c: float = 27.0, quiet: bool = False, jobs: int = 1,
+    variants: tuple[str, ...] = KICKBACK_VARIANTS,
 ) -> list[KickbackPoint]:
+    """`variants` lets a caller that only consumes one variant skip simulating
+    the others (default: all, so the standalone sub-command keeps its `ideal`
+    control)."""
+    bad = [v for v in variants if v not in KICKBACK_VARIANTS]
+    if bad:
+        raise ValueError(f"unknown kickback variant(s) {bad}")
     info = pdk.resolve_or_raise()
     results: list[KickbackPoint] = []
     with tempfile.TemporaryDirectory(prefix="comparator-decision-kickback-") as scratch:
         scratch_dir = Path(scratch)
         kb_jobs = [
             (f"kickback_{variant}", _kickback_deck(info, corner, temp_c, variant, f"kickback_{variant}"))
-            for variant in KICKBACK_VARIANTS
+            for variant in variants
         ]
         kb_logs = _shared._run_many(kb_jobs, scratch_dir, jobs)
-        for variant in KICKBACK_VARIANTS:
+        for variant in variants:
             log_name = f"kickback_{variant}"
             log_text = kb_logs[log_name]
             t, clk, vinp, vinn, outp, outn = toolchain.read_wrdata_csv(
