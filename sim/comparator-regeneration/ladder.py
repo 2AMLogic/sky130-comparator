@@ -333,7 +333,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     responses = []
     for x in args.response:
-        r = json.loads(Path(x).read_text())
+        try:
+            r = json.loads(Path(x).read_text())
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+            print(f"ladder.py: {x}: {e}", file=sys.stderr)
+            return 2
         if "corners" not in r:
             print(f'ladder.py: {x}: response has no "corners" key', file=sys.stderr)
             return 2
