@@ -206,7 +206,7 @@
         "role": "testbench",
         "path": "sim/selftest.sh",
         "passed": true,
-        "content_hash": "sha256:b56485d99bc5bed9210eb2480418c5e86aaec0d17788d8c5b7b15c1f0fb55c75"
+        "content_hash": "sha256:8557b1fafaa686983314d68d991f37819b76ddf264539dfe3227d8f8cd92da9f"
       },
       {
         "check": "present",
@@ -233,7 +233,7 @@
         "passed": true,
         "value": {
           "name": "sky130A",
-          "revision": "c6d73a35f524070e85faff4a6a9eef49553ebc2b"
+          "revision": "f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
         }
       },
       {
@@ -259,7 +259,7 @@
         "path": "attest/item9.json",
         "scope": "repo"
       },
-      "content_hash": "sha256:fb6b6f2eb1a3fabeb918cfbc609f6ed041448e43be4e3dd30c85d38294afec8d"
+      "content_hash": "sha256:82f3a3f15dff8356814de428ee4ecac80b6d9341ce9e57a831fcf09a0de1754e"
     }
   }
 }
