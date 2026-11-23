@@ -80,7 +80,7 @@
         "role": "testbench",
         "path": "sim/comparator-regeneration/ladder.py",
         "passed": true,
-        "content_hash": "sha256:156a7b9607b3fd8d27f91e6bc47d71d73665f754480870b2daad5e9e8b03f3aa"
+        "content_hash": "sha256:759c05842cefa45ec7e3b0dd93df4143dcb3bc06d768589dfaf513486936507d"
       },
       {
         "check": "present",
