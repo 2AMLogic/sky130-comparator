@@ -80,7 +80,7 @@
         "role": "testbench",
         "path": "sim/comparator-regeneration/ladder.py",
         "passed": true,
-        "content_hash": "sha256:7ce35f77041f37fd52c09ac47aa93518184387b44c1ff2cc94ac81d034cf38b1"
+        "content_hash": "sha256:228d6198c5b9128680994b51e2403935d488c72fc477b2da94f5c9e2ccb89fbd"
       },
       {
         "check": "present",
@@ -206,7 +206,7 @@
         "role": "testbench",
         "path": "sim/selftest.sh",
         "passed": true,
-        "content_hash": "sha256:8557b1fafaa686983314d68d991f37819b76ddf264539dfe3227d8f8cd92da9f"
+        "content_hash": "sha256:624b5a7c80dbdf89e9f2c1e36811e74270fbbd0cd5015cc90bb3c69e2896e201"
       },
       {
         "check": "present",

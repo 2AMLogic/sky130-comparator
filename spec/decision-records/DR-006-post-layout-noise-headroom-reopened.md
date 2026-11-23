@@ -265,3 +265,39 @@ changed by this amendment.**
   sub-model's own 1.433× (0.9423 / 0.6576), so anchoring future noise work at
   `fs`/125 °C rather than `tt`/27 °C — this record's standing advice — is
   reinforced, not weakened, by the closure.
+
+---
+
+## Amendment 2 (issue #402, 2026-11-23): terminology — Decision §4's "three cold-skew corners" meant the three cold corners
+
+This amendment is **append-only**, exactly as Amendment 1 is: no decision,
+measurement, argument or figure above this line is revised, deleted or
+softened. It records a naming convention and applies it to one clause of
+Decision §4. Nothing measured, ratified or recorded moves.
+
+**Status of this amendment**: same as the record it amends — **ratified**.
+No bound, figure, tolerance, disposition or compliance basis is set,
+changed, relaxed or re-derived here.
+
+### The convention
+
+**"Skew" names the four `sf`/`fs` graded cells** — `sf`/−40 °C, `fs`/−40 °C,
+`sf`/125 °C and `fs`/125 °C. `ss` and `ff` are the slow and fast corners,
+not skews; the corner names say what they are. This is the usage
+`sim/characterization-report.md` already follows, and it is recorded here —
+in the amendment that needed it, not a new standalone document — so the
+term has one repo-wide home (issue #402).
+
+### What it applies to in this record
+
+Decision §4 records the ≤ 0.6 mV stretch figure as breached at four of
+seven corners "and cleared at the three cold-skew corners". Under the
+convention above, the three corners that clause means are **`ss`/−40 °C,
+`sf`/−40 °C and `fs`/−40 °C** — the three −40 °C cells, i.e. the graded set
+minus the four corners the same clause lists as breaching. "Cold-skew"
+there meant "cold corners"; `ss`/−40 °C is not a skew under the convention
+above. The cleared/breached split is unchanged and the stretch figure's
+value is unchanged: this is a label correction on a derived-summary
+sentence, the same defect class as #395 and #398, not a measurement or
+disposition change. Decision §4 is not edited in place — this amendment is
+the correction of record for its wording.
