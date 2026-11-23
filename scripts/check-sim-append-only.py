@@ -258,7 +258,7 @@ def check(repo, event, **kw):
     try:
         base_sha, head_sha = resolve_base(repo, event, **kw)
         found = violations(repo, base_sha, head_sha)
-        waivers = load_waivers(repo, head_sha) if found else {}
+        waivers = load_waivers(repo, head_sha)
     except ValueError as exc:
         fail(str(exc))
         return
@@ -600,10 +600,13 @@ def run_selftest(_args):
                   not msgs and all("waived" in o and REC in o and LOG in o
                                    for o in oks)))
 
-    def bytes_differ(b):
-        return entry("0" * 39 + "1")
-    expect("waiver: bytes differing from base_sha fail",
-           wrun(lambda r: _rm(r, REC), bytes_differ)[0], [REC, "differ"])
+    def bytes_differ(r):
+        _write(r, REC, "v2\n")
+        edited = _commit(r, "edited")
+        _write(r, WAIVER_MANIFEST, json.dumps(entry(edited)))
+        _rm(r, REC)
+    expect("waiver: bytes differing from base_sha at a real commit fail",
+           wrun(bytes_differ)[0], [REC, "differ"])
     expect("waiver: a modification of a listed path fails",
            wrun(lambda r: _write(r, REC, "edited\n"), entry)[0],
            [REC, "only removals"])
@@ -619,6 +622,9 @@ def run_selftest(_args):
                   len(msgs) == 1 and LOG in msgs[0] and REC not in msgs[0]))
     expect("waiver: malformed manifest JSON fails explicitly",
            wrun(lambda r: _rm(r, REC), "{nope")[0], ["not valid JSON"])
+    expect("waiver: malformed manifest JSON fails with no protected-path "
+           "change",
+           wrun(lambda r: None, "{nope")[0], ["not valid JSON"])
     expect("waiver: manifest without a waivers list fails explicitly",
            wrun(lambda r: _rm(r, REC), {"x": 1})[0], ["waivers"])
     expect("waiver: glob path in an entry fails explicitly",
