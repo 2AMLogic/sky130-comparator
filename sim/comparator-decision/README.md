@@ -1544,6 +1544,41 @@ is complete. A chunk that stops inside the pick-off stage simply never names
 them. This is not an extra constraint the chunking adds — it is the existing
 data dependency, made visible.
 
+### Resumable `offset` campaigns (issue #154)
+
+`offset` takes the same three flags as `noise-tran` (`--resume-dir`,
+`--chunk-decks`, `--chunk-seconds`) so a larger-sample extracted-DUT campaign
+(N=200 is `4 + 2 x 200 = 404` decks: gain calibration, mismatch draws and the
+same-seed mismatch-disabled negative control) can run as a sequence of
+identical sub-budget commands on the route in [Supported execution route (issue
+#127)](#supported-execution-route-issue-127), with `--resume-dir` carried
+between jobs as a declared shard output and `--jobs 1`.
+
+- Each deck's pick-off value **and raw ngspice log** are persisted atomically
+  (`tmp` + `os.replace`) as it completes. A truncated/unreadable deck file is
+  treated as missing and re-run; a leftover `.tmp` is inert.
+- `<resume-dir>/campaign.json` is the campaign key: DUT provenance and netlist
+  sha256, PDK and ngspice identities, corner, temperature, N, seed and seed
+  schedule (`seed + i` for draw *i* and its negative control), calibration
+  points and every pick-off/stimulus parameter. A differing key is refused
+  (`RuntimeError`) rather than mixed.
+- Exit status `3` means "incomplete, resumable, no record"; `--record` writes
+  a record only on the invocation that completes the last deck, and the
+  negative control is a campaign stage like any other, so a record cannot
+  exist without it.
+- Chunked and un-chunked runs yield identical results (pinned by
+  `TestOffsetResumableCampaign`).
+
+```sh
+# One chunk; resubmit this EXACT line until it exits 0.
+SIM_NGSPICE_TIMEOUT_S=900 python3 sim/comparator-decision/run.py offset \
+    --dut extracted --corner tt --temp 27 --n 200 --seed 1 --jobs 1 \
+    --resume-dir <scratch>/offset-tt-27 --chunk-seconds 2700 --record
+```
+
+The N=200 extracted-DUT measurements themselves are tracked separately; this
+subsection documents only the runner.
+
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
 Issue #57 measured two PVT points. DR-005 grades the ratified rows across

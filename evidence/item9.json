@@ -45,7 +45,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/offset.py",
         "passed": true,
-        "content_hash": "sha256:e5ae1b2bff34cdc012d3783f225b50eb82896ba00da6151d4a7aef40d5451273"
+        "content_hash": "sha256:c53cd69987d0f45d785dede9a8be8d4e26b98f5133dc0f8f2e0262a535d420b0"
       },
       {
         "check": "present",
@@ -66,7 +66,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/run.py",
         "passed": true,
-        "content_hash": "sha256:1174e5be71fca7dddab8d6571325f60ac787b327ceefb6f64e1736d2cf13419f"
+        "content_hash": "sha256:90a22b963fbaebf43b25e383e17ee9a21fbd683af46c0a043337a6dc987d386a"
       },
       {
         "check": "present",
