@@ -188,11 +188,13 @@ if ! run_freshness_gates; then
 fi
 
 echo
-echo "-- plan gate: requalify-plan.json (issue #358 re-qualification campaign) --"
+echo "-- plan gate: requalify-plan.json (issues #358/#361 re-qualification campaign) --"
 if ! python3 "${SIM_DIR}/comparator-decision/check-requalify-plan.py"; then
   echo
   echo "FAIL: requalify-plan.json is inconsistent -- every entry must name an"
-  echo "      existing record exactly once (see the failures above)."
+  echo "      existing record exactly once, and (since issue #361) every entry's"
+  echo "      Supersedes chain must end at one terminal record carrying the"
+  echo "      sim/pdk.json open_pdks pin (see the failures above)."
   exit 1
 fi
 
