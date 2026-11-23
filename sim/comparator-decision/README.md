@@ -1349,9 +1349,9 @@ all seven graded corners**: 0.0929 mV (`sf`/-40C), 0.1084 mV (`fs`/-40C),
 0.1382 mV (`ss`/-40C), 0.1448 mV (`tt`/27C), 0.1682 mV (`sf`/125C), 0.1956 mV
 (`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is not simply "cold is low,
 hot is high": the two coldest skew corners (`sf`/-40C, `fs`/-40C) sit *below*
-`tt`/27C, while the two hottest skew corners (`sf`/125C, `ff`/125C) sit above
-it alongside `fs`/125C, which remains the worst corner on this row exactly as
-DR-006 Amendment 1 recorded.
+`tt`/27C, while all three 125C corners (`sf`/125C, `ff`/125C, `fs`/125C) sit
+above it, `fs`/125C remaining the worst corner on this row exactly as DR-006
+Amendment 1 recorded.
 
 **Item 2 (full-N re-runs) and item 3 (the decision it needs first) are
 deliberately NOT part of this record.** Per issue #95's own suggested
