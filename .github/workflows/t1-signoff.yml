@@ -181,15 +181,25 @@ jobs:
       # The ERC supply-spec envelope's own rot check (issue #68).
       # layout/erc-report.json is cited for item 11 (issue #123, see
       # manifests/README.md), but the citation pins only the layout hash -- and it depends on a SECOND committed document,
-      # layout/erc-spec.json, which nothing else pins: `klt signoff`'s item-11
-      # path re-reads that spec from disk and does not check it against the
-      # envelope's own provenance.spec.content_hash (klayout-tools#2496), so an
-      # edited spec would silently change what a citation is graded on. There
-      # is no `klt erc --check`, so this re-runs the documented command and
-      # byte-compares: klt's own `--format json` stdout IS the committed file,
-      # and a clean run exits 0, so a findings/skipped-work regression fails
-      # here too. No PDK needed -- `--deck`/`--pdk` are curated-table names,
-      # not an install (the same reason this job stays PDK-free).
+      # layout/erc-spec.json. Through klt 0.6.0 nothing pinned that spec:
+      # `klt signoff`'s item-11 path re-read it from disk without checking it
+      # against the envelope's own provenance.spec.content_hash
+      # (klayout-tools#2496), so an edited spec would silently change what a
+      # citation was graded on; at the 0.8.0 pin item 11 checks the spec
+      # digest and grades drift as `stale_evidence`. This step re-runs the
+      # documented command and byte-compares the full JSON on purpose: a
+      # drift in findings, skipped work or the recorded versions
+      # (provenance.klt_version, klayout_version, pdk.version) all fail
+      # here, and a pin move is a re-measurement, not a pin edit (issue
+      # #204) -- `klt erc --check` exists at this pin but is weaker: by
+      # default it checks only the layout, spec and deck hashes, so an
+      # edited finding count still matches; with `--rerun` it compares
+      # fresh ERC results, but even then some provenance fields (the
+      # version fields above) are allowed to differ. klt's own `--format json` stdout IS the
+      # committed file, and a clean run exits 0, so a findings/skipped-work
+      # regression fails here too. No PDK needed -- `--deck`/`--pdk` are
+      # curated-table names, not an install (the same reason this job stays
+      # PDK-free).
       #
       # Re-measured under klt 0.8.0 (ERC schema_version 2; issue #204).
       - name: Re-run the committed ERC supply spec and diff the envelope
