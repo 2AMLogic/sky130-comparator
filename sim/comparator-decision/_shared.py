@@ -467,11 +467,11 @@ OFFSET_GRADED_CORNERS: tuple[tuple[str, float], ...] = tuple(
 
 SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     ("regen", "tt", 27.0): Baseline(
-        "20260922-070800-e084b55", "regeneration time at 50 mV overdrive",
+        "20261121-033724-4d73da9", "regeneration time at 50 mV overdrive",
         0.4025, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "ss", -40.0): Baseline(
-        "20260922-071313-e084b55", "regeneration time at 50 mV overdrive",
+        "20261121-033832-4d73da9", "regeneration time at 50 mV overdrive",
         0.3575, "ns", "7/8 sweep points resolved (0.5 mV does not resolve)",
     ),
     # The remaining five graded `regen` corners (DR-005's full-corner campaign,
@@ -479,28 +479,28 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # the two anchors #57 measured; every value is transcribed from the named
     # committed record's own 50 mV sweep row.
     ("regen", "ff", 125.0): Baseline(
-        "20260922-175252-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033850-4d73da9", "regeneration time at 50 mV overdrive",
         0.4975, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "sf", -40.0): Baseline(
-        "20260922-175425-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033907-4d73da9", "regeneration time at 50 mV overdrive",
         0.3475, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "sf", 125.0): Baseline(
-        "20260922-175554-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033940-4d73da9", "regeneration time at 50 mV overdrive",
         0.4725, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "fs", -40.0): Baseline(
-        "20260922-175734-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033955-4d73da9", "regeneration time at 50 mV overdrive",
         0.3725, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "fs", 125.0): Baseline(
-        "20260922-175918-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-034048-4d73da9", "regeneration time at 50 mV overdrive",
         0.5375, "ns", "8/8 sweep points resolved",
     ),
     ("offset-bisect", "tt", 27.0): Baseline(
-        "20261002-000502-e2b808c", "decision-flip vindiff (input-referred systematic offset)",
-        -0.0391, "mV", "18 probes, tolerance 0.1 mV; the symmetric fragment's "
+        "20261121-080004-4d73da9", "decision-flip vindiff (input-referred systematic offset)",
+        0.0391, "mV", "18 probes, tolerance 0.1 mV; the symmetric fragment's "
         "flip sits at ~0 by construction (negative control, issue #66)",
     ),
     # The ss/-40C schematic counterpart has NO single flip: a symmetric
@@ -509,10 +509,10 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # overdrive floor, centered on 0 by symmetry. The baseline value is
     # the band midpoint; the extracted counterpart's delta against it is
     # the layout's systematic SHIFT of the usable-decision region, and its
-    # own record states its band edges (record 20261002-002613-e2b808c,
+    # own record states its band edges (record 20261121-080454-4d73da9,
     # issue #66).
     ("offset-bisect", "ss", -40.0): Baseline(
-        "20261002-002613-e2b808c",
+        "20261121-080454-4d73da9",
         "decision-boundary midpoint (schematic: symmetric +/-0.8203 mV non-decision band)",
         0.0, "mV", "wrong-polarity edge -0.8203, resolved edge +0.8203 mV; "
         "18 probes, tolerance 0.1 mV",
@@ -527,39 +527,39 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # Added by issue #64. `sf`/-40C is the schematic-level worst case and the
     # only pre-layout stretch-figure breach, which is why #64 runs it first.
     ("kickback", "ss", -40.0): Baseline(
-        "20260922-070212-e084b55", "peak `loaded` input-node disturbance",
+        "20261121-034500-4d73da9", "peak `loaded` input-node disturbance",
         1.8605, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "ff", 125.0): Baseline(
-        "20260922-070307-e084b55", "peak `loaded` input-node disturbance",
+        "20261121-033648-4d73da9", "peak `loaded` input-node disturbance",
         1.7677, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "sf", -40.0): Baseline(
-        "20260922-180026-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034032-4d73da9", "peak `loaded` input-node disturbance",
         2.0208, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV; the only schematic-level corner over the "
         "<= 2 mV stretch figure (by 1%)",
     ),
     ("kickback", "sf", 125.0): Baseline(
-        "20260922-180157-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034028-4d73da9", "peak `loaded` input-node disturbance",
         1.7837, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "fs", -40.0): Baseline(
-        "20260922-180319-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034044-4d73da9", "peak `loaded` input-node disturbance",
         1.8408, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "fs", 125.0): Baseline(
-        "20260922-180425-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034103-4d73da9", "peak `loaded` input-node disturbance",
         1.6091, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("offset", "tt", 27.0): Baseline(
-        "20260922-065300-e084b55", "input-referred offset stdev",
-        1.7857, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-073855-4d73da9", "input-referred offset stdev",
+        2.3027, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     # The other four `_mm` mismatch corners of the DR-005 schematic-level
@@ -572,36 +572,36 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # those runs would fall back to `post_layout_delta_lines()`'s
     # "no committed counterpart" note and record a bare number.
     ("offset", "ss", 27.0): Baseline(
-        "20260922-173622-e23c509", "input-referred offset stdev",
-        1.8244, "mV", "N=16 draws at `ss_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-074337-4d73da9", "input-referred offset stdev",
+        2.3962, "mV", "N=16 draws at `ss_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0; the nominally binding "
         "schematic-level corner",
     ),
     ("offset", "ff", 27.0): Baseline(
-        "20260922-174326-e23c509", "input-referred offset stdev",
-        1.5954, "mV", "N=16 draws at `ff_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-074654-4d73da9", "input-referred offset stdev",
+        2.0463, "mV", "N=16 draws at `ff_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("offset", "sf", 27.0): Baseline(
-        "20260922-174831-e23c509", "input-referred offset stdev",
-        1.6706, "mV", "N=16 draws at `sf_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-075012-4d73da9", "input-referred offset stdev",
+        2.1357, "mV", "N=16 draws at `sf_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("offset", "fs", 27.0): Baseline(
-        "20260922-175152-e23c509", "input-referred offset stdev",
-        1.8218, "mV", "N=16 draws at `fs_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-075327-4d73da9", "input-referred offset stdev",
+        2.3863, "mV", "N=16 draws at `fs_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("noise", "tt", 27.0): Baseline(
-        "20260922-065534-e084b55", "differential input-referred noise",
+        "20261121-033551-4d73da9", "differential input-referred noise",
         0.5704, "mV rms", "loop-broken AC sub-model of the DR-004 preamp, "
         "1 kHz-1 GHz",
     ),
     ("noise-tran", "tt", 27.0): Baseline(
-        "20260922-192722-e23c509",
+        "20261121-091933-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1362, "mV", "N=128 pick-off seeds, 95% CI [0.1216, 0.1493] mV, "
-        "gain 64.4571 V/V, decision-transition cross-check 0.1342 mV "
+        0.1457, "mV", "N=128 pick-off seeds, 95% CI [0.1322, 0.1585] mV, "
+        "gain 64.4571 V/V, decision-transition cross-check 0.1401 mV "
         "(64 seeds/sign/point)",
     ),
     # The two graded `noise-tran` corners beyond tt/27C that the issue #41
@@ -615,9 +615,9 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # schematic-level `noise-tran` counterpart, so they correctly keep
     # falling through to that note.
     ("noise-tran", "ss", -40.0): Baseline(
-        "20260922-205857-ebea4e2",
+        "20261121-094511-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1213, "mV", "N=128 pick-off seeds, 95% CI [0.1084, 0.1335] mV, "
+        0.1292, "mV", "N=128 pick-off seeds, 95% CI [0.1144, 0.1416] mV, "
         "gain 77.6506 V/V, 64 seeds/sign/point. The decision-transition "
         "cross-check is NOT MEASURABLE at this corner (every pair degenerate -- the "
         "sigma-scaled overdrives sit below this corner's "
@@ -625,10 +625,10 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
         "alone",
     ),
     ("noise-tran", "ff", 125.0): Baseline(
-        "20260923-010427-ebea4e2",
+        "20261121-100659-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1754, "mV", "N=128 pick-off seeds, 95% CI [0.1594, 0.1905] mV, "
-        "gain 38.1254 V/V, decision-transition cross-check 0.1515 mV "
+        0.1554, "mV", "N=128 pick-off seeds, 95% CI [0.1410, 0.1688] mV, "
+        "gain 38.1254 V/V, decision-transition cross-check 0.1693 mV "
         "(64 seeds/sign/point)",
     ),
 }
@@ -638,7 +638,7 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
 # its schematic-level counterpart here and compares VERDICTS plus the two
 # supply-current columns, rather than going through
 # `post_layout_delta_lines()` (issue #65).
-RESET_SCHEMATIC_COUNTERPART = "20260922-070024-e084b55"
+RESET_SCHEMATIC_COUNTERPART = "20261121-033635-4d73da9"
 
 
 def baseline_for(mode: str, corner: str, temp_c: float) -> Baseline | None:
