@@ -317,8 +317,8 @@ rather than inventing a ratio.
 | **`fs`/−40 °C** | **post-layout** | **0.1119** | [0.0848, 0.1314] | 32 | 0.5266 mV — **disagrees** (4.7×) | `sim/comparator-decision/records/20261122-123631-a22c816.md` |
 
 All seven graded corners carry a post-layout `noise-tran` record, as before.
-The re-qualification moved this row's figures more than any other: the two hot
-skew corners fell **past their superseded records' stated 95 % CIs**
+The re-qualification moved this row's figures more than any other: two
+post-layout values fell **past their superseded records' stated 95 % CIs**
 (`fs`/125 °C 0.2540 → 0.1951 mV, old CI lower bound 0.1961; `ff`/125 °C
 0.1956 → 0.1560 mV, old CI lower bound 0.1606), the two `sf` corners rose
 9–10 % (`sf`/−40 °C 0.0929 → 0.1013 mV, +9.0 %; `sf`/125 °C 0.1682 →
