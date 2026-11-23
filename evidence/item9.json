@@ -206,7 +206,7 @@
         "role": "testbench",
         "path": "sim/selftest.sh",
         "passed": true,
-        "content_hash": "sha256:8557b1fafaa686983314d68d991f37819b76ddf264539dfe3227d8f8cd92da9f"
+        "content_hash": "sha256:624b5a7c80dbdf89e9f2c1e36811e74270fbbd0cd5015cc90bb3c69e2896e201"
       },
       {
         "check": "present",
