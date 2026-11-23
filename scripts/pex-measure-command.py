@@ -33,8 +33,14 @@ an arbitrary file. So the netlist argument is checked, never silently ignored:
 Invoke as `python3 scripts/pex-measure-command.py` (klt runs the command
 without a shell; the file is also executable).
 
-Never launch this over many corners on a dispatch worker: use a single
-`--corners` for a probe, and the batch route for the full set.
+`--corners` is required, deliberately: `all` is 7 corners x 3 serial local
+ngspice decks per invocation (42 per `klt pex` run) and never consults the
+batch backend, which the host rules forbid on a dispatch worker. Pass a single
+`--corners tt:27` for a probe; ask for `all` explicitly, off a dispatch worker.
+
+Non-finite values (NaN/Infinity) are never written: they are emitted as a
+`null` value with a message, which `klt pex` renders as a named measurement
+error instead of an invalid-JSON failure.
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -116,12 +123,16 @@ def load_driver():
     return _shared, regen, kickback
 
 
+def _finite(x) -> bool:
+    return x is not None and math.isfinite(x)
+
+
 def measure_corner(regen, kickback, corner: str, temp_c: float) -> list[dict]:
     pts = regen.run_regen_sweep(
         corner=corner, temp_c=temp_c, vindiff_sweep_mv=[OVERDRIVE_MV], quiet=True
     )
     pt = pts[0]
-    if pt.outcome == "resolved" and pt.regen_time_ns is not None:
+    if pt.outcome == "resolved" and _finite(pt.regen_time_ns):
         decision = {"name": ROW_DECISION, "value": pt.regen_time_ns}
     else:
         decision = {
@@ -130,13 +141,19 @@ def measure_corner(regen, kickback, corner: str, temp_c: float) -> list[dict]:
             "message": f"decision {pt.outcome} at {OVERDRIVE_MV:g} mV",
         }
     loaded = next(
-        (p for p in kickback.run_kickback(corner=corner, temp_c=temp_c, quiet=True)
+        (p for p in kickback.run_kickback(
+            corner=corner, temp_c=temp_c, quiet=True, variants=("loaded",))
          if p.variant == "loaded"),
         None,
     )
     if loaded is None:
         raise RuntimeError(f"kickback returned no 'loaded' point at {corner}/{temp_c:g}C")
-    kick = {"name": ROW_KICKBACK, "value": loaded.peak_dev_v * 1e3}
+    kick_mv = loaded.peak_dev_v * 1e3
+    if _finite(kick_mv):
+        kick = {"name": ROW_KICKBACK, "value": kick_mv}
+    else:
+        kick = {"name": ROW_KICKBACK, "value": None,
+                "message": f"kickback peak is not finite ({kick_mv!r})"}
     return [decision, kick]
 
 
@@ -151,8 +168,10 @@ def build_document(measure, corners: list[tuple[str, float]], vdd: float) -> dic
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--corners", default="all",
-                    help="'all' (the seven graded corners) or comma list like tt:27,ss:-40")
+    ap.add_argument("--corners", required=True,
+                    help="'all' (the seven graded corners: 21 serial local ngspice "
+                         "decks; not for a dispatch worker) or comma list like "
+                         "tt:27,ss:-40")
     ap.add_argument("netlist", type=Path)
     args = ap.parse_args(argv)
 
@@ -171,8 +190,13 @@ def main(argv: list[str] | None = None) -> int:
     shared.set_dut_provenance(side)
     doc = build_document(
         lambda c, t: measure_corner(regen, kickback, c, t), corners, shared.VDD)
-    json.dump(doc, sys.stdout)
-    sys.stdout.write("\n")
+    try:
+        text = json.dumps(doc, allow_nan=False)
+    except ValueError as e:
+        print(f"pex-measure-command: measurement document is not valid JSON: {e}",
+              file=sys.stderr)
+        return 3
+    sys.stdout.write(text + "\n")
     return 0
 
 

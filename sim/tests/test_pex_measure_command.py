@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,9 +28,13 @@ class _Regen:
 
 
 class _Kick:
+    def __init__(self, peak=2.5e-3):
+        self.peak, self.calls = peak, []
+
     def run_kickback(self, **kw):
+        self.calls.append(kw)
         return [SimpleNamespace(variant="ideal", peak_dev_v=0.0),
-                SimpleNamespace(variant="loaded", peak_dev_v=2.5e-3)]
+                SimpleNamespace(variant="loaded", peak_dev_v=self.peak)]
 
 
 class Tests(unittest.TestCase):
@@ -45,6 +52,26 @@ class Tests(unittest.TestCase):
         rows = pmc.measure_corner(_Regen("non-decision", None), _Kick(), "tt", 27.0)
         self.assertIsNone(rows[0]["value"])
         self.assertIn("non-decision", rows[0]["message"])
+
+    def test_only_loaded_variant_is_simulated(self):
+        k = _Kick()
+        pmc.measure_corner(_Regen(), k, "tt", 27.0)
+        self.assertEqual(k.calls[0]["variants"], ("loaded",))
+
+    def test_non_finite_values_become_named_null_rows(self):
+        nan = float("nan")
+        doc = pmc.build_document(
+            lambda c, t: pmc.measure_corner(_Regen("resolved", nan), _Kick(nan), c, t),
+            [("tt", 27.0)], 1.8)
+        for row in doc["corners"][0]["measurements"]:
+            self.assertIsNone(row["value"])
+            self.assertIn("message", row)
+        json.dumps(doc, allow_nan=False)  # must not raise
+
+    def test_corners_flag_is_required(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
+            pmc.main(["x.spice"])
+        self.assertEqual(cm.exception.code, 2)
 
     def test_parse_corners(self):
         graded = (("tt", 27.0), ("ss", -40.0), ("sf", 125.0))
