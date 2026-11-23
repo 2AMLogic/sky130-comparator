@@ -6,8 +6,12 @@
 - **Amended by**: **Amendment 1** (issue #83, 2026-09-26; at the end of this
   record) — Decision §3's closure condition ran and the
   ≤ 1.0 mV **target** bound's compliance basis **closes**. Decision §1 (the
-  bounds) and §4 (the stretch figure) are unchanged. **Read the amendment
-  before citing Decision §2 or §3.**
+  bounds) and §4's figure are unchanged; §4's wording is corrected by
+  **Amendment 2** (issue #402, 2026-11-23: terminology — Decision §4's "three
+  cold-skew corners" meant the three cold corners). **Read the amendments
+  before citing Decision §2, §3 or §4.** This **Amended by** pointer is a
+  standing, navigational exception to the append-only rule (Amendment 1
+  established it); each later amendment updates it, and that needs no new ruling.
 
 ## Context
 
