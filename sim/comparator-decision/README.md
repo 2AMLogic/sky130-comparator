@@ -323,7 +323,7 @@ SIM_NGSPICE_TIMEOUT_S=900 \
   python3 sim/comparator-decision/run.py regen --dut extracted --record
 ```
 
-**The extraction is pinned to `klayout-tools==0.7.0` on `klayout==0.30.12`** (issue #123; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and are historical -- not re-measured at the current geometry)
+**The extraction is pinned to `klayout-tools==0.8.0` on `klayout==0.30.12`** (the pin `docs/environment-setup.md` records and the workflow installs; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and were re-measured at the current geometry and PDK pin by the #179/#361 re-qualification campaign, 2026-11-23 -- see the banner at "Post-layout records" below)
 -- the same pin `docs/environment-setup.md` records and both
 `.github/workflows/t1-signoff.yml` jobs install -- and `extract_pex.py`
 *asserts* it rather than merely recording it. That is not provenance hygiene:
@@ -923,6 +923,22 @@ All at the same DR-004 topology (netlist-identical, campaign commit
   [0.1594, 0.1905], cross-check 0.1515 mV -- agrees).
 
 ### Post-layout records (issue #57 -- T1 item 7, `--dut extracted`)
+
+> **Supersession notice (2026-11-23, issues
+> #179/#361).** Every post-layout record named in this section and the
+> campaign sections below -- the #57 anchors, the #64 corner set, the #80
+> `_mm` set, the #83/#89/#95 `noise-tran` set -- is **superseded** by the
+> re-qualification campaign's terminal records, minted on open_pdks
+> `f6eeac7` / ngspice-47 against the 0.35 µm layout extracted under
+> klt 0.8.0 / klayout 0.30.12. The tables and figures below stand as the
+> historical 0.42 µm / `c6d73a35` record and are not what any current row
+> cites; the current figures live in
+> [`../characterization-report.md`](../characterization-report.md) and the
+> per-corner old/new movement in
+> [`../../spec/decision-records/DR-012-requalification.md`](../../spec/decision-records/DR-012-requalification.md).
+> The terminal record for each superseded id is its `Supersedes` chain's
+> end, gated by `check-requalify-plan.py` in `sim/selftest.sh`
+> (`--print-terminals` prints the map).
 
 The first records against a DUT that is **not** `design/comparator.sch`'s
 netlist: the parasitics-annotated extraction of `layout/comparator.gds` (see

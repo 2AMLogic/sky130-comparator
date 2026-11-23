@@ -1,0 +1,22 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision regen-time sweep -- vindiff=1mv corner=sf temp=125.0c (issue #9)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 125.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  6.63250e-09
+ Reference value :  1.33975e-08
+ Reference value :  2.01575e-08
+ Reference value :  2.69425e-08
+ Reference value :  3.36975e-08
+ Reference value :  4.04375e-08
+No. of Data Rows : 9034
+Note: Simulation executed from .control section 

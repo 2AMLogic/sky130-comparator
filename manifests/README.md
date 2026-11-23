@@ -318,21 +318,24 @@ Two properties of that design are load-bearing and easy to get wrong:
   exited 1 while still printing `status: "pass"` would grade `met` anyway. The
   script derives its exit code *from* the status, and the selftest asserts that
   no failing path ever prints `status: "pass"`.
-- **The emitted envelope deliberately carries no `provenance` block.** `klt`
-  0.6.0 lists no input-artifact field for the `generic` kind
-  (`_INPUT_ARTIFACT_FIELDS`), so a generic citation's `input_verified` is
-  always `null` and the grader never re-hashes anything. Had the envelope
-  carried a `provenance.input.content_hash`, the citation would pair a non-null
-  `content_hash` with `input_verified: null` — the exact shape rule 3 of the
-  gate below warns on, permanently. With no provenance block the citation's
-  `content_hash` is `null`, rule 3 stays silent, and the freshness claim is
-  anchored by the live re-hash instead of by a pin nothing checks. That gap is
-  filed generically, per `CLAUDE.md`'s friction protocol, as
+- **The emitted envelope deliberately carries no `provenance` block.** That
+  was a `klt` 0.6.0 fact: 0.6.0 listed no input-artifact field for the
+  `generic` kind (`_INPUT_ARTIFACT_FIELDS`), so a generic citation's
+  `input_verified` was always `null` and the grader never re-hashed anything;
+  had the envelope carried a `provenance.input.content_hash`, the citation
+  would have paired a non-null `content_hash` with `input_verified: null` —
+  the exact shape rule 3 of the gate below warns on. The gap was filed
+  generically, per `CLAUDE.md`'s friction protocol, as
   [2AMLogic/klayout-tools#2403](https://github.com/2AMLogic/klayout-tools/issues/2403)
-  — closed upstream against an unreleased build, so the pinned 0.6.0 still has
-  it; when a release carrying the fix is pinned here, this entry could become
-  file-backed with a provenance-anchored hash and the live re-hash could
-  retire.
+  and is closed at the pin: under the currently pinned `klt` 0.8.0 a
+  command-backed `generic` envelope with `provenance.input` is re-hashed and
+  `input_verified` is populated (observed 2026-11-23 by the probe recorded in
+  issue #234). The no-`provenance` shape and the live re-hash stay anyway,
+  by operator ruling (2026-11-23, option b, #234) rather than because `klt`
+  cannot anchor the citation: with no provenance block the citation's
+  `content_hash` is `null`, rule 3 stays silent, and the freshness claim
+  stays anchored by the command's live re-hash instead of moving the
+  attested T1 citation onto a different anchor.
 
 The report is cross-linked from
 [`sim/comparator-decision/README.md`](../sim/comparator-decision/README.md),
@@ -391,13 +394,16 @@ the selftest — it is the correct behavior for any future citation graded by
 a build that cannot re-hash.
 
 **Item 8's citation keeps it warning-free by construction, not by luck.** Its
-`input_verified` *is* `null` (no `klt` build can re-hash a `generic`
-envelope), but rule 3 warns only on a null `input_verified` paired with a
-**non-empty** `content_hash` — and item 8's envelope carries no `provenance`
-block, so its `content_hash` is `null` too and the rule does not fire. That is
-a deliberate choice, not an omission: the freshness the pin would have claimed
-is instead re-checked live by the command the entry runs. See "Item 8 — the
-characterization report" above.
+`input_verified` *is* `null` — under `klt` 0.6.0 no build could re-hash a
+`generic` envelope, and although the pinned 0.8.0 now can (observed
+2026-11-23 by the probe recorded in issue #234), the no-`provenance` shape
+was kept by operator ruling (2026-11-23, option b) — but rule 3 warns only
+on a null `input_verified` paired with a **non-empty** `content_hash`, and
+item 8's envelope carries no `provenance` block, so its `content_hash` is
+`null` too and the rule does not fire. That is a deliberate choice, not an
+omission: the freshness the pin would have claimed is instead re-checked
+live by the command the entry runs. See "Item 8 — the characterization
+report" above.
 
 Item 3's citation also now carries a `coverage` block (klayout-tools
 #2002) echoing the cited envelope's `layers_in_stream_without_rules` /
@@ -459,8 +465,12 @@ back, 2AMLogic/2am#7309); a post-merge auto-repair job (needs
 `permissions: contents: write` on this currently read-only workflow — CI
 pushing evidence to `main`); and accepting the recurrence. Until the queue is
 live, the response to a stale envelope on `main` stays the one-command item-9
-re-mint: `uvx --from klayout-tools==0.8.0 klt signoff --attest 9 --inventory
-attest/item9.json -o evidence/item9.json`.
+re-mint: `SELFTEST_ITEM9_REENTRY=1 uvx --from klayout-tools==0.8.0 klt signoff
+--attest 9 --inventory attest/item9.json -o evidence/item9.json`. The
+`SELFTEST_ITEM9_REENTRY=1` prefix is required because item 9's inventory
+declares `cold_start = "bash sim/selftest.sh --quick"`, and the nested `--quick`
+cold_start would otherwise gate on the very stale envelope being re-minted —
+see `sim/selftest.sh:95-104`.
 
 ## The integrator-view gate (issue #36)
 

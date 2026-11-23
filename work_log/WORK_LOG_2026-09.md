@@ -2,6 +2,13 @@
 
 Sections moved byte-for-byte from [WORK_LOG.md](../WORK_LOG.md) by `loom-daemon work-docs archive`.
 
+### 2026-09-23
+
+- **PR #45**: feat: add klt-generated comparator GDS layout with device-count CI gate
+- **Issue #44** (closed): layout: create GDS/OASIS for the comparator (T1 item 2)
+- **PR #43**: feat: full-corner Monte Carlo + PVT campaign (DR-005) -- ratify Decision-time, complete every row's corner set
+- **Issue #41** (closed): Run the full-corner Monte Carlo and PVT campaigns the ratified target-spec rows still lack
+
 ### 2026-09-22
 
 - **PR #40**: feat: static preamp ahead of StrongARM latch, closing the kickback gap (DR-004)

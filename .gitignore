@@ -33,6 +33,9 @@ layout/_gen/
 flow/build/
 # local klt install, created by the setup script
 .venv/
+# daemon-written account-pool availability ranking, one file per runtime
+# suffix (issue #399); live dispatch state, never committed, never quarantined
+.loom/account-ranking.*
 # >>> loom-managed (do not edit) >>>
 # Loom runtime state (don't commit these)
 .loom-in-use

@@ -17,27 +17,33 @@ Why a command and not a file
 ----------------------------
 `klt signoff --manifest` reports `input_verified` on every `met` citation --
 "was the pinned hash checked against the artifact itself, or only against
-another claim?". For a `"kind": "generic"` envelope (the only kind T1 item 8
-accepts) the pinned `klt` 0.6.0 lists no input-artifact field, so that answer
-is structurally always `null` and the grader cannot anchor the citation's
-freshness to anything. Filed upstream, generically, as
-2AMLogic/klayout-tools#2403 (closed there against an unreleased build; the
-pinned 0.6.0 still has the gap). The three file-backed shapes each fail a
-different way:
+another claim?". As of `klt` 0.6.0, the pin when this shape was chosen, a
+`"kind": "generic"` envelope (the only kind T1 item 8 accepts) listed no
+input-artifact field, so that answer was structurally always `null` and the
+grader could not anchor the citation's freshness to anything. The gap was
+filed upstream, generically, as 2AMLogic/klayout-tools#2403, and it is closed
+at the pin: under the currently pinned `klt` 0.8.0 a command-backed `generic`
+envelope with `provenance.input` is re-hashed and `input_verified` is
+populated (observed 2026-11-23 by the probe recorded in issue #234). As of
+0.6.0 the three file-backed shapes each failed a different way:
 
 - pinned `content_hash`, no matching envelope provenance -> `unmet` /
   `unverifiable_provenance`;
-- pinned `content_hash` + matching provenance -> `met`, but
-  `scripts/check-t1-signoff.py` rule 3 then warns on *every* run, forever;
+- pinned `content_hash` + matching provenance -> `met`, but with 0.6.0's
+  never-re-hashed `input_verified: null`, `scripts/check-t1-signoff.py`
+  rule 3 warned on *every* run (at 0.8.0 the re-hash turns that standing
+  warning into an affirmative pass);
 - no pinned `content_hash` -> `met`, no warning, and **no freshness anchor at
   all** -- a rotted report would keep grading `met`, which
   `manifests/design-evidence-tiers.md`'s "Staleness is failure" forbids.
 
-Running the hash comparison here, live, gives the anchor without the standing
+Running the hash comparison here, live, gives the anchor without a standing
 warning: the emitted envelope deliberately carries **no `provenance` block**,
 so the citation's `content_hash` is `null` and rule 3 never fires, while
 drift still renders the item `unmet` because it changes this envelope's
-`status`.
+`status`. Since 0.8.0 the grader could anchor this citation itself, so that
+shape and the hand-rolled compare are kept by operator ruling (2026-11-23,
+option b, issue #234), not because `klt` cannot.
 
 The drift signal is the `status` field, NOT the exit code
 ---------------------------------------------------------
@@ -342,13 +348,17 @@ def verify(root: Path) -> tuple[str, dict, list[str]]:
 def build_envelope(status: str, verification: dict, failures: list[str]) -> dict:
     """The `"kind": "generic"` envelope `klt signoff` grades item 8 on.
 
-    Deliberately carries **no `provenance` block**: `klt` 0.6.0 would read a
-    `provenance.input.content_hash` into the citation without ever
-    re-hashing it (`generic` has no `_INPUT_ARTIFACT_FIELDS` entry), which is
-    exactly the `input_verified: null` + non-empty `content_hash` shape
-    `scripts/check-t1-signoff.py` rule 3 warns on. The hashes live under
-    `verification` instead, where no grading rule reads them and no gate rule
-    mistakes them for a grader-verified pin.
+    Deliberately carries **no `provenance` block**. That was a `klt` 0.6.0
+    fact: 0.6.0 would read a `provenance.input.content_hash` into the
+    citation without ever re-hashing it (`generic` had no
+    `_INPUT_ARTIFACT_FIELDS` entry then), which is exactly the
+    `input_verified: null` + non-empty `content_hash` shape
+    `scripts/check-t1-signoff.py` rule 3 warns on. At the pinned 0.8.0 the
+    re-hash happens and `input_verified` is populated (observed 2026-11-23
+    by the probe recorded in issue #234); the no-`provenance` shape is kept
+    by operator ruling (2026-11-23, option b), so the hashes live under
+    `verification` instead, where no grading rule reads them and no gate
+    rule mistakes them for a grader-verified pin.
     """
     verified = verification["artifacts"]["verified"]
     pinned = verification["artifacts"]["pinned"]
@@ -577,7 +587,8 @@ def run_selftest() -> int:
     )
     cases.append(
         (
-            "envelope carries NO provenance block (rule-3 warning guard)",
+            "envelope carries NO provenance block (kept by operator ruling "
+            "2026-11-23 option b; see issue #234)",
             "provenance" not in env,
         )
     )
