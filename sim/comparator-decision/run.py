@@ -161,8 +161,12 @@ from offset import (  # noqa: E402,F401
     _bisect_probe_mv,
     _bisect_probe_name,
     _offset_bisect_deck,
+    OFFSET_INCOMPLETE_EXIT,
+    OffsetCampaignIncomplete,
     _pickoff_deck,
     run_offset_bisect,
+    run_offset_mc,
+    write_offset_evidence,
 )
 from noise import (  # noqa: E402,F401
     NoiseResult,
@@ -214,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--resume-dir", default="",
-        help="noise-tran: scratch directory for a CHUNKED, RESUMABLE campaign "
+        help="noise-tran / offset: scratch directory for a CHUNKED, RESUMABLE campaign "
         "(issue #100). Each deck's derived value is persisted under it as that "
         "deck completes, and a re-invocation of the IDENTICAL command runs only "
         "the decks still missing. The record is written by whichever invocation "
@@ -223,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-decks", type=int, default=None,
-        help="noise-tran: stop this invocation cleanly after N campaign decks "
+        help="noise-tran / offset: stop this invocation cleanly after N campaign decks "
         "(needs --resume-dir). N counts EVERY deck this invocation dispatches -- "
         "the same all-deck 'campaign decks' count the stop message reports -- so "
         "the four gain-calibration decks are included: on a fresh campaign a "
@@ -234,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-seconds", type=float, default=None,
-        help="noise-tran: stop this invocation cleanly once it has been running "
+        help="noise-tran / offset: stop this invocation cleanly once it has been running "
         "this long, checked between decks (needs --resume-dir). The wall-clock "
         "form of --chunk-decks, and the one that actually matches the ceiling "
         "given the measured 35-285 s per-deck spread; the clock starts at "
@@ -285,12 +289,12 @@ def main(argv: list[str] | None = None) -> int:
             ("--chunk-seconds", args.chunk_seconds is not None),
         ) if given
     ]
-    if chunk_flags and args.mode != "noise-tran":
+    if chunk_flags and args.mode not in ("noise-tran", "offset"):
         # Refused rather than ignored: silently dropping a resume flag would
         # make a long campaign look resumable when nothing was persisted.
         ap.error(
             f"{', '.join(chunk_flags)} only appl{'y' if len(chunk_flags) > 1 else 'ies'} "
-            f"to `noise-tran` (issue #100), not `{args.mode}`"
+            f"to `noise-tran` (issue #100) and `offset` (issue #154), not `{args.mode}`"
         )
     if (args.chunk_decks is not None or args.chunk_seconds is not None) and not args.resume_dir:
         ap.error("--chunk-decks / --chunk-seconds need --resume-dir to persist into")
@@ -304,10 +308,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if not unresolved else 1
 
     if args.mode == "offset":
-        result = offset.run_offset_mc(
-            corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n,
-            quiet=args.quiet, jobs=args.jobs,
-        )
+        try:
+            result = offset.run_offset_mc(
+                corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n,
+                quiet=args.quiet, jobs=args.jobs,
+                resume_dir=Path(args.resume_dir) if args.resume_dir else None,
+                chunk_decks=args.chunk_decks, chunk_seconds=args.chunk_seconds,
+            )
+        except offset.OffsetCampaignIncomplete as incomplete:
+            # Not a failure: the chunk did what it was asked; no record exists.
+            print(str(incomplete))
+            return offset.OFFSET_INCOMPLETE_EXIT
         if args.record:
             path = offset.write_offset_evidence(result, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
