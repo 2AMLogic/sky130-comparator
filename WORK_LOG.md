@@ -8,6 +8,27 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-23
 
+- **Issue #398** (closed): characterization-report: "the two hot skew corners fell" contradicts the sf/125 °C rise named in the same sentence
+- **PR #403**: fix: relabel two noise-tran figures that fell past their old CIs
+- **Issue #396** (closed): ladder.py grade: a response JSON missing the `corners` key raises an uncaught KeyError instead of the exit-2 input error
+- **PR #401**: fix: reject a grade response with no corners key (exit 2, naming the file)
+- **Issue #399** (closed): check-main-clean.sh exit 3: daemon-written .loom/account-ranking.<runtime> is not on the Loom-owned list
+- **PR #400**: fix: ignore daemon-written .loom/account-ranking.* in gitignore
+- **PR #383**: docs: Guide document maintenance update
+- **Issue #384** (closed): Reject zero-corner responses before selecting a regeneration ladder grade
+- **PR #387**: fix: reject zero-corner grade input as an error in all ladder modes
+- **Issue #395** (closed): Correct three derived-summary figures in the f6eeac7 re-qualification write-up (DR-012 + characterization report)
+- **PR #397**: fix: correct three derived-summary figures in re-qualification write-up
+- **Issue #361** (closed): Re-qualification campaign, final step: rebuild the characterization report, envelope and integrator view from the new-pin records; write the old/new decision record
+- **PR #394**: feat: rebuild the characterization evidence from the f6eeac7 records; record the old/new movement in DR-012
+- **Issue #389** (closed): Share stored-manifest validation so the evidence writer rejects duplicate names before CI
+- **PR #393**: fix(sim): share the stored-manifest schema with the evidence writer
+- **Issue #391** (closed): Documented item-9 re-mint command omits SELFTEST_ITEM9_REENTRY=1, so it always fails on a drifted envelope
+- **PR #392**: docs: prefix item-9 re-mint command with SELFTEST_ITEM9_REENTRY=1
+- **Issue #360** (closed): Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
+- **PR #388**: fix(sim): re-point schematic baselines at the f6eeac7 re-qualification records
+- **PR #369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **PR #379**: docs: Guide document maintenance update
 - **PR #381**: docs: date-stamp item 8's no-provenance rationale to the klt 0.6.0 era
 - **PR #366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
 - **PR #376**: fix: validate the append-only waiver manifest on every gate run
@@ -20,22 +41,44 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-22
 
+- **PR #374**: docs: Guide document maintenance update
+- **PR #372**: docs: Guide document maintenance update
+- **PR #370**: docs: Guide document maintenance update
 - **PR #371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
 - **PR #368**: fix: require RS_SOURCE_COMMIT to be a full 40-hex commit ID before stamping provenance
 - **Issue #365** (closed): git_info() accepts any RS_SOURCE_COMMIT shape; validate it before stamping provenance
 
 ### 2026-11-21
 
+- **PR #367**: docs: Guide document maintenance update
+- **PR #364**: docs: Guide document maintenance update
 - **PR #363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
 - **Issue #358** (closed): Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
 
 ### 2026-11-20
 
+- **PR #362**: docs: Guide document maintenance update
+- **PR #357**: docs: Guide document maintenance update
+- **PR #354**: docs: Guide document maintenance update
 - **PR #356**: docs: point README campaign status at the verified fleet batch route
 - **Issue #355** (closed): Update README campaign status now that the batch execution route is verified
 
+### 2026-11-19
+
+- **PR #353**: docs: Guide document maintenance update
+- **PR #352**: docs: Guide document maintenance update
+
 ### 2026-11-18
 
+- **PR #351**: docs: Guide document maintenance update
+- **PR #350**: docs: Guide document maintenance update
+- **PR #346**: docs: Guide document maintenance update
+- **PR #343**: docs: Guide document maintenance update
+- **PR #342**: docs: Guide document maintenance update
+- **PR #341**: docs: Guide document maintenance update
+- **PR #340**: docs: Guide document maintenance update
+- **PR #338**: docs: Guide document maintenance update
+- **PR #335**: docs: Guide document maintenance update
 - **PR #345**: gate: fail CI when WORK_PLAN.md's plan-body region carries a _Generated stamp
 - **Issue #344** (closed): Guide docs ticks keep re-adding a _Generated: stamp inside the guide:plan-body region, defeating the WORK_PLAN debounce
 - **PR #339**: docs: make the campaign spend quote unconditional, gate only the wait on ~$50
@@ -45,6 +88,13 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-17
 
+- **PR #333**: docs: Guide document maintenance update
+- **PR #331**: docs: Guide document maintenance update
+- **PR #330**: docs: Guide document maintenance update
+- **PR #327**: docs: Guide document maintenance update
+- **PR #324**: docs: Guide document maintenance update
+- **PR #323**: docs: Guide document maintenance update
+- **PR #300**: docs: Guide document maintenance update
 - **PR #332**: ci: report the sim/ append-only gate on merge_group commits (merge queue step 1)
 - **Issue #329** (closed): WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation)
 - **PR #319**: feat: re-derive and byte-compare the five ungated layout evidence artifacts in --check
@@ -70,6 +120,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-16
 
+- **PR #297**: docs: Guide document maintenance update
+- **PR #261**: docs: Guide document maintenance update
 - **PR #294**: chore(loom): resync installed Loom to v0.19.1302
 - **PR #316**: feat: extend toolchain-pin gate to the workflow's xschem literals
 - **PR #314**: test: hoist mutated-table parse out of assertRaises in the #290 guard negative tests
@@ -137,6 +189,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-14
 
+- **PR #251**: docs: Guide document maintenance update
+- **PR #223**: docs: Guide document maintenance update
 - **PR #238**: refactor(sim): split the comparator-decision driver into sibling experiment modules
 - **PR #233**: refactor: bind layout envelope to a scalar GDS path, not a one-element list
 - **PR #230**: refactor: route check-artifact-manifests selftest through _gate_common.report_cases
