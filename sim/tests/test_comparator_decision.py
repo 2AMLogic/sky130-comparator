@@ -2052,6 +2052,23 @@ class TestPowerIntegration(unittest.TestCase):
         self.assertIn("evaluate duty 0.5", text)
         self.assertIn("25mV", text)
         self.assertIn("40fF", text)
+        self.assertIn("supply_v=[1.8]", text)
+
+    def test_supply_endpoint_reaches_deck_and_record(self):
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8, vdd=1.62)
+        self.assertIn(".param vdd_val = 1.62", deck)
+        r = self._run(vdd=1.62)
+        self.assertEqual(r.vdd, 1.62)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("supply_v=[1.62]", text)
+        self.assertIn("| 1.62V |", text)
+
+    def test_vdd_flag_refused_outside_power(self):
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(io.StringIO()):
+                cd_run.main(["regen", "--vdd", "1.62"])
 
 
 class TestOffsetResumableCampaign(unittest.TestCase):
