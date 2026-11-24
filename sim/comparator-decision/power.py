@@ -115,6 +115,7 @@ class PowerResult:
     eval_energy_j: list[float]
     vindiff_mv: float = POWER_VINDIFF_MV   # carried so a record states what was run
     cload_ff: float = POWER_CLOAD_FF
+    conv_tol: float = POWER_CONV_TOL
     problems: list[str] = field(default_factory=list)
     log_text: str = ""
 
@@ -177,7 +178,8 @@ def analyze_power(
         e_rst.append(delivered_energy(t, idd, vdd, mid, b))
         e_full.append(delivered_energy(t, idd, vdd, a, b))
     r = PowerResult(corner, temp_c, vdd, period_s, duty, settle, e_full, e_rst, e_eval,
-                    vindiff_mv=vindiff_mv, cload_ff=cload_ff, log_text=log_text)
+                    vindiff_mv=vindiff_mv, cload_ff=cload_ff, conv_tol=conv_tol,
+                    log_text=log_text)
     if r.mean_energy_j <= 0:
         r.problems.append("SIGN: mean delivered energy is not positive (i(Vdd) sign or window error)")
     for k in range(n_periods):
@@ -200,7 +202,11 @@ def _power_deck(
     # Rising edge begins at td = period_ns (one full reset phase first), so
     # period k's window starts at td + k*period.
     pw_ns = duty * period_ns - RESET_TR_NS
-    tstop = period_ns * (n_periods + 1)
+    # The final window's right edge is t0 + n*P = (n+1)*P; the extra 1% of a
+    # period keeps the sampled span past it even if the last written sample
+    # falls short of tstop, so analyze_power cannot raise out of a run whose
+    # record should have named the problem (issue #427).
+    tstop = period_ns * (n_periods + 1) + 0.01 * period_ns
     lines = [
         *_deck_preamble(
             info, corner, temp_c,
@@ -299,11 +305,12 @@ def write_power_evidence(
     a("- **Integration window and sign**: delivered energy E = -VDD * integral(i(Vdd) dt) "
       "over complete periods [t0+k*P, t0+(k+1)*P); evaluate = first duty*P of each period "
       "(from rising-edge start), reset = remainder; trapezoidal, window edges interpolated")
-    first = results[0] if results else None
-    if first:
-        a(f"- **Settling exclusion**: first {first.settle} of {len(first.period_energy_j)} "
-          f"periods excluded; convergence = max retained-period spread / mean, "
-          f"tolerance {POWER_CONV_TOL:g}")
+    if results:
+        settle = _distinct([r.settle for r in results])
+        n_sim = _distinct([len(r.period_energy_j) for r in results])
+        conv_tol = _distinct([r.conv_tol for r in results])
+        a(f"- **Settling exclusion**: first {settle} of {n_sim} periods excluded; "
+          f"convergence = max retained-period spread / mean, tolerance {conv_tol}")
     a("- **Spec status**: no bound selected or changed; DRAFT/OPEN power row remains "
       "unratified. These are comparison figures, not compliance limits.")
     if note:

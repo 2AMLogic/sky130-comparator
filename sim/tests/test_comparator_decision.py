@@ -2065,6 +2065,31 @@ class TestPowerIntegration(unittest.TestCase):
         self.assertIn("supply_v=[1.62]", text)
         self.assertIn("| 1.62V |", text)
 
+    def test_record_states_the_supply_and_conv_tol_it_ran(self):
+        # Issue #427: conv_tol is a recorded condition like vdd -- derived
+        # from the results, not restated from the POWER_CONV_TOL constant.
+        r = self._run(vdd=1.62, conv_tol=0.02)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("supply_v=[1.62]", text)
+        self.assertIn("tolerance 0.02", text)
+        self.assertNotIn("tolerance 0.01", text)
+
+    def test_record_states_each_rows_settling_when_results_differ(self):
+        # Issue #427: the settling bullet read results[0] only; a mixed
+        # list must state each row's values, not just the first's.
+        text = "\n".join(self._record_lines([self._run(settle=2), self._run(settle=3)]))
+        self.assertIn("first 2/3 of 6 periods excluded", text)
+
+    def test_deck_tstop_extends_past_the_final_window(self):
+        # Issue #427: the final window's right edge is t0 + n*P = (n+1)*P;
+        # tstop equaled it exactly, so a last sample falling short of tstop
+        # pushed the window outside the sampled span and analyze_power
+        # raised instead of writing a record.
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8)
+        self.assertIn("tran 0.005n 90.1n", deck)
+
     def test_vdd_flag_refused_outside_power(self):
         err = io.StringIO()
         with self.assertRaises(SystemExit):
