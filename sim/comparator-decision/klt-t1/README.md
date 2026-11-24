@@ -26,7 +26,7 @@ manifest citation moves with it.
 | `noise_ir_ac` | Input-referred noise, AC corner-spread basis (DR-002) | 5 | covered by `report-noise.json` |
 | `power` | Supply / power | 5 | **declared gap**: DRAFT/OPEN, no ratified bound exists to verify against (DR-002; re-anchoring deliberately open per DR-004) |
 | `offset_sigma` | Offset sigma, schematic-DUT MC (DR-002/DR-005) | 6 | covered by `yield/report-tt_mm.json` + `yield/report-ss_mm.json` |
-| `offset_sigma_extracted` | Offset sigma, extracted-DUT N=200 sub-case | 6 | **justified gap**: waiting on [#412](../../../issues/412) — see [`gaps/offset-extracted.md`](gaps/offset-extracted.md) |
+| `offset_sigma_extracted` | Offset sigma, extracted-DUT N=200 sub-case | 6 | **justified gap**: waiting on [#412](https://github.com/2AMLogic/sky130-comparator/issues/412) — see [`gaps/offset-extracted.md`](gaps/offset-extracted.md) |
 | `noise_ir_tran` | Input-referred noise, regeneration-inclusive basis (DR-006 Amdt 1) | 6 | **justified gap**: waiting on [klayout-tools#7762](https://github.com/2AMLogic/klayout-tools/issues/7762) — see [`gaps/noise-tran.md`](gaps/noise-tran.md) |
 
 The Input-referred noise row is deliberately split across the two items the
@@ -135,9 +135,10 @@ All fleet runs: runner/client klt 0.9.x (`runner_version_check: "warn"`,
 versions recorded per report), ngspice-47 on the fleet `sim` image, sky130A
 @ `f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7` (the repo pin; each report's
 `worker_environment.pdk` records the stamp comparison). Batch receipts under
-`out-*/batch-receipt.json`. Per-unit decks are kept for the item-5 and
-calibration legs (`out-*/`); the Monte Carlo legs keep receipts only — their
-decks regenerate deterministically from the committed request + body.
+`out-*/batch-receipt.json`: all nine `out-*/` directories (item-5, calibration
+and Monte Carlo legs alike) commit `batch-receipt.json` only — no per-unit
+decks are kept. Decks regenerate deterministically from the committed
+request + body of each leg.
 
 ## Regeneration
 
