@@ -429,6 +429,15 @@ The grading consequence is real and is filed as friction rather than hidden:
 `klt signoff` accepts **only** a `klt pex` envelope for T1 item 7, so this
 evidence cannot be cited there
 ([`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478)).
+That last sentence is history, not the present: #2478 closed on 2026-09-25 and
+`klt pex --measure-command` drives exactly this caller-side post-processing, so
+item 7 is now cited from a real `klt pex` envelope —
+[`layout/pex-report.json`](../../layout/pex-report.json), produced by
+[`pex-batch.sh`](pex-batch.sh) on the batch route (issue #187; see
+`manifests/README.md` → item 7). The extract-plus-swap path this section
+documents remains the netlist source: the runners simulate the committed
+fragments it produces, and the adapter's byte-identity gate refuses any
+extraction that drifts from them.
 
 The extracted decks need a longer per-deck ngspice budget than the 120 s
 default -- hence `SIM_NGSPICE_TIMEOUT_S=900` above. That is a wall-clock
