@@ -211,6 +211,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
     ap.add_argument("--corner", default="tt")
     ap.add_argument("--temp", type=float, default=27.0)
+    ap.add_argument(
+        "--vdd", type=float, default=None,
+        help="power: supply voltage in V for a supply-endpoint point "
+        f"(default: the nominal {_shared.VDD} V). Refused for every other mode.",
+    )
     ap.add_argument("--seed", type=int, default=1, help="offset: MC base seed")
     ap.add_argument("--n", type=int, default=16, help="offset / noise-tran: MC sample count")
     ap.add_argument(
@@ -284,6 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.mode:
         ap.print_help()
         return 2
+
+    if args.vdd is not None and args.mode != "power":
+        ap.error(f"--vdd only applies to `power`, not `{args.mode}`")
 
     chunk_flags = [
         name for name, given in (
@@ -381,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         # route, not a local loop); defaults to the tt/27C anchor.
         points = power.run_power(
             points=[(args.corner, args.temp)], quiet=args.quiet,
+            vdd=_shared.VDD if args.vdd is None else args.vdd,
         )
         if args.record:
             path = power.write_power_evidence(points, note=args.note, supersedes=args.supersedes)

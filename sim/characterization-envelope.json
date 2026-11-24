@@ -11,7 +11,7 @@
     ],
     "report": {
       "path": "sim/characterization-report.md",
-      "content_hash": "sha256:95d109092c8f767bd343c1f61bb2236015ca767bdefa814b8b0ede3107d24bc0"
+      "content_hash": "sha256:60a24c7d8d13ca00cf9d61016825bac5a1ff6d5c807ad26c56081955f5ceb3de"
     },
     "artifacts": [
       {
@@ -277,6 +277,42 @@
       {
         "path": "sim/comparator-decision/records/20261122-123558-a22c816.md",
         "content_hash": "sha256:164a80240f08992c856c5d1a17b4c88961e0a65423cddfe615916d6a37e5f63e"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014428-353e129.md",
+        "content_hash": "sha256:3c126101f50dcbcdf2f55eaefda7b1e8ede264e74ca29b3a00dd7811c95c9c74"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014445-353e129.md",
+        "content_hash": "sha256:afa67df6ae9d8fd64c4d95fb4526eb8cb4cccddcf239804ccbf10b9def20bcaa"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014507-353e129.md",
+        "content_hash": "sha256:80aa56fc1cc9c4684fd8769752562e43fb7df56a95093ea520892fe6582bddd2"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014524-353e129.md",
+        "content_hash": "sha256:5768809dd7e5e2fb026d79b2e93c0b2434d466a61fa22a4b6b4667277a130e51"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014540-353e129.md",
+        "content_hash": "sha256:5f16badfd5ec75be5a3ed4d9e9d6e0be0776fa32b7aa951c9f1cea7393ea82c0"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014559-353e129.md",
+        "content_hash": "sha256:11193eb0dad2724d8e24007ca5e9098062b086c45e62b8728d3c4388d7687f7a"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014619-353e129.md",
+        "content_hash": "sha256:22c2d71c1274fd6abcfb90f56b14c5fe266eceed3da38d36e97043cb654611f5"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014632-353e129.md",
+        "content_hash": "sha256:29f79f5856daa4e5e70b97e0c50148a4bd6a2f9d1295f8fd1b3ae6393dccc0c8"
+      },
+      {
+        "path": "sim/comparator-decision/records/20261124-014653-353e129.md",
+        "content_hash": "sha256:38342d21b273a0566013fcf6f896eaeedf5e0955ba686f2a99e8f1ae9262d7c9"
       },
       {
         "path": "spec/dr-004-support/evaluate_idd_probe.spice",

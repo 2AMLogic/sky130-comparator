@@ -1,0 +1,29 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision supply-energy run -- corner=tt temp=27.0c period=10.0ns duty=0.5 vdd=1.62v (issue #134)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  5.84140e-09
+ Reference value :  1.18975e-08
+ Reference value :  1.84875e-08
+ Reference value :  2.52975e-08
+ Reference value :  3.21425e-08
+ Reference value :  3.90075e-08
+ Reference value :  4.58425e-08
+ Reference value :  5.27325e-08
+ Reference value :  5.96475e-08
+ Reference value :  6.64775e-08
+ Reference value :  7.33725e-08
+ Reference value :  8.02525e-08
+ Reference value :  8.71575e-08
+No. of Data Rows : 18104
+Note: Simulation executed from .control section 

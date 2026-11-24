@@ -17,7 +17,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/_shared.py",
         "passed": true,
-        "content_hash": "sha256:2c2a7a5cbad8d9b8bcc22779b52e0c17ba6189edff7912b483c26fb31cb9bd9b"
+        "content_hash": "sha256:72f23b81e0d224bc36ad16fcf9c70653cd1c8f92f20e091e038917d67fc40aa7"
       },
       {
         "check": "present",
@@ -52,7 +52,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/power.py",
         "passed": true,
-        "content_hash": "sha256:599b92ab3d7f02927c95187d22a2f9cf408eca689f03c5261ab35606de5a51e6"
+        "content_hash": "sha256:d480a2d47177bf2f0276ac2b21035ca3698b31afaad36cfaf3df08cef0d99a90"
       },
       {
         "check": "present",
@@ -73,7 +73,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/run.py",
         "passed": true,
-        "content_hash": "sha256:94ef17e7aada22ab7e39e6f9f1c32a05d86a4c8ec2dd0ba6257cd679fd0f9cf9"
+        "content_hash": "sha256:dc6ca2a659d46df2941e055f40d5b8e423b64a42a83aa7302a1a8b353065c3ef"
       },
       {
         "check": "present",
