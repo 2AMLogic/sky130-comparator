@@ -87,6 +87,10 @@
         "content_hash": "sha256:4e11b9f5112bf14804d56a386b67e6805c97b64608d73dd7761ae7e39cace750"
       }
     ],
+    "7": {
+      "file": "layout/pex-report.json",
+      "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c"
+    },
     "8": {
       "command": [
         "python3",

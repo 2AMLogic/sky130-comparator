@@ -5,7 +5,7 @@
   "tier": null,
   "t1_item_count": 11,
   "build_t1_item_count": 11,
-  "t1_met_count": 8,
+  "t1_met_count": 9,
   "source_doc": "manifests/design-evidence-tiers.md",
   "source_doc_content_hash": "sha256:c7a1e7e10627fae396007e0ff951734f37d95028b8f49f2e21e802e9f552f318",
   "build": {
@@ -359,10 +359,31 @@
       "notes": [
         "A `klt pex` citation is only as good as the **device-body bias** of the netlist it ran on (#1983). A device body left on an anonymous, deck-synthesized net has no DC bias path at all, which makes a resimulation of that extracted netlist *physically wrong, not merely imprecise* (`docs/cli/extract.md` \u2192 \"Coverage\") \u2014 the run converges and reports numbers, and those numbers are not comparable to the schematic leg they are being diffed against. A `klt pex` report states the condition in its own `body_bias` block (`docs/cli/pex.md`), and `klt signoff` surfaces it verbatim on this item's citation (`citation.body_bias`). **It does not grade on it**: an item-7 citation whose `body_bias.status` is `\"unbiased\"` still renders `met`, because the condition is a deck-coverage property some PDKs produce on every layout they extract, not a defect this command can adjudicate. So a claim citing item 7 must read that field and state whether its post-layout numbers were measured on a properly-biased netlist \u2014 claimant-enforced, exactly like item 3's DRC-coverage disclosure. The same discipline applies upstream at item 4: `klt lvs`'s `body_verification` block says whether the compare verified the body ties at all, and `\"unchecked\"` (a pre-extracted netlist) is not `\"verified\"`."
       ],
-      "status": "unmet",
-      "reason": "no_evidence",
+      "status": "met",
+      "reason": null,
       "graded_by_build": true,
-      "citation": null
+      "citation": {
+        "file": "layout/pex-report.json",
+        "command": null,
+        "kind": "pex",
+        "check_status": "pass",
+        "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c",
+        "input_verified": true,
+        "exit_status": 0,
+        "pex_inputs": [
+          {
+            "role": "reference_netlist",
+            "path": "sim/comparator-decision/testbench/comparator_core.spice",
+            "sha256": "sha256:e83be11dee6279b1a97a81c7cc27764147f15dabbac7f13df5134b75ad835ab4",
+            "status": "verified"
+          }
+        ],
+        "body_bias": {
+          "status": "biased",
+          "unbiased_device_count": 0,
+          "unbiased_nets": []
+        }
+      }
     },
     {
       "tier": "T1",

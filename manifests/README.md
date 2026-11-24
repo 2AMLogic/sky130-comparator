@@ -18,13 +18,15 @@ move.
 
 ## The current verdict, honestly
 
-**T1 is not awarded and no catalog tier is claimed. Three rows are open:
+**T1 is not awarded and no catalog tier is claimed. Two rows are open:
 item 5 "Full corner verification vs a ratified spec" and item 6 "Statistical
 claims carry Monte Carlo evidence", each `unmet` with `reason:
-partial_coverage` over declared gaps, and item 7 "Post-layout verification",
-still `unmet` with `reason: no_evidence`. Every other T1 item is `met`: item
+partial_coverage` over declared gaps. Every other T1 item is `met`: item
 1 "Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
-item 8 "Characterization report", item 9 "Testbenches shipped", item 10
+item 7 "Post-layout verification" (cited from `layout/pex-report.json`, a
+`klt pex --measure-command` envelope over the current `layout/comparator.gds`
+— #187; see the item 7 section below), item
+8 "Characterization report", item 9 "Testbenches shipped", item 10
 "Repo hygiene" and item 11 "Power delivery (structural)".**
 
 Items 5 and 6 moved off `no_evidence` in #188: both now carry real `klt`
@@ -152,13 +154,13 @@ default-scope match alone is not what is cited. Standing disclosures: resistor
 engine's (KLayout), not a cross-check. Full reasoning in
 [`layout/README.md`](../layout/README.md) → "Why item 4 is cited".
 
-**Item 7 ("Post-layout verification") is the second row with real evidence
-that cannot be cited — and here the blocker is the grader's own input
-contract, not a defect in the evidence** (issue #57). Post-layout
-re-simulation has run: `layout/extract-parasitics.json` and
+**Item 7 ("Post-layout verification") spent this repo's first year as the row
+whose blocker was the grader's own input contract, not a defect in the
+evidence** (issue #57). Post-layout re-simulation has run throughout:
+`layout/extract-parasitics.json` and
 `layout/comparator.extract.spice` are a committed `klt extract --parasitics`
-envelope and netlist over `layout/comparator.gds`, and five append-only
-records under `sim/comparator-decision/records/` re-measure four spec rows
+envelope and netlist over `layout/comparator.gds`, and the append-only
+records under `sim/comparator-decision/records/` re-measure the spec rows
 against it with the schematic-vs-extracted delta stated per row
 (`sim/comparator-decision/README.md` → "Post-layout records").
 
@@ -176,29 +178,70 @@ and upstream **has since closed it as completed**: `klt pex` grew a
 `--measure-command`, so caller-side post-processing no longer puts the envelope
 out of reach.
 
-What blocks the row today is this repo's own work, in order: **#125**
-re-measures the post-layout campaigns at the 0.35 µm geometry (the committed
-records predate the re-draw and are stale until re-measured), and then **#187**
-re-cites item 7 through `klt pex --measure-command` against those fresh
-numbers. #125 has landed (PR #371, closed); #187 is still open and is the
-increment that carries the re-citation — not this file.
+What blocked the row was this repo's own work, in order: **#125**
+re-measured the post-layout campaigns at the 0.35 µm geometry (records
+`20261122-*-a22c816`, PR #371), and then **#187** re-cited item 7 through
+`klt pex --measure-command` against those fresh numbers. Both have landed.
 
-**Status of #187 (partial).** `scripts/pex-measure-command.py` is the
-`--measure-command` adapter: it wraps `sim/comparator-decision`'s `regen`
-(decision time at 50 mV) and `kickback` (`loaded` peak) runners per graded
-corner and prints the measurement document `klt pex` expects (hermetic tests:
-`sim/tests/test_pex_measure_command.py`). It refuses an extracted netlist that
-differs from the committed `layout/comparator.extract.spice`, and a schematic
-netlist that differs from `sim/comparator-decision/testbench/comparator_core.spice`
-(so `--reference-netlist` must be that file). Offset sigma and
-`noise-tran` are not emitted (Monte Carlo / chunked, they exceed one
-`--measure-timeout-s` call). One local probe at `tt`/27 °C, extracted leg,
-gave 0.5825 ns and 2.2931 mV (the 2.2931 mV matches the committed #125
-kickback record). **Not done:** the seven-corner `klt pex` run, the committed
-`layout/pex-report.json`, the item-7 manifest citation and the `body_bias`
-disclosure; those need the batch route and are still open on #187. Until it lands the row stays
-`unmet`/`no_evidence` rather than being decorated with a citation of the wrong
-kind.
+**Item 7 is cited** from [`layout/pex-report.json`](../layout/pex-report.json):
+one `klt pex` envelope over the current `layout/comparator.gds` (input
+content-hash `sha256:d626061f…`, the same GDS pin items 3/4/11 cite), produced
+with `--measure-command scripts/pex-measure-command.py --corners all` and
+`--reference-netlist sim/comparator-decision/testbench/comparator_core.spice`,
+at the repo's toolchain pin (klt 0.8.0 / klayout 0.30.12, open_pdks `f6eeac7`).
+It was run on the batch route (`sim/comparator-decision/pex-batch.sh`, one
+repo-script job on the `sim` image profile with the pin pip-installed by the
+submitter — the #127 operator ruling; a dispatch worker is not a supported
+execution host). `status: "pass"` with 14 `delta[]` rows over the seven graded
+corners: `decision_time_50mV_ns` and `kickback_loaded_peak_mV` per corner,
+schematic vs extracted, every row `pass` (the honest post-layout degradation is
+carried in the deltas themselves — decision time +38 % to +48 % and kickback
++5 % to +35 % corner-dependent, the lumped-RC loading the extracted leg adds).
+The extraction inside the run re-hashes byte-identical to the committed
+`layout/comparator.extract.spice` (`extraction.netlist_sha256`), which is also
+the adapter's own gate: it refuses (exit 3) any extracted netlist that differs,
+and a schematic netlist that differs from the committed
+`sim/comparator-decision/testbench/comparator_core.spice`. The adapter
+(`scripts/pex-measure-command.py`, #409) wraps `sim/comparator-decision`'s
+existing `regen` and `kickback` runners per graded corner — it measures nothing
+of its own — and is covered by hermetic tests
+(`sim/tests/test_pex_measure_command.py`).
+
+**Both legs reproduce #125's committed records exactly** — the tolerance
+statement the re-citation owes: worst absolute deviation across all 28
+leg·corner·row values is 5e-16 ns (decision time; floating-point equality on
+the runners' 25 ps waveform grid) and 5e-5 mV (kickback; the records' own
+4-decimal print precision) against the extracted records
+`20261122-1236{11,12,13,14,15,16,17}-a22c816` (regen) and
+`20261122-123{556,559,600,601,602,603,604}-a22c816` (kickback), and the
+schematic records `20261121-033724`/`-033832`/`-033850`/`-033907`/`-033940`/
+`-033955`/`-034048` (regen) and `20261120-224448-059ee87` (kickback tt/27) +
+`20261121-033648`/`-034028`/`-034032`/`-034044`/`-034103`/`-034500`
+(kickback, the other six corners). The comparison uses this record set
+(`a22c816` extracted, `4d73da9`/`059ee87` schematic) as committed at the
+pinned open_pdks `f6eeac7` state — the same state
+`layout/pex-report.json`'s own provenance records, and the state #179's
+re-qualification is regenerating; no re-derived record set was substituted.
+
+**`body_bias` disclosure (checklist-enforced, claimant-stated).** The
+envelope's `body_bias` block reads `status: "biased"`,
+`unbiased_device_count: 0`, `unbiased_nets: []` — no device body sits on an
+anonymous deck-synthesized net, so the post-layout numbers this row is claimed
+from were measured on a **properly biased** extracted netlist. `klt signoff`
+surfaces the block verbatim on the citation (`citation.body_bias`) and does
+not grade on it; this paragraph is the claimant's read of the field.
+
+Two disclosures the envelope itself carries, both status-neutral by contract
+(`docs/cli/pex.md`): `model_mismatch` names the reference-vs-extracted device
+naming divergence (`res_high_po_0p35` schematic wrapper vs the extractor's
+parametrised base device, plus the split-finger nfet count — the #123/#125
+re-draw representation, 16 drawn vs 18 extracted device cards), and
+`measurement.mode: "command"` records that both legs were measured by the
+caller-supplied adapter, not by `klt sim` testbenches. Offset sigma and
+`noise-tran` are **not** rows of this envelope (Monte Carlo / chunked
+campaigns that cannot fit one `--measure-timeout-s` invocation); they remain
+item-6 gaps (`offset_sigma_extracted` → #412, `noise_ir_tran` →
+klayout-tools#7762), unchanged by this citation.
 
 **Item 11 ("Power delivery (structural)")** is cited as the compound entry
 `layout/erc-report.json` + `layout/lvs-report.json`. The ERC half is clean:
@@ -242,9 +285,8 @@ Both items stay `unmet`/`partial_coverage` because of their declared gaps
 klayout-tools#7762): a gap blocks the tier by design, and each gap names
 the issue that would close it.
 
-The still-open item 7 renders `unmet` with `reason: no_evidence`: apart from
-its post-layout envelope above (awaiting #187, as described there), no PEX
-citation exists. Item 8 is the one exception to the "no hand-assembled
+Item 7 renders `met` from the `pex`-kind envelope above (#187); items 5 and 6
+are the open rows. Item 8 is the one exception to the "no hand-assembled
 records" clause, and
 only because the checklist makes it one: it is the sole T1 item whose grading
 table accepts a hand-assembled record through the opt-in `generic` envelope
@@ -345,7 +387,7 @@ because citing it would tell a fleet integrator something untrue. Here the
 citation *is* made, because the thing it asserts — "an aggregated, current
 characterization artifact exists" — is exactly what item 8 asks for and is
 exactly true. What must not happen is the two being conflated: a `met` item 8
-next to an `unmet` item 7 does not mean the characterization is signed off, it
+next to an open item 5/6 does not mean the characterization is signed off, it
 means the aggregation exists.
 
 ### How freshness is enforced
