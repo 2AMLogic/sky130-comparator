@@ -590,7 +590,7 @@ materially, and the re-qualification reproduced the schematic column exactly.
 Schematic-derived, `run.py power` on the verified `repo-script` batch route
 (`sim` image, ngspice 47, sky130A `f6eeac7dad08`), one record per point at
 repository commit `353e129`, 10 ns period (100 MHz), 50 % evaluate duty,
-+10 mV differential input, 10 fF per output, first 3 of 8 periods excluded,
++10 mV differential input about a common mode held at the nominal VCM = 0.9 V (it is not tracked to VDD/2 at the supply endpoints, so the 1.62 V point ran at 55.6 % and the 1.98 V point at 45.5 % of supply), 10 fF per output, first 3 of 8 periods excluded,
 all nine points pass the sum (reset + evaluate = full period) and 1 %
 convergence self-checks. **These are experiment conditions, not a ratified
 clock rate or load**; average power scales as 1/period for a fixed energy per
@@ -611,7 +611,7 @@ decision, so the P column is only meaningful at the stated 100 MHz.
 Reading, without grading (no bound is ratified, so none is met or breached):
 
 - Energy per decision spans 3.263–4.493 pJ across the seven graded PVT points at 1.8 V (highest `ss`/−40 °C 4.493 pJ; lowest `ff`/125 °C 3.263 pJ).
-- Supply endpoints at `tt`/27 °C: 2.477 pJ at 1.62 V and 5.507 pJ at 1.98 V (3.773 pJ at 1.8 V), i.e. energy rises roughly with the square of supply.
+- Supply endpoints at `tt`/27 °C: 2.477 pJ at 1.62 V and 5.507 pJ at 1.98 V (3.773 pJ at 1.8 V), i.e. energy rises at roughly the fourth power of supply over this ±10 % range (fitted exponent ≈ 3.98: 1.62→1.80 V gives 3.99, 1.80→1.98 V gives 3.97), steeper than the square law of a dynamic-only CV²f expectation — a square law would under-predict the 1.98 V point by about 17 %. The DR-004 preamplifier's static term also scales with supply.
 - The reset/evaluate split is ≈ 24 % / 76 % at `tt`/27 °C. The reset share includes clock-edge and node-recharge charge, so it is not directly comparable with the ~95 µW static (DC) figure above.
 - Post-layout (`--dut extracted`) average power is **not** measured here; this campaign is schematic-derived only.
 

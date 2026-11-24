@@ -2066,9 +2066,11 @@ class TestPowerIntegration(unittest.TestCase):
         self.assertIn("| 1.62V |", text)
 
     def test_vdd_flag_refused_outside_power(self):
+        err = io.StringIO()
         with self.assertRaises(SystemExit):
-            with contextlib.redirect_stderr(io.StringIO()):
+            with contextlib.redirect_stderr(err):
                 cd_run.main(["regen", "--vdd", "1.62"])
+        self.assertIn("--vdd only applies to `power`", err.getvalue())
 
 
 class TestOffsetResumableCampaign(unittest.TestCase):

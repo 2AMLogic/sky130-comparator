@@ -11,7 +11,7 @@
     ],
     "report": {
       "path": "sim/characterization-report.md",
-      "content_hash": "sha256:5af136e09e2e853437b68a4d3791ce343d4a66ad33d19e952272806a8724f474"
+      "content_hash": "sha256:60a24c7d8d13ca00cf9d61016825bac5a1ff6d5c807ad26c56081955f5ceb3de"
     },
     "artifacts": [
       {
