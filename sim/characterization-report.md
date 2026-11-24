@@ -585,6 +585,36 @@ schematic→post-layout comparison on the as-drawn column is therefore reported
 here as an overlap of ranges, not a ratio: the layout does not move it
 materially, and the re-qualification reproduced the schematic column exactly.
 
+### Measured average power and energy per decision (issue #134)
+
+Schematic-derived, `run.py power` on the verified `repo-script` batch route
+(`sim` image, ngspice 47, sky130A `f6eeac7dad08`), one record per point at
+repository commit `353e129`, 10 ns period (100 MHz), 50 % evaluate duty,
++10 mV differential input, 10 fF per output, first 3 of 8 periods excluded,
+all nine points pass the sum (reset + evaluate = full period) and 1 %
+convergence self-checks. **These are experiment conditions, not a ratified
+clock rate or load**; average power scales as 1/period for a fixed energy per
+decision, so the P column is only meaningful at the stated 100 MHz.
+
+| Corner | Temp | Supply | E/period (pJ) | reset (pJ) | evaluate (pJ) | P_avg @ 10 ns (µW) | Convergence | Record |
+|---|---|---|---|---|---|---|---|---|
+| tt | 27 °C | 1.8 V | 3.7727 | 0.89111 | 2.8816 | 377.27 | 1.13e-05 | `sim/comparator-decision/records/20261124-014428-353e129.md` |
+| ss | -40 °C | 1.8 V | 4.4926 | 0.88679 | 3.6059 | 449.26 | 7.99e-06 | `sim/comparator-decision/records/20261124-014445-353e129.md` |
+| ff | 125 °C | 1.8 V | 3.263 | 0.88776 | 2.3752 | 326.3 | 1.78e-05 | `sim/comparator-decision/records/20261124-014507-353e129.md` |
+| sf | -40 °C | 1.8 V | 3.3212 | 0.95557 | 2.3657 | 332.12 | 9.56e-06 | `sim/comparator-decision/records/20261124-014524-353e129.md` |
+| sf | 125 °C | 1.8 V | 3.4619 | 0.8872 | 2.5747 | 346.19 | 1.33e-05 | `sim/comparator-decision/records/20261124-014540-353e129.md` |
+| fs | -40 °C | 1.8 V | 4.3202 | 0.87473 | 3.4454 | 432.02 | 1.05e-05 | `sim/comparator-decision/records/20261124-014559-353e129.md` |
+| fs | 125 °C | 1.8 V | 3.6186 | 0.81995 | 2.7986 | 361.86 | 1.41e-05 | `sim/comparator-decision/records/20261124-014619-353e129.md` |
+| tt | 27 °C | 1.62 V | 2.4767 | 0.67201 | 1.8047 | 247.67 | 1.09e-05 | `sim/comparator-decision/records/20261124-014632-353e129.md` |
+| tt | 27 °C | 1.98 V | 5.5066 | 1.1529 | 4.3536 | 550.66 | 1.12e-05 | `sim/comparator-decision/records/20261124-014653-353e129.md` |
+
+Reading, without grading (no bound is ratified, so none is met or breached):
+
+- Energy per decision spans 3.263–4.493 pJ across the seven graded PVT points at 1.8 V (highest `ss`/−40 °C 4.493 pJ; lowest `ff`/125 °C 3.263 pJ).
+- Supply endpoints at `tt`/27 °C: 2.477 pJ at 1.62 V and 5.507 pJ at 1.98 V (3.773 pJ at 1.8 V), i.e. energy rises roughly with the square of supply.
+- The reset/evaluate split is ≈ 24 % / 76 % at `tt`/27 °C. The reset share includes clock-edge and node-recharge charge, so it is not directly comparable with the ~95 µW static (DC) figure above.
+- Post-layout (`--dut extracted`) average power is **not** measured here; this campaign is schematic-derived only.
+
 ### Verdict
 
 - **There is no ratified bound on this row, so there is nothing for the design
@@ -593,12 +623,21 @@ materially, and the re-qualification reproduced the schematic column exactly.
 - **The DRAFT 50 µW figure is already exceeded by the static term alone**
   (~95 µW at 1.8 V), before any duty-cycle-dependent evaluate term. The DR-004
   preamplifier class costs static current by construction.
-- **No average-power figure exists at all**, because the row's "one decision per
-  clock edge at a stated clock rate" framing has no ratified clock rate behind
-  it — and that framing itself predates the preamplifier and is superseded in
+- **Schematic average-power and energy-per-decision figures now exist** (table
+  above, at an experiment-only 100 MHz), but they cannot be graded: the row's
+  "one decision per clock edge at a stated clock rate" framing has no ratified
+  clock rate behind it — and that framing itself predates the preamplifier and is superseded in
   substance. Re-anchoring the row is an open ratification decision (DR-004 Open
   items); per `CLAUDE.md` the DRAFT figures are **not** changed to accommodate
   the measurement.
+- **Open ratification questions** (stated, not decided; no spec bound or status
+  changed): (1) what clock rate and per-output load does the power row assume
+  — the measured 3.3–4.5 pJ/decision gives ≈ 330–450 µW at 100 MHz, ≈ 33–45 µW
+  at 10 MHz, so the DRAFT 50 µW is met or exceeded depending entirely on that
+  choice; (2) is the row defined on energy per decision (clock-rate
+  independent) rather than average power; (3) should the row be graded on the
+  ±10 % supply endpoints (2.48–5.51 pJ at `tt`/27 °C), and at which corner;
+  (4) should the bound be evaluated post-layout.
 - Post-layout coverage of this row is limited to the reset-phase current column
   above. No post-layout evaluate-phase or average-power measurement exists.
 
@@ -821,6 +860,15 @@ mentions and are not covered by this check.
 | `sim/comparator-decision/records/20260921-185208-bb32850.md` | 4 | `kickback` `tt`/27 °C after DR-003's soft-clock shaper (85.71 mV) — historical context only |
 | `sim/comparator-decision/records/20261121-033635-4d73da9.md` | 5 | `reset` 5-corner screen, schematic (re-qualified) — the \|I(VDD)\| column |
 | `sim/comparator-decision/records/20261122-123558-a22c816.md` | 5 | `reset` 5-corner screen, post-layout — corrected reissue; the \|I(VDD)\| column |
+| `sim/comparator-decision/records/20261124-014428-353e129.md` | 5 | `power` `tt`/27 °C at 1.8 V, schematic — 3.7727 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014445-353e129.md` | 5 | `power` `ss`/-40 °C at 1.8 V, schematic — 4.4926 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014507-353e129.md` | 5 | `power` `ff`/125 °C at 1.8 V, schematic — 3.263 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014524-353e129.md` | 5 | `power` `sf`/-40 °C at 1.8 V, schematic — 3.3212 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014540-353e129.md` | 5 | `power` `sf`/125 °C at 1.8 V, schematic — 3.4619 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014559-353e129.md` | 5 | `power` `fs`/-40 °C at 1.8 V, schematic — 4.3202 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014619-353e129.md` | 5 | `power` `fs`/125 °C at 1.8 V, schematic — 3.6186 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014632-353e129.md` | 5 | `power` `tt`/27 °C at 1.62 V, schematic — 2.4767 pJ per decision (batch route, issue #134) |
+| `sim/comparator-decision/records/20261124-014653-353e129.md` | 5 | `power` `tt`/27 °C at 1.98 V, schematic — 5.5066 pJ per decision (batch route, issue #134) |
 | `spec/dr-004-support/evaluate_idd_probe.spice` | 5 | the reset/evaluate supply-current probe deck behind DR-004's ~95 µW static figure |
 | `spec/decision-records/DR-002-target-spec-ratification.md` | 1–5 | the ratification disposition every row's Status cell reports |
 | `spec/decision-records/DR-004-comparator-preamp-supersession.md` | 1–5 | the topology supersession every figure above is measured at |
