@@ -33,10 +33,12 @@ an arbitrary file. So the netlist argument is checked, never silently ignored:
 Invoke as `python3 scripts/pex-measure-command.py` (klt runs the command
 without a shell; the file is also executable).
 
-`--corners` is required, deliberately: `all` is 7 corners x 3 serial local
-ngspice decks per invocation (42 per `klt pex` run) and never consults the
-batch backend, which the host rules forbid on a dispatch worker. Pass a single
-`--corners tt:27` for a probe; ask for `all` explicitly, off a dispatch worker.
+`--corners` is required, deliberately: `all` is 7 corners x 2 serial local
+ngspice decks per invocation (one regen deck + one kickback deck per corner;
+14 per invocation, 28 per `klt pex` run, which invokes the command once per
+side) and never consults the batch backend, which the host rules forbid on a
+dispatch worker. Pass a single `--corners tt:27` for a probe; ask for `all`
+explicitly, off a dispatch worker.
 
 Non-finite values (NaN/Infinity) are never written: they are emitted as a
 `null` value with a message, which `klt pex` renders as a named measurement
@@ -134,6 +136,12 @@ def measure_corner(regen, kickback, corner: str, temp_c: float) -> list[dict]:
     pt = pts[0]
     if pt.outcome == "resolved" and _finite(pt.regen_time_ns):
         decision = {"name": ROW_DECISION, "value": pt.regen_time_ns}
+    elif pt.outcome == "resolved":
+        decision = {
+            "name": ROW_DECISION,
+            "value": None,
+            "message": f"decision time is not finite ({pt.regen_time_ns!r})",
+        }
     else:
         decision = {
             "name": ROW_DECISION,
@@ -169,7 +177,7 @@ def build_document(measure, corners: list[tuple[str, float]], vdd: float) -> dic
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--corners", required=True,
-                    help="'all' (the seven graded corners: 21 serial local ngspice "
+                    help="'all' (the seven graded corners: 14 serial local ngspice "
                          "decks; not for a dispatch worker) or comma list like "
                          "tt:27,ss:-40")
     ap.add_argument("netlist", type=Path)

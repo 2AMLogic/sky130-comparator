@@ -6,6 +6,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -63,10 +64,29 @@ class Tests(unittest.TestCase):
         doc = pmc.build_document(
             lambda c, t: pmc.measure_corner(_Regen("resolved", nan), _Kick(nan), c, t),
             [("tt", 27.0)], 1.8)
-        for row in doc["corners"][0]["measurements"]:
+        rows = {x["name"]: x for x in doc["corners"][0]["measurements"]}
+        for row in rows.values():
             self.assertIsNone(row["value"])
-            self.assertIn("message", row)
+        self.assertEqual(rows[pmc.ROW_DECISION]["message"],
+                         f"decision time is not finite ({nan!r})")
+        self.assertEqual(rows[pmc.ROW_KICKBACK]["message"],
+                         f"kickback peak is not finite ({nan!r})")
         json.dumps(doc, allow_nan=False)  # must not raise
+
+    def test_infinite_regen_time_names_the_value(self):
+        inf = float("inf")
+        rows = pmc.measure_corner(_Regen("resolved", inf), _Kick(), "tt", 27.0)
+        self.assertIsNone(rows[0]["value"])
+        self.assertEqual(rows[0]["message"],
+                         f"decision time is not finite ({inf!r})")
+
+    def test_run_kickback_rejects_unknown_variants(self):
+        # The variants check runs before pdk.resolve_or_raise(), so calling it
+        # needs no PDK and no ngspice -- unlike the rest of run_kickback.
+        sys.path.insert(0, str(pmc.EXPERIMENT_DIR))
+        import kickback  # noqa: E402
+        with self.assertRaisesRegex(ValueError, "unknown kickback variant"):
+            kickback.run_kickback(corner="tt", temp_c=27.0, variants=("bogus",))
 
     def test_corners_flag_is_required(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as cm:
