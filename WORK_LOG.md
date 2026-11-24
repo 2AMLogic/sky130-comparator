@@ -8,6 +8,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-24
 
+- **PR #437**: docs(t1): fix relative issue link and out-*/ note in klt-t1 README
+- **Issue #435** (closed): Fix broken issue link and out-*/ provenance note in sim/comparator-decision/klt-t1/README.md
 - **PR #434**: feat(t1): grade items 5 and 6 from klt sim/yield envelopes over the ratified rows
 - **PR #433**: fix: power record derives conv_tol and settling from the run; tstop margin keeps the last window in span
 - **PR #431**: refactor: extract shared ResumableCampaign base from offset/noise-tran stores
