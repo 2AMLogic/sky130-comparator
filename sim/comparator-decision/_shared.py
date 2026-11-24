@@ -786,7 +786,7 @@ def post_layout_delta_lines(
 
 def _deck_preamble(
     info: pdk.PdkInfo, corner: str, temp_c: float, title: str, *,
-    params: str = "", rndseed: int | None = None,
+    params: str = "", rndseed: int | None = None, vdd: float = VDD,
 ) -> list[str]:
     """The `.lib/.temp/.param/Vdd` head every DUT deck opens with.
 
@@ -796,12 +796,13 @@ def _deck_preamble(
     space included. `rndseed`, when given, emits `.option rndseed=` between
     the `.param` line and the blank line ahead of `Vdd`, the exact position
     the seeded decks already used. `_trnoise_calibration_deck` deliberately
-    does not route through this: it is PDK-free by design."""
+    does not route through this: it is PDK-free by design. `vdd` overrides the
+    nominal supply (only `power` does, for its supply-endpoint points)."""
     lines = [
         title,
         f".lib {info.ngspice_lib} {corner}",
         f".temp {temp_c}",
-        f".param vdd_val = {VDD}{params}",
+        f".param vdd_val = {vdd}{params}",
     ]
     if rndseed is not None:
         lines.append(f".option rndseed={rndseed}")

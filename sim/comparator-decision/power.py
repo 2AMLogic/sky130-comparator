@@ -195,6 +195,7 @@ def analyze_power(
 def _power_deck(
     info: pdk.PdkInfo, corner: str, temp_c: float, log_name: str, *,
     period_ns: float, duty: float, vindiff_mv: float, cload_ff: float, n_periods: int,
+    vdd: float = VDD,
 ) -> str:
     # Rising edge begins at td = period_ns (one full reset phase first), so
     # period k's window starts at td + k*period.
@@ -204,7 +205,8 @@ def _power_deck(
         *_deck_preamble(
             info, corner, temp_c,
             f"* comparator-decision supply-energy run -- corner={corner} temp={temp_c}C "
-            f"period={period_ns}ns duty={duty} (issue #134)",
+            f"period={period_ns}ns duty={duty} vdd={vdd}V (issue #134)",
+            vdd=vdd,
         ),
         f"Vclk CLK 0 PULSE(0 {{vdd_val}} {period_ns}n {RESET_TR_NS}n {RESET_TR_NS}n {pw_ns}n {period_ns}n)",
         *_input_split_stimulus(vindiff_mv / 1000.0),
@@ -229,7 +231,7 @@ def run_power(
     points: list[tuple[str, float]] | None = None, *, period_ns: float = POWER_PERIOD_NS,
     duty: float = POWER_DUTY, vindiff_mv: float = POWER_VINDIFF_MV,
     cload_ff: float = POWER_CLOAD_FF, n_periods: int = POWER_N_PERIODS,
-    settle: int = POWER_SETTLE_PERIODS, quiet: bool = False,
+    settle: int = POWER_SETTLE_PERIODS, quiet: bool = False, vdd: float = VDD,
 ) -> list[PowerResult]:
     info = pdk.resolve_or_raise()
     results: list[PowerResult] = []
@@ -240,11 +242,12 @@ def run_power(
             deck = _power_deck(
                 info, corner, temp_c, log_name, period_ns=period_ns, duty=duty,
                 vindiff_mv=vindiff_mv, cload_ff=cload_ff, n_periods=n_periods,
+                vdd=vdd,
             )
             log_text = _shared._run(deck, Path(scratch), log_name)
             t, idd = toolchain.read_wrdata_csv(Path(scratch) / f"{log_name}.csv", 1)
             r = analyze_power(
-                t, idd, corner=corner, temp_c=temp_c, t0_s=period_ns * 1e-9,
+                t, idd, corner=corner, temp_c=temp_c, vdd=vdd, t0_s=period_ns * 1e-9,
                 period_s=period_ns * 1e-9, duty=duty, n_periods=n_periods,
                 settle=settle, vindiff_mv=vindiff_mv, cload_ff=cload_ff,
                 log_text=log_text,
@@ -252,7 +255,7 @@ def run_power(
             results.append(r)
             if not quiet:
                 print(
-                    f"  {corner}/{temp_c}C: E/period={r.mean_energy_j * 1e12:.4g}pJ "
+                    f"  {corner}/{temp_c}C@{vdd:g}V: E/period={r.mean_energy_j * 1e12:.4g}pJ "
                     f"(reset {r.mean_reset_j * 1e12:.4g} + eval {r.mean_eval_j * 1e12:.4g}) "
                     f"P={r.average_power_w * 1e6:.4g}uW conv={r.convergence:.3g} "
                     f"-> {'OK' if r.ok else '; '.join(r.problems)}"
@@ -276,15 +279,18 @@ def write_power_evidence(
     duty = _distinct([r.duty for r in results])
     vindiff_mv = _distinct([r.vindiff_mv for r in results])
     cload_ff = _distinct([r.cload_ff for r in results])
+    supply_v = _distinct([r.vdd for r in results])
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for r in results:
         safe = f"{r.corner}_{str(r.temp_c).replace('-', 'neg').replace('.', 'p')}c"
+        if r.vdd != VDD:
+            safe += f"_{r.vdd:g}v".replace(".", "p")
         evidence.write_new_text(corners_dir / f"power_{safe}.log", r.log_text)
     a_lines: list[str] = []
     a = a_lines.append
     a_lines += _record_header(record_id)
     a(f"- **Corner matrix run**: " + ", ".join(f"{r.corner}/{r.temp_c}C" for r in results)
-      + f" at supply_v=[{VDD}] ({len(results)} PVT point(s) run; "
+      + f" at supply_v=[{supply_v}] ({len(results)} PVT point(s) run; "
       f"coverage is exactly the points listed, not the full graded matrix)")
     a(f"- **Clock**: period {period_ns}ns ({freq_mhz} MHz), evaluate duty {duty}; "
       f"an experiment condition, NOT a ratified clock rate")
@@ -305,12 +311,12 @@ def write_power_evidence(
     a(f"- **Overall**: {'PASS' if all(r.ok for r in results) else 'FAIL'} "
       f"({sum(r.ok for r in results)}/{len(results)} corners pass all self-checks)")
     a("")
-    a("| Corner | Temp | E/period (pJ) | reset (pJ) | evaluate (pJ) | reset+eval-full (J) "
+    a("| Corner | Temp | Supply | E/period (pJ) | reset (pJ) | evaluate (pJ) | reset+eval-full (J) "
       "| P_avg (uW) | E/decision (pJ) | convergence | Result |")
-    a("|---|---|---|---|---|---|---|---|---|---|")
+    a("|---|---|---|---|---|---|---|---|---|---|---|")
     for r in results:
         resid = r.mean_reset_j + r.mean_eval_j - r.mean_energy_j
-        a(f"| {r.corner} | {r.temp_c}C | {r.mean_energy_j * 1e12:.5g} | {r.mean_reset_j * 1e12:.5g} "
+        a(f"| {r.corner} | {r.temp_c}C | {r.vdd:g}V | {r.mean_energy_j * 1e12:.5g} | {r.mean_reset_j * 1e12:.5g} "
           f"| {r.mean_eval_j * 1e12:.5g} | {resid:.2g} | {r.average_power_w * 1e6:.5g} "
           f"| {r.mean_energy_j * 1e12:.5g} | {r.convergence:.3g} "
           f"| {'OK' if r.ok else '; '.join(r.problems)} |")
