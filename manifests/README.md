@@ -65,12 +65,12 @@ byte appended to `LICENSE`): `--check` went `match` (exit 0) to `drifted`
 is cited from `evidence/item1.json`, the envelope `klt signoff --attest 1
 --inventory attest/item1.json -o evidence/item1.json` produces (4/4 checks,
 klt 0.8.0); item 9, "Testbenches shipped", from `evidence/item9.json`, produced
-the same way with `--attest 9 --inventory attest/item9.json` (32/32 checks,
+the same way with `--attest 9 --inventory attest/item9.json` (33/33 checks,
 klt 0.8.0). The manifest cites each with its inventory's hash
-(`sha256:5802a001…` and `sha256:fb6b6f2e…`), and CI re-runs both commands with
+(`sha256:5802a001…` and `sha256:c1ded433…`), and CI re-runs both commands with
 `--check`, which exits 3 (`drifted`) when an inventoried file changes. Item 1's
 envelope hashes `design/comparator.sch`, `design/netlist.sh` and
-`sim/comparator-decision/testbench/comparator_core.spice`; item 9's hashes 29
+`sim/comparator-decision/testbench/comparator_core.spice`; item 9's hashes 30
 `sim/**` paths — so **re-attest in the same change that edits any of them**.
 
 Unlike item 10's, these two envelopes are not pure file hashing: item 1 carries
