@@ -1,0 +1,12 @@
+{
+  "confidence": 0.95,
+  "target_ci_halfwidth": 0.01,
+  "measurements": {
+    "vos_ir_mv": {
+      "min": -15.0,
+      "max": 15.0,
+      "target_sigma": 3.0,
+      "spec_row": "offset_sigma"
+    }
+  }
+}

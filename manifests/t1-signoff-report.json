@@ -256,9 +256,51 @@
         "Both require the spec table itself to be ratified \u2014 verdicts against a draft spec are provisional by construction."
       ],
       "status": "unmet",
-      "reason": "no_evidence",
+      "reason": "partial_coverage",
       "graded_by_build": true,
-      "citation": null
+      "citation": null,
+      "citations_graded": [
+        {
+          "citation": "sim/comparator-decision/klt-t1/report-regen.json",
+          "rows": [
+            "t_dec"
+          ],
+          "status": "met",
+          "reason": null
+        },
+        {
+          "citation": "sim/comparator-decision/klt-t1/report-kickback.json",
+          "rows": [
+            "kickback"
+          ],
+          "status": "met",
+          "reason": null
+        },
+        {
+          "citation": "sim/comparator-decision/klt-t1/report-noise.json",
+          "rows": [
+            "noise_ir_ac"
+          ],
+          "status": "met",
+          "reason": null
+        }
+      ],
+      "detail": {
+        "failed_rows": [],
+        "uncovered_rows": [],
+        "declared_gaps": [
+          {
+            "id": "power",
+            "gap": "Supply/power is DRAFT/OPEN (DR-002): no ratified bound exists to verify against, and DR-004 deliberately leaves the row's re-anchoring open, so nothing is gradeable for this row yet"
+          }
+        ],
+        "unratified_rows": [],
+        "row_sources": {
+          "kickback": "derived",
+          "noise_ir_ac": "derived",
+          "t_dec": "derived"
+        }
+      }
     },
     {
       "tier": "T1",
@@ -268,9 +310,45 @@
       "text": "any accuracy, offset, or matching spec row is statistical; a corner matrix (or STA corner sweep) cannot validate it. This applies to whichever spec rows are actually statistical, regardless of block kind \u2014 most digital spec rows (functional correctness, Fmax, timing closure) are not, and a block whose spec has no statistical row must say so explicitly rather than omit the item. Where it does apply, MC runs need a recorded seed, sample count, a deterministic negative control, and results combined with (not instead of) process corners (#344). A `klt yield` JSON report \u2014 a yield estimate with its confidence interval, sample-size verdict, and Cpk/sigma-to-spec against the row's own limits \u2014 is the machine-checkable evidence for this item (`klt signoff`'s tier-verdict mode grades it the same way it grades the deterministic items above).",
       "notes": [],
       "status": "unmet",
-      "reason": "no_evidence",
+      "reason": "partial_coverage",
       "graded_by_build": true,
-      "citation": null
+      "citation": null,
+      "citations_graded": [
+        {
+          "citation": "sim/comparator-decision/klt-t1/yield/report-tt_mm.json",
+          "rows": [
+            "offset_sigma"
+          ],
+          "status": "met",
+          "reason": null
+        },
+        {
+          "citation": "sim/comparator-decision/klt-t1/yield/report-ss_mm.json",
+          "rows": [
+            "offset_sigma"
+          ],
+          "status": "met",
+          "reason": null
+        }
+      ],
+      "detail": {
+        "failed_rows": [],
+        "uncovered_rows": [],
+        "declared_gaps": [
+          {
+            "id": "offset_sigma_extracted",
+            "gap": "waiting on #412: the extracted-DUT N=200 offset campaign has not run (committed post-layout offset evidence is N=16 per corner, which cannot resolve the corners) -- rationale pinned at sim/comparator-decision/klt-t1/gaps/offset-extracted.md"
+          },
+          {
+            "id": "noise_ir_tran",
+            "gap": "waiting on 2AMLogic/klayout-tools#7762: the regeneration-inclusive transient-noise Monte Carlo has no klt sim expression and its per-draw values are not committed (records carry summary statistics only), so no klt yield report can be derived without inventing numbers -- rationale pinned at sim/comparator-decision/klt-t1/gaps/noise-tran.md"
+          }
+        ],
+        "unratified_rows": [],
+        "row_sources": {
+          "offset_sigma": "derived"
+        }
+      }
     },
     {
       "tier": "T1",
@@ -358,7 +436,7 @@
         "command": null,
         "kind": "generic",
         "check_status": "pass",
-        "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60",
+        "content_hash": "sha256:dcb10145e46076ae4da28a98437eb2230651cafa44ce408c4f1c619c6c9397dc",
         "input_verified": true,
         "exit_status": 0,
         "artifact_binding": {
@@ -367,15 +445,15 @@
             "path": "attest/item10.json",
             "scope": "repo"
           },
-          "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60",
+          "content_hash": "sha256:dcb10145e46076ae4da28a98437eb2230651cafa44ce408c4f1c619c6c9397dc",
           "input_verified": true,
-          "summary": "T1 item 10 (Repo hygiene): 11/11 attestation checks passed (klt signoff --attest)",
+          "summary": "T1 item 10 (Repo hygiene): 13/13 attestation checks passed (klt signoff --attest)",
           "source": "attest/item10.json",
           "attestation": {
             "producer": "klt signoff --attest",
             "inventory_schema_version": 1,
-            "check_count": 11,
-            "passed_count": 11
+            "check_count": 13,
+            "passed_count": 13
           }
         }
       }

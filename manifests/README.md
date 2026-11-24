@@ -18,13 +18,36 @@ move.
 
 ## The current verdict, honestly
 
-**T1 is not awarded and no catalog tier is claimed. Three rows are open —
-item 5 "Full corner verification vs a ratified spec", item 6 "Statistical
-claims carry Monte Carlo evidence" and item 7 "Post-layout verification", each
-`unmet` with `reason: no_evidence`. Every other T1 item is `met`: item 1
-"Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
-item 8 "Characterization report", item 9 "Testbenches shipped", item 10 "Repo
-hygiene" and item 11 "Power delivery (structural)".**
+**T1 is not awarded and no catalog tier is claimed. Three rows are open:
+item 5 "Full corner verification vs a ratified spec" and item 6 "Statistical
+claims carry Monte Carlo evidence", each `unmet` with `reason:
+partial_coverage` over declared gaps, and item 7 "Post-layout verification",
+still `unmet` with `reason: no_evidence`. Every other T1 item is `met`: item
+1 "Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
+item 8 "Characterization report", item 9 "Testbenches shipped", item 10
+"Repo hygiene" and item 11 "Power delivery (structural)".**
+
+Items 5 and 6 moved off `no_evidence` in #188: both now carry real `klt`
+envelopes over the ratified rows — three `klt sim` reports across the seven
+graded PVT corners for item 5, two `klt yield` reports over a fresh N=200
+offset campaign for item 6 — with the manifest's `spec_rows` declaring each
+item's row set, every row either covered by a **derived** citation (the
+envelope's own `spec_row`-tagged, limits-bearing measurements) or a declared
+gap naming the issue that would close it. They stay `unmet` because a
+declared gap blocks the tier by design (operator ruling on klayout-tools
+#5858: a gap is pending work, never coverage). See
+[`sim/comparator-decision/klt-t1/README.md`](../sim/comparator-decision/klt-t1/README.md)
+for the row map, the campaign record and every stated convention difference
+(the item-5 decision-time measurement's 50 ps trigger convention; the
+interpolated pick-off behind item 6's 64.052698 V/V gain), and the gap
+rationales under its `gaps/` directory. The open gaps: **`power`** (item 5 —
+DRAFT/OPEN, no ratified bound exists to verify against),
+**`offset_sigma_extracted`** (item 6 — waiting on #412, the extracted-DUT
+N=200 campaign) and **`noise_ir_tran`** (item 6 — waiting on
+[klayout-tools#7762](https://github.com/2AMLogic/klayout-tools/issues/7762);
+the transient-noise MC has no `klt sim` expression and its per-draw values
+are not committed, so no `klt yield` report can be derived without inventing
+numbers).
 
 The count of record is the report's own `t1_met_count`/`t1_item_count`; this
 file states the per-item verdicts but deliberately does not restate the tally
@@ -196,17 +219,36 @@ over-claiming; the limit is stated, not removed. Item 11 is the structural
 supply question only (IR drop/EM are `klt power`, outside it). See
 [`layout/README.md`](../layout/README.md) → "Why item 11 is cited".
 
-The three open items — 5, 6 and 7 — render `unmet` with
-`reason: no_evidence`: apart from item 7's post-layout envelope above (awaiting
-#125 then #187, as described there), no PEX citation exists, and this repo's
-`sim/` harness records evidence as append-only Markdown records, not
-`klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
-honestly for items 5 and 6 yet. Making those two gradeable — `klt sim` and
-`klt yield` envelopes over the ratified spec rows — is **#188** (open,
-`loom:blocked`). Item 8 is the one exception to that last clause, and
+**Items 5 and 6 — the #188 evidence model.** Both items are cited through
+the `spec_rows` multi-citation form (klayout-tools #2959/#2908, carried by
+the pinned klt 0.8.0): the manifest declares each item's row set, each
+citation names the rows it covers and pins its artifact by content hash, and
+the grader derives coverage from the envelope's own `spec_row`-tagged,
+`limits`-bearing measurements (`row_sources: "derived"`, not the manifest's
+say-so). The envelopes live in
+[`sim/comparator-decision/klt-t1/`](../sim/comparator-decision/klt-t1/README.md):
+`report-regen.json` / `report-kickback.json` / `report-noise.json` are
+`klt sim` runs over the seven graded PVT corners with the ratified target
+bounds as graded limits, and `yield/report-{tt_mm,ss_mm}.json` are `klt
+yield` reports over a fresh N=200 offset Monte Carlo run as `klt sim`
+`monte_carlo` requests (seed 1, sequential per-draw seeds — the committed
+campaigns' own convention — plus a 4×-sigma known-bad leg that grades
+`detected`, and a same-seed mismatch-off leg whose stdev is exactly 0). The
+old premise — "the `sim/` harness records evidence as append-only Markdown
+records, not `klt` JSON envelopes, so nothing gradeable can be cited" — is
+what #188 retired, by making the envelope-producing runs themselves klt-native.
+Both items stay `unmet`/`partial_coverage` because of their declared gaps
+(`power`; `offset_sigma_extracted` → #412; `noise_ir_tran` →
+klayout-tools#7762): a gap blocks the tier by design, and each gap names
+the issue that would close it.
+
+The still-open item 7 renders `unmet` with `reason: no_evidence`: apart from
+its post-layout envelope above (awaiting #187, as described there), no PEX
+citation exists. Item 8 is the one exception to the "no hand-assembled
+records" clause, and
 only because the checklist makes it one: it is the sole T1 item whose grading
 table accepts a hand-assembled record through the opt-in `generic` envelope
-(see its section below). Those `unmet` rows are the correct result per issue
+(see its section below). The open rows are the correct result per issue
 #31's own "An all-`unmet` manifest is a correct result" section: they are the
 machine-readable statement of the gap, and they must not be decorated with
 citations that do not actually support them (items 1, 2, 9 and 10 were
@@ -220,8 +262,10 @@ Items 1 (schematic `design/comparator.sch` + `design/netlist.sh`) and 9
 (`sim/comparator-decision` testbenches) are the worked example — their content
 was committed long before either row graded `met`, and both stayed
 `unmet`/`no_evidence` until the `klt signoff --attest` envelopes described above
-actually backed them. Items 5 and 6 are where that distinction still bites
-today: the `sim/` records exist, but no gradeable envelope cites them (#188).
+actually backed them. Items 5 and 6 were the same story until #188: the
+campaigns and records existed all along, and the rows stayed
+`unmet`/`no_evidence` until gradeable `klt sim`/`klt yield` envelopes actually
+cited them.
 The historical per-item prose context lives in tracker issue #3's edit history
 and `## Verified corrections`.
 
@@ -374,6 +418,10 @@ Regenerate whenever:
 
 - a citation is added, removed, or its pinned artifact changes (the
   committed record and the manifest must tell the same story),
+- an item-5/6 campaign is re-run: the new report moves its citation's pin —
+  refresh the manifest with `python3 scripts/t1-items56-envelope.py --pins`
+  (and `--check`, which the item-10 inventory runs in CI, verifies the pins
+  against the artifacts) in the same change,
 - the klt pin is bumped, or
 - the vendored checklist doc is re-pinned to a newer upstream revision.
 
@@ -390,7 +438,13 @@ envelope is refused.)
   that changed, vanished, or was replaced — CI goes red instead of
   grading yesterday's evidence); on any regression vs the committed
   record; on a met citation whose re-hashed input disagreed
-  (`input_verified: false`);
+  (`input_verified: false`). One scoped exception (#188): a cited item
+  whose fresh verdict is the *recorded* `spec_rows` `partial_coverage`
+  state — every citation inside it `met`, no uncovered or failing row, and
+  the committed report already showing the same verdict — passes, because
+  a declared gap keeps such an item unmet by design. Every deviation from
+  that exact state (a rotting citation, an uncovered row, a drift away
+  from a previously-`met` record) still fails;
 - **warns** (loudly, never passes silently) on a null `input_verified`
   with a recorded hash, a checklist-count move, or a new pass not yet
   reflected in the committed record;

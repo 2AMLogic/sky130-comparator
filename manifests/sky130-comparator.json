@@ -1,6 +1,36 @@
 {
   "block": "sky130-comparator",
   "kind": "analog",
+  "spec_rows": {
+    "5": [
+      {
+        "id": "t_dec"
+      },
+      {
+        "id": "kickback"
+      },
+      {
+        "id": "noise_ir_ac"
+      },
+      {
+        "id": "power",
+        "gap": "Supply/power is DRAFT/OPEN (DR-002): no ratified bound exists to verify against, and DR-004 deliberately leaves the row's re-anchoring open, so nothing is gradeable for this row yet"
+      }
+    ],
+    "6": [
+      {
+        "id": "offset_sigma"
+      },
+      {
+        "id": "offset_sigma_extracted",
+        "gap": "waiting on #412: the extracted-DUT N=200 offset campaign has not run (committed post-layout offset evidence is N=16 per corner, which cannot resolve the corners) -- rationale pinned at sim/comparator-decision/klt-t1/gaps/offset-extracted.md"
+      },
+      {
+        "id": "noise_ir_tran",
+        "gap": "waiting on 2AMLogic/klayout-tools#7762: the regeneration-inclusive transient-noise Monte Carlo has no klt sim expression and its per-draw values are not committed (records carry summary statistics only), so no klt yield report can be derived without inventing numbers -- rationale pinned at sim/comparator-decision/klt-t1/gaps/noise-tran.md"
+      }
+    ]
+  },
   "evidence": {
     "1": {
       "file": "evidence/item1.json",
@@ -18,6 +48,45 @@
       "file": "layout/lvs-report.json",
       "content_hash": "sha256:d626061fb4c125432fdba3f8a35aa5c9ee541d0ade0266e65ad86c12cd56434c"
     },
+    "5": [
+      {
+        "file": "sim/comparator-decision/klt-t1/report-regen.json",
+        "rows": [
+          "t_dec"
+        ],
+        "content_hash": "sha256:d48088d2d800d4426203563a08834e0285c0c50bed35b60637508f68c1edd6f6"
+      },
+      {
+        "file": "sim/comparator-decision/klt-t1/report-kickback.json",
+        "rows": [
+          "kickback"
+        ],
+        "content_hash": "sha256:f2c46624e0f0464217c4c4c8809c418e5a21a1947d39354515e094048cd6c001"
+      },
+      {
+        "file": "sim/comparator-decision/klt-t1/report-noise.json",
+        "rows": [
+          "noise_ir_ac"
+        ],
+        "content_hash": "sha256:e434ee5a157f25d34b8aed1bd347808dad0123779a3cb25a4c7d553e7fb27ce6"
+      }
+    ],
+    "6": [
+      {
+        "file": "sim/comparator-decision/klt-t1/yield/report-tt_mm.json",
+        "rows": [
+          "offset_sigma"
+        ],
+        "content_hash": "sha256:85893aadd51a3233701245eee8035bd0b126962e113bf2ae9de21a12b6a1f145"
+      },
+      {
+        "file": "sim/comparator-decision/klt-t1/yield/report-ss_mm.json",
+        "rows": [
+          "offset_sigma"
+        ],
+        "content_hash": "sha256:4e11b9f5112bf14804d56a386b67e6805c97b64608d73dd7761ae7e39cace750"
+      }
+    ],
     "8": {
       "command": [
         "python3",
@@ -30,7 +99,7 @@
     },
     "10": {
       "file": "evidence/item10.json",
-      "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60"
+      "content_hash": "sha256:dcb10145e46076ae4da28a98437eb2230651cafa44ce408c4f1c619c6c9397dc"
     },
     "11": [
       {
