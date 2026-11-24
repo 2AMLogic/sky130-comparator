@@ -39,6 +39,8 @@ on:
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   signoff:
@@ -66,6 +68,25 @@ jobs:
 
       - name: guide:plan-body region carries no timestamp stamp
         run: python3 scripts/check-work-plan-body.py gate
+
+      # WORK_LOG.md entries must be true of THIS repo's forge (issue #418):
+      # PR #415's first commit carried 161 entries from another repository
+      # and CI was green because nothing checked the file. For every
+      # `- **PR #N**` / `- **Issue #N**` line a PR ADDS, assert the number
+      # exists in {owner}/{repo} (from `origin`), the title matches exactly,
+      # and the entry sits under its real merge/close date heading. Exit 1 =
+      # untrue entry; exit 2 = the forge could not be consulted (no token,
+      # rate limit, network), which is neither a pass nor a content verdict.
+      - name: WORK_LOG gate selftest (hermetic)
+        run: python3 -I scripts/check-work-log.py selftest
+
+      - name: WORK_LOG entries added by this PR are true of this repo
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 -I scripts/check-work-log.py gate --base "$BASE_SHA" --head "$HEAD_SHA"
 
       # sim/ evidence is append-only (issue #138, sim/README.md "Append-only
       # rule"). The characterization-envelope freshness guard below cannot
