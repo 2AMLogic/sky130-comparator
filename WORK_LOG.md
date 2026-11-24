@@ -8,6 +8,16 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-24
 
+- **PR #434**: feat(t1): grade items 5 and 6 from klt sim/yield envelopes over the ratified rows
+- **PR #433**: fix: power record derives conv_tol and settling from the run; tstop margin keeps the last window in span
+- **PR #431**: refactor: extract shared ResumableCampaign base from offset/noise-tran stores
+- **PR #430**: feat: batch-route power records, supply-endpoint option and report aggregation
+- **PR #426**: fix: correct pex-measure deck counts and name non-finite decision times
+- **Issue #429** (closed): Consolidate OffsetCampaign and NoiseTranCampaign: duplicated resumable-deck store
+- **Issue #427** (closed): power mode: supply voltage and convergence tolerance in the record are still writer-side constants, and the last integration window has zero margin
+- **Issue #424** (closed): pex-measure adapter follow-ups: stale --corners deck arithmetic, unnamed non-finite decision message, untested variants validation
+- **Issue #188** (closed): Make T1 items 5 and 6 gradeable: klt sim and klt yield envelopes over the ratified rows
+- **Issue #134** (closed): Measure comparator supply energy and average power at stated clock conditions
 - **PR #422**: ci: verify WORK_LOG.md entries against this repo's forge
 - **PR #414**: feat: add supply-energy power mode to comparator-decision runner
 - **Issue #423** (closed): power mode: evidence record states default conditions, not the ones actually simulated
