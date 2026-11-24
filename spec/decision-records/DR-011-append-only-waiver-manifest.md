@@ -19,13 +19,15 @@ which would leave a red run and no in-repo record.
    "paths", "base_sha"}]}`. `paths` are exact protected paths (no globs);
    `decision_record` is a path under `spec/decision-records/`.
 2. A protected path whose only change is a **removal** is waived iff an entry
-   lists it, the cited record's `Status` line begins `ratified` **as read at
-   the comparison base**, the record contains the waived path as a **literal
-   string as read at the comparison base** (condition 4, issue #348: same
-   read as the status check, so a PR cannot edit the record to name its own
-   path; literal substring, no globs, no path normalisation), and the path's
-   blob at the base equals its blob at the entry's `base_sha`. Modification
-   and type change are never waivable.
+   lists it, the cited record's `Status` line reads `ratified` followed by
+   a space, `(` or end of line **as read at the comparison base** (so
+   `ratified-then-withdrawn` does not pass), the record contains the waived
+   path as a **literal whole token as read at the comparison base** -- the
+   path not preceded or followed by another path character
+   (`[A-Za-z0-9._/-]`; condition 4, issue #348: same read as the status
+   check, so a PR cannot edit the record to name its own path; no globs, no
+   path normalisation), and the path's blob at the base equals its blob at
+   the entry's `base_sha`. Modification and type change are never waivable.
 3. Anything else fails as before, naming the path and the reason (unlisted,
    record not ratified, record missing at base, record does not name the
    path, bytes differ, not a removal).
@@ -35,6 +37,12 @@ which would leave a red run and no in-repo record.
    status is read at the base, so a PR cannot ratify its own waiver.
 5. This record does not self-ratify. It follows the usual path: two key
    reviews, then the operator.
+6. The condition-4 bound is the **literal whole-token mention itself**, not
+   a parsed "ruled on" meaning: any whole-token mention of the path passes,
+   including one inside a rejected alternative or a "do not remove"
+   sentence. Requiring "ruled" semantics would mean parsing the record's
+   prose, which is brittle; operator ruling #348 chose literal naming, and
+   the whole-token match is as far as that literal rule goes (issue #373).
 
 ## Alternatives considered
 
@@ -67,10 +75,11 @@ beyond this mechanism is implied.
   accordingly is #325's work. (Not traced against the ratification lane.)
 - The manifest is a standing, reviewable list of every exception ever made to
   append-only; each entry is traceable to a ratified record **that names the
-  waived path verbatim** (condition 4): a waiver can only cite a record that
-  ruled on that path, so "traceable" is a literal containment check at the
-  base, not an intention. Records written before this condition must list
-  their waived paths when a waiver cites them.
+  waived path verbatim** (condition 4): a waiver can only cite a record
+  whose text contains the path as a whole token, so "traceable" is a
+  literal whole-token check at the base, not an intention. Records written
+  before this condition must list their waived paths when a waiver cites
+  them.
 - Condition 4 costs one extra clause per waiver: the cited record must list
   each waived path verbatim, and future removal rulings must name the paths
   they remove.

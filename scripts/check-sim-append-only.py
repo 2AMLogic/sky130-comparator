@@ -45,8 +45,11 @@ Waivers (issue #326, DR-011): a protected path whose only change is a REMOVAL
 globs). The manifest is read from head (a PR adds its own entry), but the
 cited record is read at the comparison BASE, so a PR cannot ratify its own
 waiver or add the path to the record in the same diff: the record's `Status`
-must begin `ratified` at the base AND it must contain the waived path as a
-literal string there (condition 4, issue #348); the path's blob at the base
+must read `ratified` followed by a space, `(` or end of line at the base
+(so `ratified-then-withdrawn` fails) AND it must contain the waived path
+there as a literal whole token -- not preceded or followed by a path
+character `[A-Za-z0-9._/-]`, so a longer path such as `.../a.md.bak` does
+not waive `.../a.md` (condition 4, issue #348); the path's blob at the base
 must equal its blob at the entry's `base_sha`. M and T are never waivable.
 A malformed manifest fails.
 
@@ -77,7 +80,9 @@ PROTECTED_RE = re.compile(
 ZERO_SHA = "0" * 40
 WAIVER_MANIFEST = "manifests/append-only-waivers.json"
 DR_DIR = "spec/decision-records/"
-STATUS_RE = re.compile(r"^- \*\*Status\*\*:\s*(.*)$", re.M)
+STATUS_RE = re.compile(r"^- \*\*Status\*\*:[ \t]*(.*)$", re.M)
+# The token, optionally wrapped in matching `*` emphasis, then a delimiter.
+RATIFIED_RE = re.compile(r"(?:(\*{1,3})ratified\1|ratified)(?: |\(|\r?$)")
 STATUS_NAMES = {"M": "modified", "D": "removed", "T": "file-type changed"}
 
 
@@ -209,21 +214,23 @@ def load_waivers(repo, head_sha):
 def record_ratified_at(repo, base_sha, record, path=None):
     """Return (ratified, reason) for `record` read at `base_sha`.
 
-    With `path`, the record must additionally contain the path as a literal
-    substring at the base (DR-011 condition 4): a waiver can only cite a
-    record that ruled on that path. Same single read as the Status check, so
-    a PR cannot edit the record to name its own path.
+    With `path`, the record must additionally name the path at the base as
+    a literal whole token (DR-011 condition 4): the path not preceded or
+    followed by another path character, so a longer path that merely
+    contains it does not count. Same single read as the Status check, so a
+    PR cannot edit the record to name its own path.
     """
     rc, out = git(repo, "show", f"{base_sha}:{record}")
     if rc != 0:
         return False, f"record {record} is missing at the base"
     text = out.decode("utf-8", "replace")
     m = STATUS_RE.search(text)
-    status = m.group(1).replace("*", "").strip().lower() if m else ""
-    if not status.startswith("ratified"):
+    status = m.group(1).lower() if m else ""
+    if not RATIFIED_RE.match(status):
         return False, (f"record {record} is not ratified at the base "
-                       f"(Status: {status or 'absent'})")
-    if path is not None and path not in text:
+                       f"(Status: {status.strip() or 'absent'})")
+    if path is not None and not re.search(
+            rf"(?<![A-Za-z0-9._/-]){re.escape(path)}(?![A-Za-z0-9._/-])", text):
         return False, f"record {record} does not name {path} at the base"
     return True, ""
 
@@ -516,6 +523,41 @@ def run_selftest(_args):
            wrun(lambda r: _rm(r, REC),
                 lambda b: entry(b, rec=DRQ))[0], [REC, "missing at the base"])
 
+    for st, tail in (("**ratified**", "end of line"),
+                     ("**ratified** (round 20261118-r16)",
+                      "a parenthetical"),
+                     ("**ratified** -- ruled", "a double-dash continuation")):
+        cases.append((f"waiver: Status 'ratified' followed by {tail} "
+                      "passes",
+                      waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                     status=st), REC)))
+    for tag, st in (("a tab", "**ratified**\t-- ruled"),
+                    ("a nonbreaking space", "**ratified**\u00a0-- ruled")):
+        expect(f"waiver: Status 'ratified' followed by {tag} fails",
+               wrun(lambda r: _rm(r, REC), entry, status=st)[0],
+               [REC, "not ratified"])
+    for tag, st in (("a mid-token asterisk", "rati*fied"),
+                    ("a trailing tab", "ratified\t"),
+                    ("a trailing nonbreaking space", "ratified "),
+                    ("mismatched emphasis", "**ratified*")):
+        expect(f"waiver: Status with {tag} fails",
+               wrun(lambda r: _rm(r, REC), entry, status=st)[0],
+               [REC, "not ratified"])
+    for tag, st in (("plain token", "ratified"),
+                    ("bold token", "**ratified**"),
+                    ("italic token", "*ratified*")):
+        cases.append((f"waiver: Status as {tag} passes",
+                      waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                     status=st), REC)))
+    expect("waiver: empty Status line followed by prose fails",
+           wrun(lambda r: _rm(r, REC), entry,
+                status="\n\nRatified records are listed below.")[0],
+           [REC, "not ratified"])
+    expect("waiver: Status 'ratified-then-withdrawn' fails",
+           wrun(lambda r: _rm(r, REC), entry,
+                status="**ratified-then-withdrawn**")[0],
+           [REC, "not ratified"])
+
     def self_ratify(r):
         _write(r, DRP, "# DR\n\n- **Status**: ratified\n")
         _rm(r, REC)
@@ -535,11 +577,38 @@ def run_selftest(_args):
            "only at head)",
            wrun(name_at_head, entry, named=())[0], [REC, "does not name"])
 
-    expect("waiver: waived path that is a prefix of a named path passes "
-           "(literal match, pinned)",
+    expect("waiver: record naming the path in backticks waives it "
+           "(whole token)",
            [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
-                                named=(REC + ".bak",)), REC)
+                                named=(f"`{REC}`",)), REC)
            else ["x"], clean=True)
+    expect("waiver: record naming the path followed by punctuation waives "
+           "it (whole token)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(f"{REC},",)), REC)
+           else ["x"], clean=True)
+    expect("waiver: named path with the waived path as a mere prefix "
+           "(a.md.bak) does not waive it (whole-token match)",
+           wrun(lambda r: _rm(r, REC), entry, named=(REC + ".bak",))[0],
+           [REC, "does not name"])
+    expect("waiver: path adjacent to non-ASCII text still waives "
+           "(ASCII boundary class)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(f"{REC}\u3092\u53c2\u7167",)), REC)
+           else ["x"], clean=True)
+    expect("waiver: path preceded by non-ASCII text still waives "
+           "(ASCII boundary class)",
+           [] if waived_ok(wrun(lambda r: _rm(r, REC), entry,
+                                named=(f"\u53c2\u7167{REC}",)), REC)
+           else ["x"], clean=True)
+    expect("waiver: the path as a sub-path of a longer named directory "
+           "path does not waive it",
+           wrun(lambda r: _rm(r, REC), entry,
+                named=("dir/" + REC,))[0], [REC, "does not name"])
+    expect("waiver: the path followed by a period (a path character) does "
+           "not waive it",
+           wrun(lambda r: _rm(r, REC), entry, named=(f"{REC}.",))[0],
+           [REC, "does not name"])
 
     msgs, oks = wrun(lambda r: (_rm(r, REC), _rm(r, LOG)),
                      lambda b: entry(b, paths=(REC, LOG)),
