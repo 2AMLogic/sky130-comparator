@@ -2158,7 +2158,7 @@ class TestOffsetResumableCampaign(unittest.TestCase):
             plain = self._run()
             self.fake.calls.clear()
             with tempfile.TemporaryDirectory() as tmp:
-                with unittest.mock.patch.object(cd_run.offset.os, "replace", flaky_replace):
+                with unittest.mock.patch.object(cd_run._shared.os, "replace", flaky_replace):
                     with self.assertRaises(OSError):
                         self._run(resume_dir=Path(tmp))
                 # The half-written deck is not a checkpoint; its temp file is inert.

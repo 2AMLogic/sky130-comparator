@@ -147,7 +147,7 @@ convention `sim/README.md` records for `sim/harness/`):
 | Module | Owns |
 |---|---|
 | [`run.py`](run.py) | the CLI (`main()`), and a read-only re-export of the flat attribute surface the unit suite reads |
-| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`) and the evidence-record head/tail |
+| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`), the evidence-record head/tail, and the resumable chunked-campaign store (`ResumableCampaign`, issue #429) that `offset` and `noise-tran` subclass |
 | [`regen.py`](regen.py) | `regen` |
 | [`offset.py`](offset.py) | `offset` and `offset-bisect` (they share the `_pickoff_*` machinery) |
 | [`noise.py`](noise.py) | `noise` |
