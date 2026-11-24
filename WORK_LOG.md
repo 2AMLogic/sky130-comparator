@@ -6,8 +6,34 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-24
+
+- **PR #422**: ci: verify WORK_LOG.md entries against this repo's forge
+- **PR #414**: feat: add supply-energy power mode to comparator-decision runner
+- **Issue #423** (closed): power mode: evidence record states default conditions, not the ones actually simulated
+- **Issue #418** (closed): No gate verifies WORK_LOG.md entries against this repo's own forge (cross-repo contamination reached review in PR #415)
+
 ### 2026-11-23
 
+- **PR #425**: docs: DR-006 header pointer names Amendment 2 and covers §4
+- **PR #421**: test: cover schematic_comparison differing-environment branch
+- **PR #420**: fix: harden pex measure adapter (required --corners, loaded-only kickback, NaN-safe output)
+- **PR #419**: fix: run selftest --quick attestation gates under the pinned klt
+- **PR #413**: docs: replace self-contradicted ordering claim in corner-scaling summary
+- **PR #411**: feat: resumable chunked offset campaigns with bound checkpoints
+- **PR #409**: feat: add klt pex measure-command adapter for decision-time and kickback rows
+- **PR #408**: fix: grade exits 2 naming the file on unreadable or malformed response
+- **PR #405**: fix: stop calling ff/125C a skew corner; record the skew-naming convention
+- **PR #382**: docs: date the ERC spec-pinning rationale to klt 0.6.0
+- **Issue #417** (closed): sim/selftest.sh --quick fails on item-10 drift when the host klt is newer than the 0.8.0 pin
+- **Issue #416** (closed): Harden scripts/pex-measure-command.py: host-rule-safe --corners default, wasted ideal kickback deck, NaN-safe stdout
+- **Issue #407** (closed): prose: comparator-decision README's "ordering is not simply 'cold is low, hot is high'" is contradicted by the seven figures it cites
+- **Issue #406** (closed): spec: DR-006's "Amended by" header pointer names only Amendment 1, and tells a §4 citer §4 is unchanged
+- **Issue #404** (closed): ladder.py grade: an unreadable or undecodable response file raises an uncaught traceback instead of the exit-2 input error
+- **Issue #402** (closed): prose: "skew corner" names three different corner sets across the noise write-ups
+- **Issue #390** (closed): Restore test coverage for schematic_comparison()'s differing-environment branch
+- **Issue #241** (closed): Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check
+- **Issue #179** (closed): Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
 - **Issue #398** (closed): characterization-report: "the two hot skew corners fell" contradicts the sf/125 °C rise named in the same sentence
 - **PR #403**: fix: relabel two noise-tran figures that fell past their old CIs
 - **Issue #396** (closed): ladder.py grade: a response JSON missing the `corners` key raises an uncaught KeyError instead of the exit-2 input error
