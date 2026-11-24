@@ -17,7 +17,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/_shared.py",
         "passed": true,
-        "content_hash": "sha256:72f23b81e0d224bc36ad16fcf9c70653cd1c8f92f20e091e038917d67fc40aa7"
+        "content_hash": "sha256:89ffa81dff74c55d2694abcfde03685f8edcbd566e71a1b4c8a66a6430a70a1a"
       },
       {
         "check": "present",
@@ -38,14 +38,14 @@
         "role": "testbench",
         "path": "sim/comparator-decision/noise_tran.py",
         "passed": true,
-        "content_hash": "sha256:2ae91ce321170cad784ae9cb7eb2da1017bba86da7ceb62e9a35e4a3da243dfa"
+        "content_hash": "sha256:06919ec22ae733b2fa75d31b6c9034d942816df3cc8c7f96289d2a51274a7e2c"
       },
       {
         "check": "present",
         "role": "testbench",
         "path": "sim/comparator-decision/offset.py",
         "passed": true,
-        "content_hash": "sha256:c53cd69987d0f45d785dede9a8be8d4e26b98f5133dc0f8f2e0262a535d420b0"
+        "content_hash": "sha256:db35161ecaf78a865467524505d82fe06dc669686ef626a7f86a95f492894572"
       },
       {
         "check": "present",

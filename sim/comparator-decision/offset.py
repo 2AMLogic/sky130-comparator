@@ -12,12 +12,9 @@ verbatim from run.py by issue #224.
 
 from __future__ import annotations
 
-import json
-import os
 import statistics
 import sys
 import tempfile
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -150,182 +147,57 @@ class OffsetResult:
 OFFSET_CAMPAIGN_SCHEMA = 1
 OFFSET_INCOMPLETE_EXIT = 3
 
-_MISSING = object()
 
-
-class OffsetCampaignIncomplete(RuntimeError):
+class OffsetCampaignIncomplete(_shared.CampaignIncomplete):
     """A chunked invocation stopped on its own budget with decks outstanding.
 
     Raised INSTEAD of returning an `OffsetResult`, so no caller can write a
     record from a partial campaign."""
 
-    def __init__(self, message: str, *, stage: str, resume_dir: Path,
-                 completed: int, total: int) -> None:
-        super().__init__(message)
-        self.stage = stage
-        self.resume_dir = resume_dir
-        self.completed = completed
-        self.total = total
 
+class OffsetCampaign(_shared.ResumableCampaign):
+    """Per-deck result store for one `offset` campaign: the shared
+    `ResumableCampaign` machinery (issue #429) over this bench's deck set.
 
-class OffsetCampaign:
-    """Per-deck result store for one `offset` campaign.
+    What is specific here: the schema, the deck count (gain calibration
+    plus both same-size Monte Carlo stages), and the payload -- a deck's
+    derived pick-off value AND its raw ngspice log are persisted together,
+    so a resumed campaign reproduces the record's log set verbatim.
 
-    EPHEMERAL (`root=None`): every stage runs as one batch, nothing persisted
-    (the behaviour `offset` always had). RESUMABLE (`root=<dir>`): decks are
-    dispatched in batches of `jobs`, each persisted atomically
-    (`write tmp` + `os.replace`) to `<root>/decks/<name>.json`. A truncated or
-    unreadable deck file is treated as missing and re-run.
-
-    `<root>/campaign.json` holds the campaign KEY (DUT provenance and netlist
-    sha256, PDK and ngspice identities, corner, temperature, N, seed schedule,
-    calibration points and every measurement parameter); a differing key is
-    refused so two campaigns are never mixed into one record.
+    The campaign KEY (`run_offset_mc` below) is DUT provenance and netlist
+    sha256, PDK and ngspice identities, corner, temperature, N, seed
+    schedule, calibration points and every measurement parameter; a
+    differing key is refused so two campaigns are never mixed into one
+    record.
     """
 
-    def __init__(self, root: Path | None = None, key: dict | None = None,
-                 chunk_decks: int | None = None,
-                 chunk_seconds: float | None = None,
-                 quiet: bool = False) -> None:
-        if root is None and (chunk_decks is not None or chunk_seconds is not None):
-            raise ValueError(
-                "--chunk-decks / --chunk-seconds need --resume-dir: a chunk "
-                "budget without a directory to persist into would throw away "
-                "every deck it ran"
-            )
-        self.root = Path(root) if root is not None else None
-        self.key = dict(key or {})
-        self.chunk_decks = chunk_decks
-        self.chunk_seconds = chunk_seconds
-        self.quiet = quiet
-        self._ran = 0
-        self._started = time.monotonic()
-        if self.root is not None:
-            self._open()
-
-    @property
-    def manifest_path(self) -> Path:
-        return self.root / "campaign.json"
-
-    @property
-    def decks_dir(self) -> Path:
-        return self.root / "decks"
-
-    def _open(self) -> None:
-        self.decks_dir.mkdir(parents=True, exist_ok=True)
-        want = dict(self.key, schema=OFFSET_CAMPAIGN_SCHEMA)
-        if self.manifest_path.exists():
-            try:
-                have = json.loads(self.manifest_path.read_text())
-            except ValueError as exc:
-                raise RuntimeError(
-                    f"{self.manifest_path} is not readable JSON ({exc}) -- "
-                    "point --resume-dir at a fresh directory"
-                ) from exc
-            if have != want:
-                differing = sorted(
-                    k for k in set(have) | set(want) if have.get(k) != want.get(k)
-                )
-                raise RuntimeError(
-                    f"--resume-dir {self.root} holds a DIFFERENT campaign: "
-                    + ", ".join(
-                        f"{k}={have.get(k)!r} on disk vs {want.get(k)!r} requested"
-                        for k in differing
-                    )
-                    + ". Resuming across a changed campaign key would mix two "
-                    "campaigns' decks into one record -- use a fresh --resume-dir."
-                )
-        else:
-            self._store_json(self.manifest_path, want)
-
-    @staticmethod
-    def _store_json(path: Path, payload: dict) -> None:
-        tmp = path.parent / (path.name + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-        os.replace(tmp, path)
-
-    def _deck_path(self, name: str) -> Path:
-        return self.decks_dir / f"{name}.json"
+    _SCHEMA = OFFSET_CAMPAIGN_SCHEMA
+    _incomplete = OffsetCampaignIncomplete
+    _label = "offset"
 
     def load_deck(self, name: str):
         """`(value, log)` for a persisted deck, else `_MISSING`."""
         if self.root is None:
-            return _MISSING
-        try:
-            blob = json.loads(self._deck_path(name).read_text())
-            return blob["value"], blob["log"]
-        except (OSError, ValueError, KeyError, TypeError):
-            return _MISSING
+            return _shared._MISSING
+        blob = self._load_json(self._deck_path(name))
+        if (blob is _shared._MISSING or not isinstance(blob, dict)
+                or "value" not in blob or "log" not in blob):
+            return _shared._MISSING
+        return blob["value"], blob["log"]
 
     def store_deck(self, name: str, value: float, log: str) -> None:
         if self.root is not None:
             self._store_json(
                 self._deck_path(name), {"deck": name, "value": value, "log": log})
 
+    def _cached_value(self, cached):
+        return cached[0]
+
+    def _cached_log(self, cached):
+        return cached[1]
+
     def total_decks(self) -> int:
         return len(VINDIFF_GAIN_CAL_MV) + 2 * int(self.key.get("n", 0))
-
-    def completed_decks(self) -> int:
-        if self.root is None:
-            return 0
-        return sum(1 for p in self.decks_dir.glob("*.json")
-                   if self.load_deck(p.stem) is not _MISSING)
-
-    def _budget_spent(self) -> bool:
-        if self.chunk_decks is not None and self._ran >= self.chunk_decks:
-            return True
-        if self.chunk_seconds is not None:
-            return (time.monotonic() - self._started) >= self.chunk_seconds
-        return False
-
-    def _stop(self, stage: str) -> None:
-        completed, total = self.completed_decks(), self.total_decks()
-        raise OffsetCampaignIncomplete(
-            f"offset campaign INCOMPLETE and RESUMABLE -- stopped in stage "
-            f"'{stage}' on this invocation's chunk budget after {self._ran} "
-            f"deck(s) / {(time.monotonic() - self._started) / 60:.1f} min. "
-            f"{completed} of {total} campaign decks are complete in {self.root}. "
-            f"NO record was written (a partial campaign must never produce "
-            f"one). Re-run the IDENTICAL command to continue; the record is "
-            f"emitted by the invocation that completes the last deck.",
-            stage=stage, resume_dir=self.root, completed=completed, total=total,
-        )
-
-    def resolve(self, stage: str, builds: list[tuple[str, str]], extract,
-                run_batch, jobs: int = 1,
-                logs: dict[str, str] | None = None) -> dict[str, float]:
-        """`{deck name: pick-off value}` for every `(name, deck_text)`,
-        running only the decks not already persisted. Raises
-        `OffsetCampaignIncomplete` if the chunk budget runs out first."""
-        values: dict[str, float] = {}
-        pending: list[tuple[str, str]] = []
-        for name, deck in builds:
-            cached = self.load_deck(name)
-            if cached is _MISSING:
-                pending.append((name, deck))
-            else:
-                values[name] = cached[0]
-                if logs is not None:
-                    logs[name] = cached[1]
-        if self.root is not None and not self.quiet:
-            print(f"  [{stage}] {len(values)} of {len(builds)} decks already in "
-                  f"{self.root}, {len(pending)} to run")
-        width = len(pending) if self.root is None else max(1, jobs)
-        index = 0
-        while index < len(pending):
-            if self._budget_spent():
-                self._stop(stage)
-            batch = pending[index:index + width]
-            batch_logs = run_batch(batch)
-            for name, _deck in batch:
-                value = extract(name)
-                self.store_deck(name, value, batch_logs[name])
-                values[name] = value
-                if logs is not None:
-                    logs[name] = batch_logs[name]
-            self._ran += len(batch)
-            index += len(batch)
-        return values
 
 
 def run_offset_mc(

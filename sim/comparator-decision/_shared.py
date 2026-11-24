@@ -4,7 +4,9 @@ Everything the sibling experiment modules in this directory have in common:
 the DUT-provenance switch (`--dut schematic` / `extracted`) and the fragment
 parsing/re-tying that supports it, the fixed testbench constants, the
 record-preamble prose and the committed schematic-level baselines, the ngspice
-invocation seams, and the evidence-record head/tail.
+invocation seams, the evidence-record head/tail, and -- since issue #429 --
+the resumable chunked-campaign store (`ResumableCampaign`) that `offset` and
+`noise-tran` both subclass instead of carrying a private copy.
 
 Read `run.py`'s module docstring first: it is this experiment's documentation,
 and it explains why the experiment has a bespoke driver at all. Issue #224
@@ -27,7 +29,9 @@ out for every experiment at once.
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -960,3 +964,271 @@ def _finalize_record(
     lines.append("")
     lines.extend(evidence.footer_lines(f"sim/comparator-decision/run.py {cmd}", supersedes))
     return evidence.publish_record(record_path, "\n".join(lines))
+
+
+# --- Resumable chunked campaigns (issues #100 and #154; one base since #429).
+#
+# `offset` and `noise-tran` each run campaigns far past any single command's
+# wall-clock ceiling, and both solve it the same way: persist each deck's
+# derived value under `--resume-dir` the moment the deck completes, stop an
+# invocation cleanly on `--chunk-decks` / `--chunk-seconds`, and let a
+# documented SEQUENCE of identical sub-ceiling commands stand in for the one
+# command that cannot run. `ResumableCampaign` is that shared machinery,
+# extracted from what had grown into two line-for-line copies (offset.py's
+# issue #154 store and noise_tran.py's issue #100 store); the subclasses keep
+# only what actually differs. The on-disk layout -- `<root>/campaign.json`
+# plus `<root>/decks/<key>.json`, and the per-campaign schema constants --
+# is a COMPATIBILITY SURFACE: in-flight resume directories written before
+# the consolidation must keep resuming, so nothing here may change what is
+# written, when it is written, or what a resumed deck is trusted for.
+
+_MISSING = object()
+
+
+class CampaignIncomplete(RuntimeError):
+    """A chunked invocation stopped on its own budget with decks outstanding.
+
+    Raised INSTEAD of returning a result, so no caller can write a record
+    from a partial campaign: a partial record would state an N on its face
+    that its own statistics were not computed at. The resume directory is
+    left valid; re-running the identical command continues from where this
+    invocation stopped.
+    """
+
+    def __init__(self, message: str, *, stage: str, resume_dir: Path,
+                 completed: int, total: int) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.resume_dir = resume_dir
+        self.completed = completed
+        self.total = total
+
+
+class ResumableCampaign:
+    """Per-deck result store for one chunked campaign.
+
+    Two modes behind one interface, so the statistics downstream are
+    computed by exactly the same code either way:
+
+      * EPHEMERAL (`root=None`) -- the un-chunked behaviour the bench
+        always had: every stage's decks run in ONE batch at the caller's
+        `--jobs` width, their derived values are used immediately, nothing
+        is persisted.
+      * RESUMABLE (`root=<dir>`) -- each deck's derived value is written to
+        `<root>/decks/<key>.json` (atomically: write tmp + `os.replace`)
+        as soon as that deck completes, and a deck whose file is already
+        there is not re-run. Decks are dispatched in batches of `--jobs`
+        so persistence keeps up with completion.
+
+    A truncated or unreadable deck file is treated as missing and re-run:
+    a kill can land mid-write, and re-running one deck is always cheaper
+    and safer than trusting a partial one.
+
+    `<root>/campaign.json` holds the campaign KEY -- the `key` dict the
+    subclass passes, plus its schema constant -- and a mismatch is refused
+    loudly rather than silently mixing two campaigns' decks into one
+    record. That is the property that makes a resume directory safe to
+    point a second command at.
+
+    Subclasses supply the schema constant (`_SCHEMA`), their
+    `*CampaignIncomplete` exception (`_incomplete`), the campaign label the
+    stop message names (`_label`), `total_decks`, the deck payload shape
+    (`load_deck` / `store_deck`, plus the `_cached_*` accessors), and
+    `_file_key` where deck names are not directly portable filenames.
+    """
+
+    _SCHEMA: int
+    _incomplete: type[CampaignIncomplete]
+    _label: str
+
+    def __init__(
+        self, root: Path | None = None, key: dict | None = None,
+        chunk_decks: int | None = None, chunk_seconds: float | None = None,
+        quiet: bool = False,
+    ) -> None:
+        if root is None and (chunk_decks is not None or chunk_seconds is not None):
+            raise ValueError(
+                "--chunk-decks / --chunk-seconds need --resume-dir: a chunk "
+                "budget without a directory to persist into would throw "
+                "away every deck it ran"
+            )
+        self.root = Path(root) if root is not None else None
+        self.key = dict(key or {})
+        self.chunk_decks = chunk_decks
+        self.chunk_seconds = chunk_seconds
+        self.quiet = quiet
+        self._ran = 0
+        self._started = time.monotonic()
+        if self.root is not None:
+            self._open()
+
+    # --- resume-directory layout ------------------------------------------
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.root / "campaign.json"
+
+    @property
+    def decks_dir(self) -> Path:
+        return self.root / "decks"
+
+    def _manifest(self) -> dict:
+        return dict(self.key, schema=self._SCHEMA)
+
+    def _open(self) -> None:
+        self.decks_dir.mkdir(parents=True, exist_ok=True)
+        want = self._manifest()
+        if self.manifest_path.exists():
+            try:
+                have = json.loads(self.manifest_path.read_text())
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"{self.manifest_path} is not readable JSON ({exc}) -- "
+                    "point --resume-dir at a fresh directory"
+                ) from exc
+            if have != want:
+                differing = sorted(
+                    k for k in set(have) | set(want) if have.get(k) != want.get(k)
+                )
+                raise RuntimeError(
+                    f"--resume-dir {self.root} holds a DIFFERENT campaign: "
+                    + ", ".join(
+                        f"{k}={have.get(k)!r} on disk vs {want.get(k)!r} requested"
+                        for k in differing
+                    )
+                    + ". Resuming across a changed campaign key would mix two "
+                    "campaigns' decks into one record -- use a fresh "
+                    "--resume-dir for the new configuration."
+                )
+        else:
+            self._store_json(self.manifest_path, want)
+
+    @staticmethod
+    def _store_json(path: Path, payload: dict) -> None:
+        tmp = path.parent / (path.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        os.replace(tmp, path)
+
+    def _load_json(self, path: Path):
+        """A truncated or unreadable file is reported MISSING, not fatal: a
+        kill can land mid-write, and re-running one deck is always cheaper
+        and safer than trusting a partial one. (The writes above are atomic
+        via `os.replace`, so this should not happen -- but "should not" is
+        not the bar for a file the ceiling is expected to interrupt.)"""
+        if not path.exists():
+            return _MISSING
+        try:
+            return json.loads(path.read_text())
+        except (ValueError, OSError):
+            return _MISSING
+
+    @staticmethod
+    def _file_key(name: str) -> str:
+        """Deck name -> filename stem; overridden where a campaign's deck
+        names are not directly portable filenames."""
+        return name
+
+    def _deck_path(self, name: str) -> Path:
+        return self.decks_dir / f"{self._file_key(name)}.json"
+
+    # --- one deck's derived value; the payload shape is the subclass's ----
+
+    def load_deck(self, name: str):
+        raise NotImplementedError
+
+    def store_deck(self, name: str, value, log: str) -> None:
+        raise NotImplementedError
+
+    def _cached_value(self, cached):
+        """What `resolve`'s result gets for a deck loaded off disk."""
+        return cached
+
+    def _cached_log(self, cached):
+        """A persisted deck's raw ngspice log for `resolve`'s `logs` side
+        dict, or None when the campaign does not persist per-deck logs."""
+        return None
+
+    # --- progress and the chunk budget ------------------------------------
+
+    def total_decks(self) -> int:
+        raise NotImplementedError
+
+    def completed_decks(self) -> int:
+        """Decks whose file is present AND loadable: a truncated deck file
+        (kill mid-write) is not a completed deck, so the stop message's
+        count never overstates what a resume inherits."""
+        if self.root is None:
+            return 0
+        return sum(1 for p in self.decks_dir.glob("*.json")
+                   if self.load_deck(p.stem) is not _MISSING)
+
+    def _budget_spent(self) -> bool:
+        if self.chunk_decks is not None and self._ran >= self.chunk_decks:
+            return True
+        if self.chunk_seconds is not None:
+            return (time.monotonic() - self._started) >= self.chunk_seconds
+        return False
+
+    def _stop(self, stage: str) -> None:
+        completed = self.completed_decks()
+        total = self.total_decks()
+        elapsed = time.monotonic() - self._started
+        raise self._incomplete(
+            f"{self._label} campaign INCOMPLETE and RESUMABLE -- stopped in "
+            f"stage '{stage}' on this invocation's chunk budget after "
+            f"{self._ran} deck(s) / {elapsed / 60:.1f} min. {completed} of "
+            f"{total} campaign decks are complete in {self.root}. NO record "
+            "was written (a partial campaign must never produce one). "
+            "Re-run the IDENTICAL command to continue from here; the record "
+            "is emitted by the invocation that completes the last deck.",
+            stage=stage, resume_dir=self.root, completed=completed, total=total,
+        )
+
+    # --- the one place decks are dispatched -------------------------------
+
+    def resolve(
+        self, stage: str, builds: list, extract, run_batch, jobs: int = 1,
+        logs: dict[str, str] | None = None,
+    ) -> dict:
+        """Return `{deck name: derived value}` for every `(name, build)` in
+        `builds`, running only the decks not already persisted.
+
+        `run_batch(batch)` runs one batch of `(name, build)` pairs and
+        returns their ngspice logs; `extract(name)` reads that deck's
+        derived value out of the scratch directory right after it ran.
+        Raises the campaign's `*CampaignIncomplete` if the chunk budget
+        runs out with decks still pending.
+        """
+        values: dict = {}
+        pending: list = []
+        for name, deck in builds:
+            cached = self.load_deck(name)
+            if cached is _MISSING:
+                pending.append((name, deck))
+            else:
+                values[name] = self._cached_value(cached)
+                cached_log = self._cached_log(cached)
+                if logs is not None and cached_log is not None:
+                    logs[name] = cached_log
+        if self.root is not None and not self.quiet:
+            print(f"  [{stage}] {len(values)} of {len(builds)} decks already in "
+                  f"{self.root}, {len(pending)} to run")
+        # Ephemeral mode dispatches the whole stage as ONE batch -- byte-for-
+        # byte the call the un-chunked runner always made, including its
+        # `--jobs`-wide parallelism across the entire stage.
+        width = len(pending) if self.root is None else max(1, jobs)
+        index = 0
+        while index < len(pending):
+            if self._budget_spent():
+                self._stop(stage)
+            batch = pending[index:index + width]
+            batch_logs = run_batch(batch)
+            if logs is not None:
+                logs.update(batch_logs)
+            for name, _deck in batch:
+                value = extract(name)
+                self.store_deck(name, value, batch_logs[name])
+                values[name] = value
+            self._ran += len(batch)
+            index += len(batch)
+        return values
