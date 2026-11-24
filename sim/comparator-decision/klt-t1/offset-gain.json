@@ -1,0 +1,5 @@
+{
+  "gain_v_per_v": 64.052698,
+  "fit": "zero-intercept least squares of pkdiff_mv over vindiff_mv",
+  "source": "report-offset-calib.json"
+}

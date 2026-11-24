@@ -154,6 +154,21 @@ def compare(manifest: dict, committed: dict, fresh: dict) -> None:
     # renders its item unmet (stale_evidence / unreadable_evidence /
     # wrong_kind / check_failed ...) and CI goes red instead of silently
     # grading yesterday's evidence.
+    #
+    # Issue #188 amendment -- the one honest exception is a `spec_rows`
+    # multi-citation item whose fresh verdict is `partial_coverage`: a
+    # declared gap keeps such an item unmet BY DESIGN (a gap is pending
+    # work, never covered), so "cited implies met" cannot hold for the
+    # item-5/6 evidence model. The exception is narrowed to exactly the
+    # designed state and nothing looser: every citation inside the item is
+    # met (a rotting citation surfaces as the citation's own reason --
+    # stale_evidence etc. -- and still fails here), no row is uncovered or
+    # failing (an uncovered declared row is a manifest bug, not a gap), and
+    # the committed record already shows the same partial_coverage verdict
+    # (the partial state is the regenerated verdict of record, not a
+    # silent drift from a previously met one -- that direction is Rule 2's
+    # job and still fails).
+    committed_items = {item_key(it): it for it in t1_items(committed)}
     for key in sorted(evidence):
         stem = key.split(".", 1)[0]
         matched = [
@@ -169,6 +184,19 @@ def compare(manifest: dict, committed: dict, fresh: dict) -> None:
         for k in matched:
             if k not in fresh_met:
                 fresh_row = fresh_t1_keys[k]
+                if _is_designed_partial_coverage(fresh_row) and (
+                    committed_row := committed_items.get(k)
+                ) is not None and (
+                    committed_row.get("status") == "unmet"
+                    and committed_row.get("reason") == "partial_coverage"
+                ):
+                    gaps = (fresh_row.get("detail") or {}).get("declared_gaps") or []
+                    ok(
+                        f"cited item {key} is partial_coverage fresh, with "
+                        f"{len(gaps)} declared gap(s) and every citation met "
+                        "-- the recorded spec_rows verdict (issue #188)"
+                    )
+                    continue
                 fail(
                     f"cited item {key!r} is unmet in the fresh run (reason: "
                     f"{fresh_row.get('reason')}) -- a cited check must stay "
@@ -325,6 +353,21 @@ def run_gate(args: argparse.Namespace) -> int:
 _UNSET = object()  # sentinel distinct from None (a legitimate field value)
 
 
+def _is_designed_partial_coverage(fresh_row: dict) -> bool:
+    """Whether an unmet fresh row is the *designed* `spec_rows` state (issue
+    #188): every citation met, no uncovered or failing row -- the unmetness
+    comes from declared gaps (and/or unratified rows) alone."""
+    if fresh_row.get("reason") != "partial_coverage":
+        return False
+    detail = fresh_row.get("detail") or {}
+    if detail.get("uncovered_rows") or detail.get("failed_rows"):
+        return False
+    citations = fresh_row.get("citations_graded")
+    return bool(citations) and all(
+        c.get("status") == "met" for c in citations if isinstance(c, dict)
+    )
+
+
 def _fixture_report(block="fx-block", kind="analog", statuses=None,
                     t1_count=3, input_verified_override=_UNSET):
     statuses = statuses or {}
@@ -410,6 +453,45 @@ def run_selftest(_args: argparse.Namespace) -> int:
           manifest=cite2,
           committed=_fixture_report(statuses={2: "met"}),
           fresh=_fixture_report())
+
+    # Issue #188: the designed spec_rows partial_coverage state -- cited,
+    # unmet, every citation met, gaps only, and the committed record says
+    # the same -- passes; every deviation from it still fails.
+    def _partial_fixture(uncovered=False):
+        rep = _fixture_report(statuses={2: "unmet"})
+        item = rep["items"][1]
+        item["reason"] = "partial_coverage"
+        item["citations_graded"] = [
+            {"citation": "fx2.json", "rows": ["r1"], "status": "met",
+             "reason": None}
+        ]
+        item["detail"] = {
+            "failed_rows": [],
+            "uncovered_rows": ["r2"] if uncovered else [],
+            "declared_gaps": [{"id": "r3", "gap": "waiting on an issue"}],
+        }
+        return rep
+
+    check("cited spec_rows item partial_coverage (gaps only) passes",
+          expect_fail=False, expect_substr=None,
+          manifest=cite2,
+          committed=_partial_fixture(),
+          fresh=_partial_fixture())
+
+    check("cited spec_rows item partial_coverage with uncovered row fails",
+          expect_fail=True,
+          expect_substr="cited item '2' is unmet in the fresh run",
+          manifest=cite2,
+          committed=_partial_fixture(uncovered=True),
+          fresh=_partial_fixture(uncovered=True))
+
+    was_partial = _partial_fixture()
+    check("cited spec_rows item drifting from met to partial fails",
+          expect_fail=True,
+          expect_substr="was met in the committed report but unmet fresh",
+          manifest=cite2,
+          committed=_fixture_report(statuses={2: "met"}),
+          fresh=was_partial)
 
     check("citation for unknown item", expect_fail=True,
           expect_substr="no such T1 item",

@@ -1,0 +1,46 @@
+{
+  "netlist": "bodies/offset-pickoff-body.spice",
+  "engine": "ngspice",
+  "models": {
+    "pdk": "sky130A",
+    "lib": "libs.tech/combined/sky130.lib.spice"
+  },
+  "corners": {
+    "process": [
+      "tt_mm"
+    ],
+    "temperature_c": [
+      27
+    ]
+  },
+  "monte_carlo": {
+    "n": 200,
+    "seed": 424242,
+    "vary": "mismatch",
+    "seed_mode": "sequential",
+    "mismatch_scale": 4.0
+  },
+  "batch": {
+    "runner_version_check": "warn",
+    "capacity_wait_s": 600
+  },
+  "analysis": {
+    "kind": "tran",
+    "args": "0.002n 7.6n"
+  },
+  "measurements": [
+    {
+      "name": "vos_ir_mv",
+      "unit": "mV",
+      "spec_row": "offset_sigma",
+      "spice": ".meas tran vos_ir_mv FIND par('(v(OUTP) - v(OUTN))*1000/64.052698') AT=5.75n"
+    }
+  ],
+  "options": {
+    "timeout_s": 300,
+    "ngspice_init": [
+      "set measureprec=12",
+      "set numdgt=12"
+    ]
+  }
+}

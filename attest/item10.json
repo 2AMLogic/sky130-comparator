@@ -11,6 +11,8 @@
   ],
   "checks": [
     {"name": "t1-signoff-gate-selftest", "argv": ["python3", "scripts/check-t1-signoff.py", "selftest"]},
+    {"name": "t1-items56-envelope-selftest", "argv": ["python3", "scripts/t1-items56-envelope.py", "--selftest"]},
+    {"name": "t1-items56-envelope-fresh", "argv": ["python3", "scripts/t1-items56-envelope.py", "--check"]},
     {"name": "characterization-envelope-selftest", "argv": ["python3", "scripts/characterization-envelope.py", "--selftest"]},
     {"name": "characterization-envelope-fresh", "argv": ["python3", "scripts/characterization-envelope.py"]},
     {"name": "integrator-view-selftest", "argv": ["python3", "scripts/check-integrator-view.py", "selftest"]},
