@@ -52,7 +52,7 @@
         "role": "testbench",
         "path": "sim/comparator-decision/power.py",
         "passed": true,
-        "content_hash": "sha256:9b5e68d6513d7b6830d225383e5c7ecb33d050c37ff28760ba0f06c924dccb30"
+        "content_hash": "sha256:599b92ab3d7f02927c95187d22a2f9cf408eca689f03c5261ab35606de5a51e6"
       },
       {
         "check": "present",

@@ -19,8 +19,9 @@ CONDITIONS (also written into every record):
                    -- bias network, node charging from the DC operating
                    point -- is not steady-state power). The retained periods
                    must converge: max relative spread of per-period energy
-                   about its mean <= `conv_tol`; otherwise the run says so
-                   and reports no average power.
+                   about its mean <= `conv_tol`; otherwise the run lists a
+                   CONVERGENCE problem and its record is marked FAIL (the
+                   figures are still tabulated, but not as a clean result).
   STIMULUS         a fixed differential DC input (default +10 mV about VCM);
                    outputs loaded by `cload_ff` each. Every value is a
                    recorded experiment condition, NOT a ratified clock rate
@@ -112,6 +113,8 @@ class PowerResult:
     period_energy_j: list[float]   # every simulated period, settling included
     reset_energy_j: list[float]
     eval_energy_j: list[float]
+    vindiff_mv: float = POWER_VINDIFF_MV   # carried so a record states what was run
+    cload_ff: float = POWER_CLOAD_FF
     problems: list[str] = field(default_factory=list)
     log_text: str = ""
 
@@ -155,6 +158,7 @@ def analyze_power(
     t: list[float], idd: list[float], *, corner: str = "tt", temp_c: float = 27.0,
     vdd: float = VDD, t0_s: float, period_s: float, duty: float,
     n_periods: int, settle: int, conv_tol: float = POWER_CONV_TOL,
+    vindiff_mv: float = POWER_VINDIFF_MV, cload_ff: float = POWER_CLOAD_FF,
     log_text: str = "",
 ) -> PowerResult:
     """Window one transient's i(Vdd) into per-period / reset / evaluate
@@ -173,7 +177,7 @@ def analyze_power(
         e_rst.append(delivered_energy(t, idd, vdd, mid, b))
         e_full.append(delivered_energy(t, idd, vdd, a, b))
     r = PowerResult(corner, temp_c, vdd, period_s, duty, settle, e_full, e_rst, e_eval,
-                    log_text=log_text)
+                    vindiff_mv=vindiff_mv, cload_ff=cload_ff, log_text=log_text)
     if r.mean_energy_j <= 0:
         r.problems.append("SIGN: mean delivered energy is not positive (i(Vdd) sign or window error)")
     for k in range(n_periods):
@@ -242,7 +246,8 @@ def run_power(
             r = analyze_power(
                 t, idd, corner=corner, temp_c=temp_c, t0_s=period_ns * 1e-9,
                 period_s=period_ns * 1e-9, duty=duty, n_periods=n_periods,
-                settle=settle, log_text=log_text,
+                settle=settle, vindiff_mv=vindiff_mv, cload_ff=cload_ff,
+                log_text=log_text,
             )
             results.append(r)
             if not quiet:
@@ -255,11 +260,22 @@ def run_power(
     return results
 
 
+def _distinct(values: list[float]) -> str:
+    """Distinct values in first-seen order, joined; one value reads plainly."""
+    return "/".join(f"{v:g}" for v in dict.fromkeys(values))
+
+
 def write_power_evidence(
-    results: list[PowerResult], *, period_ns: float = POWER_PERIOD_NS,
-    duty: float = POWER_DUTY, vindiff_mv: float = POWER_VINDIFF_MV,
-    cload_ff: float = POWER_CLOAD_FF, note: str = "", supersedes: str = "",
+    results: list[PowerResult], *, note: str = "", supersedes: str = "",
 ) -> Path:
+    # Clock / stimulus / load come from the results themselves, never from this
+    # writer's own defaults, so a record cannot state conditions it did not run
+    # (issue #423).
+    period_ns = _distinct([r.period_s * 1e9 for r in results])
+    freq_mhz = _distinct([1e-6 / r.period_s for r in results])
+    duty = _distinct([r.duty for r in results])
+    vindiff_mv = _distinct([r.vindiff_mv for r in results])
+    cload_ff = _distinct([r.cload_ff for r in results])
     info, record_id, netlist_sha, record_path, corners_dir = _begin_dut_record("corners")
     for r in results:
         safe = f"{r.corner}_{str(r.temp_c).replace('-', 'neg').replace('.', 'p')}c"
@@ -267,9 +283,10 @@ def write_power_evidence(
     a_lines: list[str] = []
     a = a_lines.append
     a_lines += _record_header(record_id)
-    a(f"- **PVT conditions**: " + ", ".join(f"{r.corner}/{r.temp_c}C" for r in results)
-      + f" at supply_v=[{VDD}] (a subset of the graded corners: the three anchors only)")
-    a(f"- **Clock**: period {period_ns}ns ({1e3 / period_ns:g} MHz), evaluate duty {duty}; "
+    a(f"- **Corner matrix run**: " + ", ".join(f"{r.corner}/{r.temp_c}C" for r in results)
+      + f" at supply_v=[{VDD}] ({len(results)} PVT point(s) run; "
+      f"coverage is exactly the points listed, not the full graded matrix)")
+    a(f"- **Clock**: period {period_ns}ns ({freq_mhz} MHz), evaluate duty {duty}; "
       f"an experiment condition, NOT a ratified clock rate")
     a(f"- **Stimulus / load**: differential DC input {vindiff_mv}mV about VCM={VCM}V; "
       f"{cload_ff}fF on each of OUTP/OUTN")

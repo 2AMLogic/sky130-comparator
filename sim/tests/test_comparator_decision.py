@@ -2019,6 +2019,40 @@ class TestPowerIntegration(unittest.TestCase):
         self.assertIn("Cloadp OUTP 0 10.0f", deck)
         self.assertIn("wrdata x.csv i(Vdd)", deck)
 
+    def _record_lines(self, results):
+        """Render the power record with the record plumbing mocked out and
+        return the bullet lines the writer emitted."""
+        power = cd_run.power
+        captured = {}
+
+        def fake_finalize(lines, *a, **k):
+            captured["lines"] = lines
+            return Path("unused")
+
+        with contextlib.ExitStack() as stack:
+            patch = stack.enter_context
+            patch(unittest.mock.patch.object(
+                power, "_begin_dut_record",
+                lambda kind: (FakePdkInfo(), "rec", "sha", Path("r.md"), Path("c"))))
+            patch(unittest.mock.patch.object(power, "_record_header", lambda rid: []))
+            patch(unittest.mock.patch.object(power, "_finalize_record", fake_finalize))
+            patch(unittest.mock.patch.object(power.evidence, "write_new_text", lambda *a, **k: None))
+            power.write_power_evidence(results)
+        return captured["lines"]
+
+    def test_record_states_only_the_coverage_and_conditions_it_ran(self):
+        # Issue #414 review / #423: the record must derive its coverage and
+        # clock / stimulus / load from the results, not hardcode them.
+        r = self._run(vindiff_mv=25.0, cload_ff=40.0)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("**Corner matrix run**: tt/27.0C", text)
+        self.assertIn("1 PVT point(s) run", text)
+        self.assertNotIn("three anchors", text)
+        self.assertNotIn("PVT conditions", text)
+        self.assertIn("evaluate duty 0.5", text)
+        self.assertIn("25mV", text)
+        self.assertIn("40fF", text)
+
 
 class TestOffsetResumableCampaign(unittest.TestCase):
     """`offset --resume-dir/--chunk-decks`: the resumable serial campaign
