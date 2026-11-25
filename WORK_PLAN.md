@@ -7,7 +7,6 @@ Live roadmap generated from GitHub label state by the Loom Guide role.
 
 Judge-approved PRs under a hold (`loom:blocked` or `loom:operator`) — only a human merge decision is missing.
 
-- **#288**: docs: condense target-spec Basis cells to method + links; file DR-009
 - **#377**: fix: match waived paths as whole tokens and ratified statuses exactly
 - **#386**: docs: submit DR-010 pilot-note removals for two-key ratification
 
@@ -48,7 +47,6 @@ _None._
 
 PRs that passed review and are queued for Champion auto-merge (`loom:pr`).
 
-- **#288**: docs: condense target-spec Basis cells to method + links; file DR-009
 - **#377**: fix: match waived paths as whole tokens and ratified statuses exactly
 - **#386**: docs: submit DR-010 pilot-note removals for two-key ratification
 
@@ -81,13 +79,13 @@ _None._
 
 | Bucket | Count |
 |------|-------|
-| Operator merge-risk holds | 3 |
+| Operator merge-risk holds | 2 |
 | Very important | 0 |
 | Important | 1 |
 | Ready (`loom:issue`) | 1 |
 | In Progress (`loom:building`) | 4 |
 | PRs awaiting review | 0 |
-| Approved PRs awaiting merge | 3 |
+| Approved PRs awaiting merge | 2 |
 | Curated | 10 |
 | Architect / Hermit proposals | 3 |
 | Active epics | 0 |
