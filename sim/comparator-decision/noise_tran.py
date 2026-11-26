@@ -13,13 +13,10 @@ verbatim from run.py by issue #224.
 from __future__ import annotations
 
 import dataclasses
-import json
 import math
-import os
 import statistics
 import sys
 import tempfile
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -597,120 +594,41 @@ class NoiseTranResult:
 NOISE_TRAN_CAMPAIGN_SCHEMA = 1
 NOISE_TRAN_INCOMPLETE_EXIT = 3
 
-_MISSING = object()
 
-
-class NoiseTranCampaignIncomplete(RuntimeError):
+class NoiseTranCampaignIncomplete(_shared.CampaignIncomplete):
     """A chunked invocation stopped on its own budget with decks outstanding.
 
-    Raised INSTEAD of returning a `NoiseTranResult`, so no caller can write a
-    record from a partial campaign. The scratch directory is left valid and
+    Raised INSTEAD of returning a `NoiseTranResult`, so no caller can write
+    a record from a partial campaign. The scratch directory is left valid and
     resumable: re-running the identical command continues from here.
     """
 
-    def __init__(
-        self, message: str, *, stage: str, resume_dir: Path,
-        completed: int, total: int,
-    ) -> None:
-        super().__init__(message)
-        self.stage = stage
-        self.resume_dir = resume_dir
-        self.completed = completed
-        self.total = total
 
+class NoiseTranCampaign(_shared.ResumableCampaign):
+    """Per-deck result store for one `noise-tran` campaign: the shared
+    `ResumableCampaign` machinery (issue #429) over this bench's deck set.
 
-class NoiseTranCampaign:
-    """Per-deck result store for one `noise-tran` campaign.
+    The campaign KEY is what makes a scratch directory safe to point a
+    second command at: corner, temperature, N, seeds/point, DUT provenance
+    and the DUT fragment's own sha256 are recorded in `<root>/campaign.json`,
+    and a mismatch is refused loudly rather than silently mixing two
+    campaigns' decks into one record. The fragment hash is in there for the
+    same reason every record carries it: a resumed campaign whose netlist
+    changed underneath it is not one campaign.
 
-    Two modes behind one interface, so the statistics downstream are computed
-    by exactly the same code either way:
-
-      * EPHEMERAL (`root=None`) -- the un-chunked behaviour this bench has
-        always had: every deck runs, in ONE batch at the caller's `--jobs`
-        width, its derived value is used immediately, nothing is persisted.
-      * RESUMABLE (`root=<dir>`) -- each deck's derived value is written to
-        `<root>/decks/<key>.json` as soon as that deck completes, and a deck
-        whose file is already there is not re-run. Decks are dispatched in
-        batches of `--jobs` so persistence keeps up with completion; at the
-        `--jobs 1` this host is limited to (one-core cgroup quota, #83) that
-        is one deck at a time.
-
-    The campaign KEY is what makes a scratch directory safe to point a second
-    command at: corner, temperature, N, seeds/point, DUT provenance and the
-    DUT fragment's own sha256 are recorded in `<root>/campaign.json`, and a
-    mismatch is refused loudly rather than silently mixing two campaigns'
-    decks into one record. The fragment hash is in there for the same reason
-    every record carries it: a resumed campaign whose netlist changed
-    underneath it is not one campaign.
+    What is specific here: the schema, the deck count (gain calibration +
+    pick-off MC + both signs of both decision points), the payload shape
+    (the derived value ONLY -- see "WHAT IS PERSISTED" above), the +/- file
+    keys, and the AC/calibration preamble store below.
     """
 
-    def __init__(
-        self, root: Path | None = None, key: dict | None = None,
-        chunk_decks: int | None = None, chunk_seconds: float | None = None,
-        quiet: bool = False,
-    ) -> None:
-        if root is None and (chunk_decks is not None or chunk_seconds is not None):
-            raise ValueError(
-                "--chunk-decks / --chunk-seconds need --resume-dir: a chunk "
-                "budget without a scratch directory to persist into would "
-                "throw away every deck it ran"
-            )
-        self.root = Path(root) if root is not None else None
-        self.key = dict(key or {})
-        self.chunk_decks = chunk_decks
-        self.chunk_seconds = chunk_seconds
-        self.quiet = quiet
-        self._ran = 0
-        self._started = time.monotonic()
-        if self.root is not None:
-            self._open()
-
-    # --- scratch-directory layout -----------------------------------------
-
-    @property
-    def manifest_path(self) -> Path:
-        return self.root / "campaign.json"
-
-    @property
-    def decks_dir(self) -> Path:
-        return self.root / "decks"
+    _SCHEMA = NOISE_TRAN_CAMPAIGN_SCHEMA
+    _incomplete = NoiseTranCampaignIncomplete
+    _label = "noise-tran"
 
     @property
     def preamble_path(self) -> Path:
         return self.root / "preamble.json"
-
-    def _manifest(self) -> dict:
-        return dict(self.key, schema=NOISE_TRAN_CAMPAIGN_SCHEMA)
-
-    def _open(self) -> None:
-        self.decks_dir.mkdir(parents=True, exist_ok=True)
-        want = self._manifest()
-        if self.manifest_path.exists():
-            try:
-                have = json.loads(self.manifest_path.read_text())
-            except ValueError as exc:
-                raise RuntimeError(
-                    f"{self.manifest_path} is not readable JSON ({exc}) -- "
-                    "point --resume-dir at a fresh directory"
-                ) from exc
-            if have != want:
-                differing = sorted(
-                    k for k in set(have) | set(want) if have.get(k) != want.get(k)
-                )
-                raise RuntimeError(
-                    f"--resume-dir {self.root} holds a DIFFERENT campaign: "
-                    + ", ".join(
-                        f"{k}={have.get(k)!r} on disk vs {want.get(k)!r} requested"
-                        for k in differing
-                    )
-                    + ". Resuming across a changed campaign key would mix two "
-                    "campaigns' decks into one record -- use a fresh "
-                    "--resume-dir for the new configuration."
-                )
-        else:
-            self.manifest_path.write_text(
-                json.dumps(want, indent=2, sort_keys=True) + "\n"
-            )
 
     @staticmethod
     def _file_key(name: str) -> str:
@@ -719,46 +637,28 @@ class NoiseTranCampaign:
         stem is portable and a `+` can never be read as a `-`."""
         return name.replace("+", "plus").replace("-", "minus")
 
-    def _deck_path(self, name: str) -> Path:
-        return self.decks_dir / f"{self._file_key(name)}.json"
-
     # --- reading / writing one deck's derived value -----------------------
-
-    def _load_json(self, path: Path):
-        """A truncated or unreadable file is reported MISSING, not fatal: a
-        kill can land mid-write, and re-running one deck is always cheaper
-        and safer than trusting a partial one. (The writes below are atomic
-        via `os.replace`, so this should not happen -- but "should not" is
-        not the bar for a file the ceiling is expected to interrupt.)"""
-        if not path.exists():
-            return _MISSING
-        try:
-            return json.loads(path.read_text())
-        except (ValueError, OSError):
-            return _MISSING
-
-    @staticmethod
-    def _store_json(path: Path, payload: dict) -> None:
-        tmp = path.parent / (path.name + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-        os.replace(tmp, path)
 
     def load_deck(self, name: str):
         if self.root is None:
-            return _MISSING
+            return _shared._MISSING
         blob = self._load_json(self._deck_path(name))
-        if blob is _MISSING or "value" not in blob:
-            return _MISSING
+        if (blob is _shared._MISSING or not isinstance(blob, dict)
+                or "value" not in blob):
+            return _shared._MISSING
         return blob["value"]
 
-    def store_deck(self, name: str, value) -> None:
+    def store_deck(self, name: str, value, log: str) -> None:
+        # The raw log is deliberately NOT persisted (see "WHAT IS
+        # PERSISTED" above); the signature keeps it so the shared dispatch
+        # loop can hand every campaign its batch logs.
         if self.root is None:
             return
         self._store_json(self._deck_path(name), {"deck": name, "value": value})
 
     def load_preamble(self):
         if self.root is None:
-            return _MISSING
+            return _shared._MISSING
         return self._load_json(self.preamble_path)
 
     def store_preamble(self, payload: dict) -> None:
@@ -766,7 +666,7 @@ class NoiseTranCampaign:
             return
         self._store_json(self.preamble_path, payload)
 
-    # --- progress and the chunk budget ------------------------------------
+    # --- progress ----------------------------------------------------------
 
     def total_decks(self) -> int:
         """Every deck this campaign will ever run: the gain calibration, the
@@ -776,81 +676,6 @@ class NoiseTranCampaign:
             + int(self.key.get("n_pickoff", 0))
             + 2 * len(NOISE_TRAN_DECIDE_PAIRS) * int(self.key.get("seeds_per_point", 0))
         )
-
-    def completed_decks(self) -> int:
-        if self.root is None:
-            return 0
-        return len(list(self.decks_dir.glob("*.json")))
-
-    def _budget_spent(self) -> bool:
-        if self.chunk_decks is not None and self._ran >= self.chunk_decks:
-            return True
-        if self.chunk_seconds is not None:
-            return (time.monotonic() - self._started) >= self.chunk_seconds
-        return False
-
-    def _stop(self, stage: str) -> None:
-        completed = self.completed_decks()
-        total = self.total_decks()
-        elapsed = time.monotonic() - self._started
-        raise NoiseTranCampaignIncomplete(
-            f"noise-tran campaign INCOMPLETE and RESUMABLE -- stopped in stage "
-            f"'{stage}' on this invocation's chunk budget after {self._ran} deck(s) "
-            f"/ {elapsed / 60:.1f} min. {completed} of {total} campaign decks are "
-            f"complete in {self.root}. NO record was written (a partial campaign "
-            f"must never produce one). Re-run the IDENTICAL command to continue "
-            f"from here; the campaign emits its record on the invocation that "
-            f"completes the last deck.",
-            stage=stage, resume_dir=self.root, completed=completed, total=total,
-        )
-
-    # --- the one place decks are dispatched -------------------------------
-
-    def resolve(
-        self, stage: str, builds: list, extract, run_batch, jobs: int = 1,
-        logs: dict[str, str] | None = None,
-    ) -> dict:
-        """Return `{deck name: derived value}` for every `(name, build)` in
-        `builds`, running only the decks not already persisted.
-
-        `run_batch(batch)` runs one batch of `(name, build)` pairs and returns
-        their ngspice logs; `extract(name)` reads that deck's derived value
-        out of the scratch directory right after it ran. Raises
-        `NoiseTranCampaignIncomplete` if the chunk budget runs out with decks
-        still pending.
-        """
-        values: dict = {}
-        pending: list = []
-        for name, build in builds:
-            cached = self.load_deck(name)
-            if cached is _MISSING:
-                pending.append((name, build))
-            else:
-                values[name] = cached
-        if self.root is not None and not self.quiet:
-            print(
-                f"  [{stage}] {len(values)} of {len(builds)} decks already in "
-                f"{self.root}, {len(pending)} to run"
-            )
-        # Ephemeral mode dispatches the whole stage as ONE batch -- byte-for-
-        # byte the call the un-chunked runner always made, including its
-        # `--jobs`-wide parallelism across the entire stage.
-        width = len(pending) if self.root is None else max(1, jobs)
-        index = 0
-        while index < len(pending):
-            if self._budget_spent():
-                self._stop(stage)
-            batch = pending[index:index + width]
-            batch_logs = run_batch(batch)
-            if logs is not None:
-                logs.update(batch_logs)
-            for name, _build in batch:
-                value = extract(name)
-                self.store_deck(name, value)
-                values[name] = value
-            self._ran += len(batch)
-            index += len(batch)
-        return values
 
 
 def run_noise_tran(
@@ -883,7 +708,7 @@ def run_noise_tran(
         # rather than re-derive it, and the three logs a record embeds come
         # from here.
         preamble = campaign.load_preamble()
-        if preamble is _MISSING:
+        if preamble is _shared._MISSING:
             # Stage 1: preamp input-referred rms + its op point (gate CM for stage 2).
             preamp = noise.run_noise(corner=corner, temp_c=temp_c, quiet=quiet)
             # Stage 2: latch front-end gate-referred rms, biased at the preamp's own CM.
@@ -1370,8 +1195,13 @@ def write_noise_tran_evidence(
     lines.extend(post_layout_delta_lines(
         "noise-tran", result.corner, result.temp_c, result.sigma_pickoff_mv,
     ))
-    a("")
     seeds = result.decision_points[0]["m"] if result.decision_points else 0
+    if (_shared.dut_provenance() == "extracted"
+            and _shared.baseline_for("noise-tran", result.corner, result.temp_c)):
+        a(f"- **Extracted sampling**: {len(result.pickoff_diffs)} pick-off seeds "
+          f"and {seeds} seeds/sign/decision point. The schematic counts are "
+          "given with the counterpart above.")
+    a("")
     return _finalize_record(
         lines, record_path, info, netlist_sha, "noise-tran",
         extra={

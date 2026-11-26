@@ -1,0 +1,537 @@
+{
+  "schema_version": 3,
+  "netlist": {
+    "path": "sim/comparator-decision/klt-t1/bodies/regen-body.spice",
+    "scope": "repo"
+  },
+  "status": "pass",
+  "corner_count": 7,
+  "passed": 7,
+  "failed": 0,
+  "errored": 0,
+  "inconclusive": 0,
+  "diagnostic_counts": {
+    "by_code": {},
+    "by_severity": {},
+    "corners_with_diagnostics": 0
+  },
+  "metrics": {
+    "sim__corner__count": 7,
+    "sim__corner__passed_count": 7,
+    "sim__corner__failed_count": 0,
+    "sim__corner__errored_count": 0,
+    "sim__corner__inconclusive_count": 0
+  },
+  "environment": {
+    "engine": "ngspice",
+    "engine_version": "47",
+    "ngspice_binary": "/usr/local/bin/ngspice",
+    "engine_build": {
+      "version_banner": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Nov 13 23:19:32 UTC 2026\n******",
+      "binary_sha256": "e12148baf532d879d2e2053cecc5b498680bd4156a0dc3f69ce4f83e741e1314",
+      "probe": "ok",
+      "reason": null
+    },
+    "ngspice_init": {
+      "source": "runner",
+      "lines": null,
+      "sha256": null
+    },
+    "models_lib": {
+      "path": null,
+      "scope": "external"
+    },
+    "models_lib_sha256": "48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+    "models_lib_sha256_scope": "client",
+    "netlist_sha256": "d48088d2d800d4426203563a08834e0285c0c50bed35b60637508f68c1edd6f6",
+    "netlist_sha256_scope": "staged",
+    "netlist_closure": [
+      {
+        "path": "sim/comparator-decision/klt-t1/bodies/regen-body.spice",
+        "scope": "repo",
+        "sha256": "d48088d2d800d4426203563a08834e0285c0c50bed35b60637508f68c1edd6f6"
+      }
+    ],
+    "netlist_identity": "sha256:aaa0e53e1be845af3cf9bf003982ef425b206e19f971f39257446a8fe1e5d7a5",
+    "remote": {
+      "provider": "aws-batch-fleet",
+      "job_id": "klt-sim-7abaec7cc1f7",
+      "region": "us-east-1",
+      "instance_id": "i-0fbc5e9357901a714",
+      "instance_type": "m6i.4xlarge",
+      "availability_zone": "us-east-1f",
+      "ami_id": "ami-09c14f55df4958cbd",
+      "lifecycle": "spot",
+      "spot": true,
+      "state": "done",
+      "exit_code": "0",
+      "concurrency": "1",
+      "physical_cores": "8",
+      "elapsed_seconds": 13,
+      "client_submitted_at": "2026-11-24T04:30:21.195286Z",
+      "client_launched_at": "2026-11-24T04:30:38.741804Z",
+      "client_status_terminal_at": "2026-11-24T04:31:10.135173Z",
+      "client_collected_at": "2026-11-24T04:31:10.849063Z",
+      "runner_klt_version": "0.9.0",
+      "client_klt_version": "0.9.3.dev4596+gaca420899fc0",
+      "runner_compatibility": "match",
+      "runner_request_features": {
+        "required": [
+          "options.ngspice_init"
+        ],
+        "missing": [],
+        "status": "supported"
+      },
+      "worker_environment": {
+        "capture": "ok",
+        "simulator": {
+          "requested_binary": "ngspice",
+          "binary_source": "PATH",
+          "selected_path": "/usr/local/bin/ngspice",
+          "version_banner": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Nov 13 23:19:32 UTC 2026\n******\n",
+          "version_probe": "ok",
+          "binary_sha256": "e12148baf532d879d2e2053cecc5b498680bd4156a0dc3f69ce4f83e741e1314"
+        },
+        "pdk": {
+          "variant": "sky130A",
+          "root": "/opt/pdk",
+          "stamp_scheme": "sources-sha256",
+          "stamp_sha256": "4ca10280ae9f293aa1ff69f0060a52e0026929111bda881503717469b429ce67",
+          "stamp_text": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7",
+          "models_staged": false,
+          "stamp_scope": "executed"
+        },
+        "cpu_model": "Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz",
+        "omp_num_threads": null,
+        "image_manifest": null,
+        "model_inputs": null,
+        "diagnostics": [],
+        "pdk_stamp_comparison": {
+          "status": "match"
+        },
+        "ngspice_init": null,
+        "threads_per_worker": 1,
+        "engine_build_comparison": {
+          "status": "match"
+        }
+      },
+      "runner_model_inputs": null,
+      "runner_models_lib_sha256": "48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+      "runner_corner_section_libs": null,
+      "runner_osdi_preload": null,
+      "job_ceiling": {
+        "basis": "conservative_serial_bound",
+        "unit_count": 7,
+        "per_unit_timeout_s": 450,
+        "overhead_s": 120.0,
+        "job_bound_s": 3270.0,
+        "max_job_seconds": 3600.0,
+        "max_job_seconds_source": "fleet_config",
+        "exceeds_ceiling": false,
+        "check": "warn",
+        "max_units_per_job": 7,
+        "recommended_hosts": 1
+      },
+      "models_lib_comparison": {
+        "status": "match"
+      }
+    },
+    "engine_host": "worker",
+    "client_ngspice_binary": "/home/ubuntu/.local/bin/ngspice",
+    "client_engine_build": {
+      "version_banner": "******\n** ngspice-47 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2026, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Nov 13 23:19:32 UTC 2026\n******",
+      "binary_sha256": "39ca1adb826660324c3626f72bd946ec40704f0f3fc8e243c623f76e24b3eee2",
+      "probe": "ok",
+      "reason": null
+    },
+    "backend": {
+      "resolved": "batch",
+      "source": "env",
+      "requested": "batch"
+    }
+  },
+  "coverage": {
+    "corners_simulated": 7,
+    "measurements_declared": 2,
+    "measurements_with_limits": 1,
+    "unrecognized_limit_keys": [],
+    "schema_version": 1,
+    "known": true,
+    "checked": [
+      "limit:[0,\"ff/novdd/125C\",\"t_dec\",\"max\"]",
+      "limit:[1,\"fs/novdd/-40C\",\"t_dec\",\"max\"]",
+      "limit:[2,\"fs/novdd/125C\",\"t_dec\",\"max\"]",
+      "limit:[3,\"sf/novdd/-40C\",\"t_dec\",\"max\"]",
+      "limit:[4,\"sf/novdd/125C\",\"t_dec\",\"max\"]",
+      "limit:[5,\"ss/novdd/-40C\",\"t_dec\",\"max\"]",
+      "limit:[6,\"tt/novdd/27C\",\"t_dec\",\"max\"]",
+      "measurement:[0,\"ff/novdd/125C\",\"t_dec_abs\"]/observation",
+      "measurement:[1,\"fs/novdd/-40C\",\"t_dec_abs\"]/observation",
+      "measurement:[2,\"fs/novdd/125C\",\"t_dec_abs\"]/observation",
+      "measurement:[3,\"sf/novdd/-40C\",\"t_dec_abs\"]/observation",
+      "measurement:[4,\"sf/novdd/125C\",\"t_dec_abs\"]/observation",
+      "measurement:[5,\"ss/novdd/-40C\",\"t_dec_abs\"]/observation",
+      "measurement:[6,\"tt/novdd/27C\",\"t_dec_abs\"]/observation"
+    ],
+    "skipped": [],
+    "inapplicable": [
+      {
+        "id": "measurement:[0,\"ff/novdd/125C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[1,\"fs/novdd/-40C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[2,\"fs/novdd/125C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[3,\"sf/novdd/-40C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[4,\"sf/novdd/125C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[5,\"ss/novdd/-40C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      },
+      {
+        "id": "measurement:[6,\"tt/novdd/27C\",\"t_dec_abs\"]/limits",
+        "reason": "characterization_without_limits"
+      }
+    ],
+    "unknown": [],
+    "nothing_checked": false,
+    "nothing_checked_reasons": []
+  },
+  "provenance": {
+    "klt_version": "0.9.3.dev4596+gaca420899fc0",
+    "klt_git_commit": "aca420899fc0ad44114d56b88de4ea1275e035e0",
+    "klt_reinstall_spec": "klayout-tools @ git+https://github.com/2AMLogic/klayout-tools@aca420899fc0ad44114d56b88de4ea1275e035e0",
+    "klayout_version": "0.30.13",
+    "pdk": {
+      "name": "sky130A",
+      "source": "search root: ~/.ciel",
+      "version": "open_pdks f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7"
+    },
+    "deck": {
+      "name": "sky130.lib.spice",
+      "content_hash": "sha256:48de7c677e2c6e7d09b2559279de9f818be71010a4aa933d728eb4db3b133c84",
+      "released": false
+    },
+    "input": {
+      "content_hash": "sha256:d48088d2d800d4426203563a08834e0285c0c50bed35b60637508f68c1edd6f6",
+      "role": "netlist"
+    }
+  },
+  "measurements": [
+    {
+      "name": "t_dec",
+      "unit": "s",
+      "limits": {
+        "max": 1.5e-09
+      },
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "fs/novdd/125C",
+        "value": 5.829266026926e-10,
+        "margin": 9.170733973074e-10
+      },
+      "min": {
+        "corner_id": "sf/novdd/-40C",
+        "value": 3.944654847204e-10
+      },
+      "max": {
+        "corner_id": "fs/novdd/125C",
+        "value": 5.829266026926e-10
+      },
+      "spec_row": "t_dec"
+    },
+    {
+      "name": "t_dec_abs",
+      "unit": "s",
+      "limits": null,
+      "status": "pass",
+      "worst_case": {
+        "corner_id": "ff/novdd/125C",
+        "value": 5.593346323557e-09,
+        "margin": null
+      },
+      "min": {
+        "corner_id": "sf/novdd/-40C",
+        "value": 5.44446548472e-09
+      },
+      "max": {
+        "corner_id": "fs/novdd/125C",
+        "value": 5.632926602693e-09
+      }
+    }
+  ],
+  "corners": [
+    {
+      "corner_id": "ff/novdd/125C",
+      "process": "ff",
+      "supply_v": {},
+      "temperature_c": 125,
+      "status": "pass",
+      "runtime_s": 4.074,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 5.433463235568e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 9.566536764432001e-10
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.593346323557e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "fs/novdd/-40C",
+      "process": "fs",
+      "supply_v": {},
+      "temperature_c": -40,
+      "status": "pass",
+      "runtime_s": 4.125,
+      "peak_rss_bytes": 188841984,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 4.185441126651e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 1.0814558873349e-09
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.468544112665e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "fs/novdd/125C",
+      "process": "fs",
+      "supply_v": {},
+      "temperature_c": 125,
+      "status": "pass",
+      "runtime_s": 4.072,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 5.829266026926e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 9.170733973074e-10
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.632926602693e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "sf/novdd/-40C",
+      "process": "sf",
+      "supply_v": {},
+      "temperature_c": -40,
+      "status": "pass",
+      "runtime_s": 4.024,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 3.944654847204e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 1.1055345152796e-09
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.44446548472e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "sf/novdd/125C",
+      "process": "sf",
+      "supply_v": {},
+      "temperature_c": 125,
+      "status": "pass",
+      "runtime_s": 4.074,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 5.175493164459e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 9.824506835541e-10
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.567549316446e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "ss/novdd/-40C",
+      "process": "ss",
+      "supply_v": {},
+      "temperature_c": -40,
+      "status": "pass",
+      "runtime_s": 4.023,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 4.023657940071e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 1.0976342059929e-09
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.452365794007e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    },
+    {
+      "corner_id": "tt/novdd/27C",
+      "process": "tt",
+      "supply_v": {},
+      "temperature_c": 27,
+      "status": "pass",
+      "runtime_s": 4.122,
+      "peak_rss_bytes": 188760064,
+      "engine_exit_code": 0,
+      "engine_killed_by_signal": null,
+      "measurements": [
+        {
+          "name": "t_dec",
+          "value": 4.513792165596e-10,
+          "unit": "s",
+          "status": "pass",
+          "margin": 1.0486207834403999e-09
+        },
+        {
+          "name": "t_dec_abs",
+          "value": 5.50137921656e-09,
+          "unit": "s",
+          "status": "pass",
+          "margin": null
+        }
+      ],
+      "diagnostics": [],
+      "artifacts": {
+        "log": null,
+        "raw": null,
+        "waveform": null,
+        "deck": null
+      },
+      "monte_carlo": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "batch_ngspice_init_unverified",
+      "severity": "warning",
+      "feature": "options.ngspice_init",
+      "simulator_application": "unverified",
+      "jobs": [
+        {
+          "job_id": "klt-sim-7abaec7cc1f7",
+          "fleet_index": null,
+          "request_identity": "unverified"
+        }
+      ],
+      "message": "Worker reports do not confirm that ngspice applied options.ngspice_init. Jobs marked digest_reported reported the requested init contents. For jobs marked unverified, the request identity is also unknown."
+    }
+  ]
+}

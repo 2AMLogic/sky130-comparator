@@ -24,7 +24,8 @@ Generation (regenerates the GDS and every evidence file, ~1 min):
 
 ```sh
 python3 layout/gen_comparator.py           # regenerate + verify + emit
-python3 layout/gen_comparator.py --check   # byte-compare against the committed GDS
+python3 layout/gen_comparator.py --check   # byte-compare the GDS + the five evidence artifacts
+python3 layout/gen_comparator.py --selftest  # hermetic: a mutated artifact fails the compare
 ```
 
 `--check` passes (re-verified at the 0.8.0 pin, issue #207): the flow is deterministic (no randomness, no dict-ordering
@@ -35,6 +36,45 @@ builds, so nothing in that toolchain move is a geometry change.
 `compose-report.json` did move: klt 0.6.0 records a `source_path` +
 `source_digest` per placed block (additive; no field removed), so the
 compose evidence now pins each `klt gen` block's own GDS by hash.
+
+Since issue #311 the same `--check` also byte-compares the five evidence
+artifacts no manifest citation re-derives — `compose-report.json`,
+`route-summary.json`, `lvs-request.json`, `lvs-coverage-probe.json` and
+`erc-coverage-probe.json` — on every PR (the `layout-device-count` job).
+The first two are flow outputs the check already regenerated; the request
+is the serialized `LVS_REQUEST` constant; the two probes are re-run in
+full (1+8 `klt lvs`, 1 `klt layers`, 1+9 `klt erc`, 1 `klt signoff` —
+measured ~12 s beside the flow's ~11 s at the 0.8.0 pin) into a temp dir
+and byte-compared, so a committed probe whose inputs moved (schematic
+netlist, spec, tiers doc, GDS) or whose bytes were edited fails CI naming
+the file — the silent-drift class #285 exposed when
+`erc-coverage-probe.json` carried a stale T1 met-count nothing read.
+`--selftest` is the hermetic half (no klt, no PDK): it proves a mutated or
+no-longer-regenerated artifact fails the same `compare_evidence` code path
+the live check runs, and that the host-provenance normalization below is
+what makes a single-root regeneration pass.
+
+One measured exception to the byte-compare (issue #319): a GitHub runner
+installs exactly one PDK search root (`~/.ciel`, via `ciel enable`), while
+a workstation that also has volare installed has two — klt stamps the
+extra roots into `compose-report.json`'s
+`provenance.pdk.ambiguous_sources` on a multi-root host and **omits the
+key entirely** on a single-root host (never emits `[]`). Those bytes
+record the generating host, not the design, so a raw byte-compare of that
+one artifact is red in whichever environment did *not* generate the
+committed copy. `--check` therefore compares `compose-report.json`
+through a canonical form (`compose_canonical_bytes`) with exactly that
+key stripped from both sides — stripped by name, never normalized to an
+empty list — while the tool pins in the same provenance block
+(`klt_version`, `klayout_version`) stay strictly compared and get an
+explicit off-pin diagnostic (`compose_pin_error`, mirroring
+`extract_pex.py`'s `_assert_pinned`). Everything else in the file still
+bites: any drift beyond that key fails CI naming the file. The committed
+copy keeps the key its generating host emitted — the ambiguity warning
+was true there — which is why a workstation regeneration reproduces it
+byte-identically while a single-root runner's fresh copy legitimately
+differs by that one key; either side can regenerate and commit without
+flip-flopping the gate.
 
 **Toolchain pin.** `klt` (klayout-tools) **0.8.0** on the **klayout
 0.30.12** engine (the engine klt 0.8.0 build-tests against; the LVS, ERC and
@@ -126,10 +166,16 @@ should re-examine:
 > supply R, e.g. `VDD` 2357 → 1890 Ω, `VINN` 407 → 219 Ω) and the 0.35 µm
 > re-draw added +0.07 kΩ (0.5 %) and −0.14 fF. The per-record post-layout
 > numbers below and in `sim/comparator-decision/records/` are therefore
-> **historical** and have **not** been re-measured at the new geometry/pin;
-> that campaign is tracked as #125 (it is a multi-corner
-> Monte Carlo campaign that does not fit this host). Do not read them as
-> measurements of the current `layout/comparator.gds`.
+> **historical**: they were re-measured at the new geometry and the `f6eeac7`
+> PDK pin by the #179/#361 re-qualification campaign (2026-11-23, on the
+> issue-#127 batch route), which superseded every one of them with a record
+> minted on klt 0.8.0 / klayout 0.30.12 (current extraction envelope:
+> **17.814 kΩ** total series R, 123.02 fF ground C). Do not read the figures
+> in this section as measurements of the current `layout/comparator.gds` --
+> the current record set is
+> [`sim/characterization-report.md`](../sim/characterization-report.md) and
+> the old/new comparison is
+> [DR-012](../spec/decision-records/DR-012-requalification.md).
 
 The extraction and re-simulation this section anticipated has since run — see
 [`sim/comparator-decision/README.md`](../sim/comparator-decision/README.md)'s
@@ -218,8 +264,11 @@ klayout-tools#2436 and shipped in the published `klayout-tools==0.7.0`.
 Issue #123 bumped the pin, regenerated the layout at 0.35 µm, and changed the
 LVS request so the geometry is compared. Artifacts that were produced from the
 0.42 µm layout (the `sim/comparator-decision/records/` post-layout records)
-are historical: they describe the layout and toolchain of their date and are
-**not** re-measured here; see "What the post-layout re-verification measured".
+are historical: they describe the layout and toolchain of their date; the
+#179/#361 re-qualification campaign (2026-11-23) re-measured every live one
+at the current geometry and PDK pin and superseded it append-only -- see
+"What the post-layout re-verification measured" and
+[DR-012](../spec/decision-records/DR-012-requalification.md).
 
 Regenerating moved the geometry only where the resistors sit: the GDS is
 32156 → 32284 bytes, the composed bbox is unchanged (40.59 × 82.04 µm,
@@ -708,12 +757,17 @@ one a way the committed file could otherwise fail to support the claim above:
 65/44 is drawn only by the two body ties; `erc_status` is `clean` with zero
 findings; `erc_coverage.skipped` is empty **and** every declared supply and tie
 appears in `checked`; and the envelope's own `provenance.spec.content_hash`
-equals the sha256 of the committed `erc-spec.json`. That last one closes a real
-hole: `klt signoff`'s item-11 path **re-reads the spec document from disk** to
-discover which nets were declared `supply`, and (klt 0.6.0) does *not* check it
-against that recorded hash — so an edited spec would silently change what a
-citation is graded on. Filed generically as
-[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496).
+equals the sha256 of the committed `erc-spec.json`. That last one is a
+generation-time invariant — the envelope and the spec are one run's two
+halves, and the guard refuses to commit a pair whose halves disagree. It
+was written against a real hole: through klt 0.6.0, `klt signoff`'s item-11
+path **re-read the spec document from disk** to discover which nets were
+declared `supply` and did *not* check it against that recorded hash — so an
+edited spec would silently change what a citation was graded on. Filed
+generically as
+[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496),
+which the 0.8.0 pin carries: item 11 now checks the spec digest and grades
+drift as `stale_evidence`.
 
 ### Whether the supply check can fail — `erc-coverage-probe.json`
 
@@ -756,7 +810,9 @@ two things: this ERC run, and `layout/lvs-report.json` — which must itself pas
 declared supply to a reference-side net (`_lvs_reference_carries_supplies`).
 The grader returns `met` for the compound citation (`erc-coverage-probe.json` →
 `signoff_if_cited`: `item_11_status: "met"`; the generator fails if a future klt
-changes that).
+changes that). That block records the item-11 verdict only — the T1 met-count
+of record is `manifests/t1-signoff-report.json`, re-checked by
+`scripts/check-t1-signoff.py gate` on every CI run.
 
 The earlier decision to withhold item 11 rested on one fact: its LVS half
 carries no information beyond "item 4's envelope reports `match`", because

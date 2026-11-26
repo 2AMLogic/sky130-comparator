@@ -1,0 +1,59 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=1.953125mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.66640e-09
+ Reference value :  9.33750e-09
+ Reference value :  1.40625e-08
+ Reference value :  1.87825e-08
+ Reference value :  2.35075e-08
+ Reference value :  2.82275e-08
+ Reference value :  3.29625e-08
+ Reference value :  3.76975e-08
+ Reference value :  4.24275e-08
+ Reference value :  4.71675e-08
+ Reference value :  5.19025e-08
+ Reference value :  5.66325e-08
+ Reference value :  6.13575e-08
+ Reference value :  6.60875e-08
+ Reference value :  7.08175e-08
+ Reference value :  7.55575e-08
+ Reference value :  8.02825e-08
+ Reference value :  8.50025e-08
+ Reference value :  8.96975e-08
+ Reference value :  9.43925e-08
+ Reference value :  9.90875e-08
+ Reference value :  1.03783e-07
+ Reference value :  1.08478e-07
+ Reference value :  1.13168e-07
+ Reference value :  1.17863e-07
+ Reference value :  1.22558e-07
+ Reference value :  1.27258e-07
+ Reference value :  1.31948e-07
+ Reference value :  1.36648e-07
+ Reference value :  1.41348e-07
+ Reference value :  1.46048e-07
+ Reference value :  1.50743e-07
+ Reference value :  1.55448e-07
+ Reference value :  1.60148e-07
+ Reference value :  1.64848e-07
+ Reference value :  1.69548e-07
+ Reference value :  1.74253e-07
+ Reference value :  1.78948e-07
+ Reference value :  1.83643e-07
+ Reference value :  1.88333e-07
+ Reference value :  1.93033e-07
+ Reference value :  1.97728e-07
+ Reference value :  2.02418e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 

@@ -7,6 +7,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -17,20 +18,22 @@ from types import SimpleNamespace
 SIM_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SIM_DIR))
 
-from harness import cli, evidence_store as store  # noqa: E402
+from harness import cli, mc_cli, evidence_store as store  # noqa: E402
+
+
+def _stored_entry(data: bytes, name: str) -> dict:
+    """One valid manifest entry for ``data``, stored under ``name``."""
+    sha = hashlib.sha256(data).hexdigest()
+    return {
+        "sha256": sha, "size": len(data), "kind": "evidence",
+        "producer": {"tool": "klt", "version": "0", "loom.repo": "o/r", "commit": None},
+        "uri": f"artifact:evidence/o__r/{sha[:2]}/{sha}", "name": name,
+    }
 
 
 def _fake_put(files, repo_root):
     """Stand-in for put_files: a valid manifest with artifact: uris."""
-    entries = []
-    for path, name in files:
-        data = Path(path).read_bytes()
-        sha = hashlib.sha256(data).hexdigest()
-        entries.append({
-            "sha256": sha, "size": len(data), "kind": "evidence",
-            "producer": {"tool": "klt", "version": "0", "loom.repo": "o/r", "commit": None},
-            "uri": f"artifact:evidence/o__r/{sha[:2]}/{sha}", "name": name,
-        })
+    entries = [_stored_entry(Path(path).read_bytes(), name) for path, name in files]
     return {"schema_version": 1, "entries": sorted(entries, key=lambda e: e["name"])}, []
 
 
@@ -129,17 +132,61 @@ class TestStoreRun(unittest.TestCase):
                             blobs={}, record_text="r\n", put=_fake_put)
 
 
+class TestPutFilesValidatesWholeManifest(unittest.TestCase):
+    """The manifest ``klt`` answers with is validated whole, against the same
+    schema the CI gate applies, before entries are indexed by name (issue
+    #389): two identical entries must be refused, not collapsed into one for
+    the staged-file cross-check and then both returned."""
+
+    NAME = "sim/bench/corners/rid/tt.log"
+
+    def _put(self, klt_entries):
+        """``put_files`` on one log, with a ``klt`` stand-in that answers
+        ``klt_entries(<the valid entry for that log>)``."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        log = root / "tt.log"
+        log.write_text("log\n")
+
+        def run(cmd, **_k):
+            entries = klt_entries(_stored_entry(log.read_bytes(), self.NAME))
+            mpath = cmd[cmd.index("--manifest") + 1]
+            Path(mpath).write_text(json.dumps({"schema_version": 1, "entries": entries}))
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return store.put_files([(log, self.NAME)], root, run=run)
+
+    def test_single_entry_control_is_returned(self):
+        manifest, empty = self._put(lambda e: [e])
+        self.assertEqual([e["name"] for e in manifest["entries"]], [self.NAME])
+        self.assertEqual(empty, [])
+
+    def test_duplicate_entry_is_refused(self):
+        with self.assertRaisesRegex(store.StoreError, "duplicate name"):
+            self._put(lambda e: [e, dict(e)])
+
+
+_RECORD_CLI_CASES = [
+    # (label, module, argv, patched runner target)
+    ("run_corners", cli, ["harness-corner-smoke", "--record"], "harness.runner.run"),
+    ("monte_carlo", mc_cli, ["mc-smoke", "--record", "--seed", "1", "--n", "2"],
+     "harness.mc_runner.run"),
+]
+
+
 class TestCliFailsClosed(unittest.TestCase):
     def test_record_without_broker_exits_nonzero_before_simulating(self):
-        err = io.StringIO()
-        env = {k: v for k, v in __import__("os").environ.items() if k != store.ENV_BROKER}
-        with unittest.mock.patch.dict("os.environ", env, clear=True), \
-                unittest.mock.patch("harness.runner.run") as run, \
-                contextlib.redirect_stderr(err):
-            rc = cli.main(["harness-corner-smoke", "--record"])
-        self.assertEqual(rc, 10)
-        run.assert_not_called()
-        self.assertIn("KLT_ARTIFACT_BROKER", err.getvalue())
+        for label, module, argv, runner_target in _RECORD_CLI_CASES:
+            with self.subTest(cli=label):
+                err = io.StringIO()
+                env = {k: v for k, v in os.environ.items() if k != store.ENV_BROKER}
+                with unittest.mock.patch.dict("os.environ", env, clear=True), \
+                        unittest.mock.patch(runner_target) as run, \
+                        contextlib.redirect_stderr(err):
+                    rc = module.main(argv)
+                self.assertEqual(rc, 10)
+                run.assert_not_called()
+                self.assertIn("KLT_ARTIFACT_BROKER", err.getvalue())
 
 
 if __name__ == "__main__":

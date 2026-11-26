@@ -53,9 +53,12 @@ def load_manifest() -> dict:
         f"{MANIFEST} [checks]", m["measure"], m.get("checks", {}))
     rev = m.get("reverse_ladder")
     if rev:
+        # grade_reverse() reads per-point min/max only (DR-008: reported,
+        # never scored), so a spread floor/ceiling in this block would sit
+        # ungraded forever -- reject it at load (issue #295).
         corners_mod.validate_spread_checks(
             f"{MANIFEST} [reverse_ladder.checks]",
-            rev.get("measure", {}), rev.get("checks", {}))
+            rev.get("measure", {}), rev.get("checks", {}), spreads_graded=False)
     return m
 
 
@@ -282,8 +285,9 @@ def grade(response: dict, manifest: dict | None = None) -> list[str]:
 
 def grade_reverse(response: dict, manifest: dict | None = None) -> list[str]:
     """Reverse-ladder checks (reported, never scored): per-point min/max from
-    `reverse_ladder.checks`; no spread floors. Report-only names without
-    limits are skipped."""
+    `reverse_ladder.checks`; no spread floors -- a spread key there is
+    rejected at load (issue #295). Report-only names without limits are
+    skipped."""
     m = manifest or load_manifest()
     fails: list[str] = []
     for p in _points(response):
@@ -327,7 +331,21 @@ def main(argv: list[str] | None = None) -> int:
             (out / f"request-{name}.json").write_text(json.dumps(req, indent=2) + "\n")
         print(f"wrote {out}/request-{{process,temperature,supply,graded-cold,graded-hot}}.json")
         return 0
-    merged = merge_responses([json.loads(Path(x).read_text()) for x in args.response])
+    responses = []
+    for x in args.response:
+        try:
+            r = json.loads(Path(x).read_text())
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+            print(f"ladder.py: {x}: {e}", file=sys.stderr)
+            return 2
+        if "corners" not in r:
+            print(f'ladder.py: {x}: response has no "corners" key', file=sys.stderr)
+            return 2
+        responses.append(r)
+    merged = merge_responses(responses)
+    if not merged["corners"]:
+        print("ladder.py: no corners to grade", file=sys.stderr)
+        return 2
     if args.reverse:
         fails = grade_reverse(merged)
         for f in fails[:40]:

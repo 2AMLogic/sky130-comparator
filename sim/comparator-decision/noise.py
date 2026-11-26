@@ -7,6 +7,7 @@ verbatim from run.py by issue #224.
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -218,7 +219,8 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
             "- **Netlist provenance**: POST-LAYOUT / EXTRACTED, reduced "
             "sub-model -- the preamp partition of the extracted netlist "
             "(`layout/comparator.pex-preamp.spice`, from `layout/comparator.gds` "
-            "via `klt extract --parasitics` and `layout/extract_pex.py`), WITH "
+            "via `klt extract --parasitics` and `layout/extract_pex.py`), extracted by "
+            f"{_shared.extraction_versions(json.loads(_shared.PEX_ENVELOPE.read_text()))}, with "
             "its extracted lumped-RC parasitics; everything past the preamp "
             "outputs is the loop break; see Methodology for what that omits "
             "and for how the partition is taken."
@@ -252,7 +254,8 @@ def write_noise_evidence(result: NoiseResult, note: str = "", supersedes: str = 
     a("| Quantity | Value | Corner condition |")
     a("|---|---|---|")
     a(f"| Op point: v(TAILP) | {result.op_tailp_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
-    a(f"| Op point: v(OUTP1)=v(OUTN1) | {result.op_outp1_v:.4f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
+    a(f"| Op point: v(OUTP1) | {result.op_outp1_v:.6f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
+    a(f"| Op point: v(OUTN1) | {result.op_outn1_v:.6f} V | {result.corner}/{result.temp_c}C/{VDD}V |")
     a(
         f"| Single-ended input-referred noise (`inoise_total`, referred through Vinp) | "
         f"{result.single_ended_rms_v * 1000:.4f} mV rms | {result.corner}/{result.temp_c}C/{VDD}V |"

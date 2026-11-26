@@ -15,9 +15,14 @@
 # "counts may differ" warning. The pin values themselves live in one place --
 # layout/gen_comparator.py (`KLT_VERSION` / `KLAYOUT_VERSION`, issue #245);
 # the check-toolchain-pin gate below fails this workflow if any install line
-# in this file disagrees with them. Upgrade deliberately: bump that one
-# source of truth, re-run the regeneration command from manifests/README.md,
-# and commit the refreshed record in the same change.
+# in this file disagrees with them. The sky130 PDK pin is likewise restated
+# in this file's three `pip install ciel==` lines and three `ciel enable`
+# hashes (issue #275) and is gated against its own source of truth,
+# sim/pdk.json (structured keys ciel_version / open_pdks_commit), together
+# with the mirrors in sim/toolchain.json and docs/environment-setup.md.
+# Upgrade deliberately: bump the one source of truth, re-run the
+# regeneration command from manifests/README.md, and commit the refreshed
+# record in the same change.
 
 name: t1-signoff
 
@@ -25,6 +30,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_dispatch:
     inputs:
       base_sha:
@@ -33,6 +39,8 @@ on:
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   signoff:
@@ -48,12 +56,49 @@ jobs:
         with:
           python-version: "3.12"
 
+      # WORK_PLAN.md's guide:plan-body region is renderer-owned (issue
+      # #344): update_work_plan() compares render_plan_body()'s output
+      # byte-for-byte against the committed region, so a hand-typed
+      # `_Generated:` timestamp inside the markers makes every Guide tick
+      # see a diff and defeats the no-op debounce (#5890/#5930 docs churn;
+      # PRs #342/#343 each needed a Judge + Doctor round trip). This gate
+      # fails such a PR here, before review.
+      - name: Work-plan plan-body gate selftest (hermetic)
+        run: python3 scripts/check-work-plan-body.py selftest
+
+      - name: guide:plan-body region carries no timestamp stamp
+        run: python3 scripts/check-work-plan-body.py gate
+
+      # WORK_LOG.md entries must be true of THIS repo's forge (issue #418):
+      # PR #415's first commit carried 161 entries from another repository
+      # and CI was green because nothing checked the file. For every
+      # `- **PR #N**` / `- **Issue #N**` line a PR ADDS, assert the number
+      # exists in {owner}/{repo} (from `origin`), the title matches exactly,
+      # and the entry sits under its real merge/close date heading. Exit 1 =
+      # untrue entry; exit 2 = the forge could not be consulted (no token,
+      # rate limit, network), which is neither a pass nor a content verdict.
+      - name: WORK_LOG gate selftest (hermetic)
+        run: python3 -I scripts/check-work-log.py selftest
+
+      - name: WORK_LOG entries added by this PR are true of this repo
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 -I scripts/check-work-log.py gate --base "$BASE_SHA" --head "$HEAD_SHA"
+
       # sim/ evidence is append-only (issue #138, sim/README.md "Append-only
       # rule"). The characterization-envelope freshness guard below cannot
       # enforce that -- `--update` re-pins whatever is on disk -- so this
       # compares protected paths against Git history. PR: head vs merge-base
       # with the target branch. main push: event.before vs the pushed head.
-      # Manual dispatch has no event base: it needs the `base_sha` input and
+      # Merge queue (issue #280): the trial-merge commit vs the event's
+      # merge_group.base_sha -- github.base_ref is empty there, so the base
+      # comes from the event payload, and a missing one FAILS the same way
+      # as a manual dispatch without its input (BASE_REF is `origin/` and
+      # inert on merge_group, exactly as it already is on push). Manual
+      # dispatch has no event base: it needs the `base_sha` input and
       # FAILS without it rather than claim verification. An unavailable base
       # (branch creation, force-push) is likewise an explicit failure.
       - name: sim/ append-only gate selftest (hermetic)
@@ -66,10 +111,16 @@ jobs:
           BEFORE: ${{ github.event.before }}
           DISPATCH_BASE: ${{ github.event.inputs.base_sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MG_BASE: ${{ github.event.merge_group.base_sha }}
+          MG_HEAD: ${{ github.event.merge_group.head_sha }}
         run: |
+          BASE="$DISPATCH_BASE"; HEAD="$HEAD_SHA"
+          if [ "$EVENT" = "merge_group" ]; then
+            BASE="$MG_BASE"; HEAD="$MG_HEAD"
+          fi
           python3 scripts/check-sim-append-only.py gate --event "$EVENT" \
               --base-ref "$BASE_REF" --before "$BEFORE" \
-              --base "$DISPATCH_BASE" --head "$HEAD_SHA"
+              --base "$BASE" --head "$HEAD"
 
       # Stored-evidence manifests (issue #198): new sim runs put raw bytes in
       # the fleet artifact store and commit only manifests/artifacts/*.manifest.json
@@ -89,12 +140,15 @@ jobs:
       - name: Install klt (pinned; see manifests/README.md)
         run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
 
-      # The pin's single source of truth is layout/gen_comparator.py (issue
-      # #245). This gate re-derives the pin from that module and fails if ANY
-      # `klayout-tools==` / `klayout==` install line in THIS file disagrees --
-      # scanned line by line, so it covers every job above and any job added
+      # The klt pin's single source of truth is layout/gen_comparator.py
+      # (issue #245); the sky130 PDK pin's is sim/pdk.json (issue #275).
+      # This gate re-derives both and fails if ANY `klayout-tools==` /
+      # `klayout==` / `ciel==` / open_pdks-hash line in THIS file disagrees
+      # (or if sim/toolchain.json / docs/environment-setup.md disagree with
+      # sim/pdk.json) -- scanned line by line, so it covers every job above
+      # and any job added
       # later, with no job count to maintain. Hermetic: no klt, no PDK.
-      - name: Toolchain-pin gate selftest + gate (workflow installs == gen_comparator.py)
+      - name: Toolchain-pin gate selftest + gate (klt installs == gen_comparator.py; PDK pins == sim/pdk.json)
         run: |
           python3 scripts/check-toolchain-pin.py selftest
           python3 scripts/check-toolchain-pin.py gate
@@ -120,8 +174,9 @@ jobs:
 
       # T1 item 2's artifact-anchored envelope (issue #186). The manifest pins
       # evidence/item2.json's input hash, so `gate` above already goes red
-      # when layout/comparator.gds moves; this step says which file drifted
-      # and proves (selftest) that an edited member changes the digest.
+      # when layout/comparator.gds moves; this step names the stale envelope
+      # and proves (selftest) that editing the bound GDS changes
+      # provenance.input.content_hash.
       - name: Layout-envelope selftest + currency check (hermetic)
         run: |
           python3 scripts/layout-envelope.py --selftest
@@ -147,15 +202,25 @@ jobs:
       # The ERC supply-spec envelope's own rot check (issue #68).
       # layout/erc-report.json is cited for item 11 (issue #123, see
       # manifests/README.md), but the citation pins only the layout hash -- and it depends on a SECOND committed document,
-      # layout/erc-spec.json, which nothing else pins: `klt signoff`'s item-11
-      # path re-reads that spec from disk and does not check it against the
-      # envelope's own provenance.spec.content_hash (klayout-tools#2496), so an
-      # edited spec would silently change what a citation is graded on. There
-      # is no `klt erc --check`, so this re-runs the documented command and
-      # byte-compares: klt's own `--format json` stdout IS the committed file,
-      # and a clean run exits 0, so a findings/skipped-work regression fails
-      # here too. No PDK needed -- `--deck`/`--pdk` are curated-table names,
-      # not an install (the same reason this job stays PDK-free).
+      # layout/erc-spec.json. Through klt 0.6.0 nothing pinned that spec:
+      # `klt signoff`'s item-11 path re-read it from disk without checking it
+      # against the envelope's own provenance.spec.content_hash
+      # (klayout-tools#2496), so an edited spec would silently change what a
+      # citation was graded on; at the 0.8.0 pin item 11 checks the spec
+      # digest and grades drift as `stale_evidence`. This step re-runs the
+      # documented command and byte-compares the full JSON on purpose: a
+      # drift in findings, skipped work or the recorded versions
+      # (provenance.klt_version, klayout_version, pdk.version) all fail
+      # here, and a pin move is a re-measurement, not a pin edit (issue
+      # #204) -- `klt erc --check` exists at this pin but is weaker: by
+      # default it checks only the layout, spec and deck hashes, so an
+      # edited finding count still matches; with `--rerun` it compares
+      # fresh ERC results, but even then some provenance fields (the
+      # version fields above) are allowed to differ. klt's own `--format json` stdout IS the
+      # committed file, and a clean run exits 0, so a findings/skipped-work
+      # regression fails here too. No PDK needed -- `--deck`/`--pdk` are
+      # curated-table names, not an install (the same reason this job stays
+      # PDK-free).
       #
       # Re-measured under klt 0.8.0 (ERC schema_version 2; issue #204).
       - name: Re-run the committed ERC supply spec and diff the envelope
@@ -175,7 +240,8 @@ jobs:
       # time (issue #270) instead of only after merge in the push-only
       # harness-selftest job -- which is kept, because only its PDK-equipped
       # copy can fail on toolchain-pin drift. Item 1 (design/netlist.sh
-      # --check needs xschem) has no CI step yet, see the PR for issue #189.
+      # --check needs xschem) is re-checked in the item1-netlist-check job
+      # below, which builds the pinned xschem 3.4.7 (PR #215).
       - name: Re-check the item-10 attestation envelope
         run: klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json
 
@@ -254,8 +320,20 @@ jobs:
         run: PDK_ROOT="$HOME/.ciel" python3 layout/extract_pex.py --check
 
       # The item-2 envelope's regeneration claim (issue #186): the committed
-      # GDS is what layout/gen_comparator.py produces. Byte-compare.
-      - name: Regenerate the layout and byte-compare against the committed GDS
+      # GDS is what layout/gen_comparator.py produces. Byte-compare. Since
+      # issue #311 the same --check also re-derives and byte-compares the
+      # five evidence artifacts no manifest citation pins (compose-report,
+      # route-summary, lvs-request and the two coverage probes), emitting
+      # into the temp dir (~21 klt runs: 1+8 lvs, 1 layers, 1+9 erc, 1
+      # signoff; measured ~12s beside the flow's ~11s), so committed
+      # evidence can no longer drift silently -- the class #285 exposed
+      # when erc-coverage-probe.json carried a stale T1 count nothing read.
+      # The selftest is the hermetic half (no klt, no PDK): it proves a
+      # mutated or no-longer-regenerated artifact fails the compare.
+      - name: Evidence-comparator selftest (hermetic; a mutated artifact fails)
+        run: python3 layout/gen_comparator.py --selftest
+
+      - name: Regenerate the layout and byte-compare GDS + evidence artifacts
         run: PDK_ROOT="$HOME/.volare" python3 layout/gen_comparator.py --check
 
   # Harness acceptance test in CI (issue #149). sim/selftest.sh stage 4
@@ -333,6 +411,13 @@ jobs:
       - name: Enable the pinned sky130A PDK (sim/pdk.json)
         run: ciel enable --pdk-family sky130 -l sky130_fd_pr f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7
 
+      # Pinned klt must be on PATH before the harness selftest below: the
+      # item-10 freshness gate inside sim/selftest.sh turns a missing klt
+      # into a failure under --require-pdk (issue #315). Same pin as the
+      # signoff job.
+      - name: Install klt (pinned; same pin as the signoff job)
+        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
+
       # Reduced default mode (the "check:ci" mode); --require-pdk turns a
       # missing ngspice/PDK into a failure instead of a skip. Stage 4's
       # sabotage negative control is part of this run.
@@ -344,10 +429,7 @@ jobs:
       # (sim/selftest.sh --quick) and compares against the committed
       # evidence/item9.json; it also re-asserts the pins recorded in the
       # inventory (klt 0.8.0, ngspice 46, xschem 3.4.7 -- hence the pinned klt
-      # install here). Needs ngspice 46 + the PDK, which this job provides.
-      - name: Install klt (pinned; same pin as the signoff job)
-        run: python -m pip install "klayout-tools==0.8.0" "klayout==0.30.12"
-
+      # install above). Needs ngspice 46 + the PDK, which this job provides.
       - name: Re-check the item-9 attestation envelope
         run: PDK_ROOT="$HOME/.ciel" klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json
 

@@ -41,7 +41,10 @@ from _shared import (  # noqa: E402
     _finalize_record,
     _input_split_stimulus,
     _record_header,
+    dut_provenance,
+    _dut_fragment,
     post_layout_delta_lines,
+    simulation_versions,
     subset_corner_campaign_reason,
 )
 from regen import (  # noqa: E402
@@ -127,25 +130,121 @@ class OffsetResult:
     logs: dict[str, str] = field(default_factory=dict)
 
 
+# ---------------------------------------------------------------------------
+# Resumable serial campaigns (issue #154)
+# ---------------------------------------------------------------------------
+#
+# An N=200 extracted-DUT campaign is 4 + 2N = 404 decks at up to ~285 s each:
+# far past any single command's budget. The `offset` mode therefore has the
+# same chunk/resume shape `noise-tran` has (issue #100), with offset-specific
+# state. Each deck's derived pick-off value AND its raw ngspice log are
+# persisted under `--resume-dir` as the deck completes; a re-run of the
+# IDENTICAL command runs only the missing decks; the record is written only by
+# the invocation that completes the last deck. Gain calibration, mismatch draws
+# and the same-seed mismatch-disabled negative control are all campaign decks,
+# so a resumed campaign cannot drop the control.
+
+OFFSET_CAMPAIGN_SCHEMA = 1
+OFFSET_INCOMPLETE_EXIT = 3
+
+
+class OffsetCampaignIncomplete(_shared.CampaignIncomplete):
+    """A chunked invocation stopped on its own budget with decks outstanding.
+
+    Raised INSTEAD of returning an `OffsetResult`, so no caller can write a
+    record from a partial campaign."""
+
+
+class OffsetCampaign(_shared.ResumableCampaign):
+    """Per-deck result store for one `offset` campaign: the shared
+    `ResumableCampaign` machinery (issue #429) over this bench's deck set.
+
+    What is specific here: the schema, the deck count (gain calibration
+    plus both same-size Monte Carlo stages), and the payload -- a deck's
+    derived pick-off value AND its raw ngspice log are persisted together,
+    so a resumed campaign reproduces the record's log set verbatim.
+
+    The campaign KEY (`run_offset_mc` below) is DUT provenance and netlist
+    sha256, PDK and ngspice identities, corner, temperature, N, seed
+    schedule, calibration points and every measurement parameter; a
+    differing key is refused so two campaigns are never mixed into one
+    record.
+    """
+
+    _SCHEMA = OFFSET_CAMPAIGN_SCHEMA
+    _incomplete = OffsetCampaignIncomplete
+    _label = "offset"
+
+    def load_deck(self, name: str):
+        """`(value, log)` for a persisted deck, else `_MISSING`."""
+        if self.root is None:
+            return _shared._MISSING
+        blob = self._load_json(self._deck_path(name))
+        if (blob is _shared._MISSING or not isinstance(blob, dict)
+                or "value" not in blob or "log" not in blob):
+            return _shared._MISSING
+        return blob["value"], blob["log"]
+
+    def store_deck(self, name: str, value: float, log: str) -> None:
+        if self.root is not None:
+            self._store_json(
+                self._deck_path(name), {"deck": name, "value": value, "log": log})
+
+    def _cached_value(self, cached):
+        return cached[0]
+
+    def _cached_log(self, cached):
+        return cached[1]
+
+    def total_decks(self) -> int:
+        return len(VINDIFF_GAIN_CAL_MV) + 2 * int(self.key.get("n", 0))
+
+
 def run_offset_mc(
     corner: str = "tt", temp_c: float = 27.0, seed: int = 1, n: int = 16,
-    quiet: bool = False, jobs: int = 1,
+    quiet: bool = False, jobs: int = 1, resume_dir: Path | None = None,
+    chunk_decks: int | None = None, chunk_seconds: float | None = None,
 ) -> OffsetResult:
     info = pdk.resolve_or_raise()
     mismatch_corner = corners_mod.mismatch_corner_for(corner)
     logs: dict[str, str] = {}
+    pdk_line, ngspice_line = simulation_versions(info)
+    campaign = OffsetCampaign(
+        root=resume_dir,
+        key={
+            "corner": corner, "mismatch_corner": mismatch_corner,
+            "temp_c": float(temp_c), "n": int(n), "seed": int(seed),
+            "seed_schedule": "seed+i for draw i and negctrl i, i in [0, n)",
+            "dut": dut_provenance(),
+            "netlist_sha256": evidence.sha256_file(_dut_fragment()),
+            "pdk": pdk_line, "ngspice": ngspice_line,
+            "gain_cal_mv": list(VINDIFF_GAIN_CAL_MV),
+            "pickoff_ns": PICKOFF_NS, "pickoff_tstop_ns": PICKOFF_TSTOP_NS,
+            "reset_ns": RESET_NS, "reset_tr_ns": RESET_TR_NS,
+            "vdd": VDD, "vcm": VCM,
+        },
+        chunk_decks=chunk_decks, chunk_seconds=chunk_seconds, quiet=quiet,
+    )
 
     with tempfile.TemporaryDirectory(prefix="comparator-decision-offset-") as scratch:
         scratch_dir = Path(scratch)
 
+        def _stage(stage: str, builds: list[tuple[str, str]]) -> dict[str, float]:
+            return campaign.resolve(
+                stage, builds,
+                extract=lambda name: _pickoff_value(scratch_dir / f"{name}.csv"),
+                run_batch=lambda batch: _shared._run_many(batch, scratch_dir, jobs),
+                jobs=jobs, logs=logs,
+            )
+
         # 1. Gain calibration (ideal devices, plain corner).
+        cal_values = _stage("gain calibration", [
+            (f"gaincal_{v}mV", _pickoff_deck(info, corner, temp_c, v, f"gaincal_{v}mV"))
+            for v in VINDIFF_GAIN_CAL_MV
+        ])
         cal_points: list[tuple[float, float]] = []
-        cal_jobs = [(f"gaincal_{v}mV", _pickoff_deck(info, corner, temp_c, v, f"gaincal_{v}mV"))
-                    for v in VINDIFF_GAIN_CAL_MV]
-        cal_logs = _shared._run_many(cal_jobs, scratch_dir, jobs)
-        logs.update(cal_logs)
         for vindiff_mv in VINDIFF_GAIN_CAL_MV:
-            diff = _pickoff_value(scratch_dir / f"gaincal_{vindiff_mv}mV.csv")
+            diff = cal_values[f"gaincal_{vindiff_mv}mV"]
             cal_points.append((vindiff_mv / 1000.0, diff))
             if not quiet:
                 print(f"  gain-cal vindiff={vindiff_mv}mV -> pickoff_diff={diff:.6g}")
@@ -156,29 +255,21 @@ def run_offset_mc(
             print(f"  gain = {gain:.4f} V/V (from {len(cal_points)} calibration points)")
 
         # 2. Mismatch-enabled draws at Vindiff=0.
-        draw_jobs = [
+        draw_values = _stage("mismatch draws", [
             (f"draw_{i}", _pickoff_deck(info, mismatch_corner, temp_c, 0.0, f"draw_{i}", rndseed=seed + i))
             for i in range(n)
-        ]
-        draw_logs = _shared._run_many(draw_jobs, scratch_dir, jobs)
-        logs.update(draw_logs)
-        draws_pickoff = [
-            _pickoff_value(scratch_dir / f"draw_{i}.csv") for i in range(n)
-        ]
+        ])
+        draws_pickoff = [draw_values[f"draw_{i}"] for i in range(n)]
         if not quiet:
             for i in range(n):
                 print(f"  draw {i} (seed={seed + i}, {mismatch_corner}): pickoff_diff={draws_pickoff[i]:.6g}")
 
         # 3. Negative control at the plain corner, same seed sequence.
-        negctrl_jobs = [
+        negctrl_values = _stage("negative control", [
             (f"negctrl_{i}", _pickoff_deck(info, corner, temp_c, 0.0, f"negctrl_{i}", rndseed=seed + i))
             for i in range(n)
-        ]
-        negctrl_logs = _shared._run_many(negctrl_jobs, scratch_dir, jobs)
-        logs.update(negctrl_logs)
-        negctrl_pickoff = [
-            _pickoff_value(scratch_dir / f"negctrl_{i}.csv") for i in range(n)
-        ]
+        ])
+        negctrl_pickoff = [negctrl_values[f"negctrl_{i}"] for i in range(n)]
         if not quiet:
             for i in range(n):
                 print(f"  negctrl {i} (seed={seed + i}, {corner}): pickoff_diff={negctrl_pickoff[i]:.6g}")
@@ -273,7 +364,24 @@ def write_offset_evidence(
         a(
             f"- **95% CI on the stdev** (normal approximation, "
             f"SE(s)/s = {1.0 / (2 * (result.n - 1)) ** 0.5:.4f}): "
-            f"[{ci_lo * 1000:.4f}, {ci_hi * 1000:.4f}] mV"
+            f"[{ci_lo * 1000:.4f}, {ci_hi * 1000:.4f}] mV. Methodology: "
+            "Wald interval, s*(1 +/- 1.96/sqrt(2(N-1))), on the population "
+            "stdev of the N input-referred draws. Assumptions: the draws are "
+            "i.i.d. and Gaussian (so Var(s)/sigma^2 ~ 1/(2(N-1))) and N is "
+            "large enough for the normal approximation; it ignores the "
+            "pick-off linearization error and the calibration-gain "
+            "uncertainty, and is a sampling-uncertainty interval for ONE "
+            "seed schedule at ONE PVT point, not a yield or corner-ranking "
+            "claim."
+        )
+        a(
+            f"- **3-sigma with the same 95% CI**: {3 * draws_stdev * 1000:.4f} mV "
+            f"[{3 * ci_lo * 1000:.4f}, {3 * ci_hi * 1000:.4f}] mV; the upper "
+            f"CI limit {'clears' if 3 * ci_hi * 1000 <= OFFSET_TARGET_MV else 'DOES NOT clear'} "
+            f"the {OFFSET_TARGET_MV:g} mV target and "
+            f"{'clears' if 3 * ci_hi * 1000 <= OFFSET_STRETCH_MV else 'DOES NOT clear'} "
+            f"the {OFFSET_STRETCH_MV:g} mV stretch bound (bounds unchanged; "
+            "an overlap is a stated limitation, not a spec edit)."
         )
     a("")
     a(

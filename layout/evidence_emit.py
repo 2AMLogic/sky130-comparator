@@ -493,7 +493,8 @@ def _supply_pairing(envelope: dict) -> dict:
     }
 
 
-def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
+def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict,
+                            out_dir: Path | None = None) -> None:
     """Measure what the signoff LVS `match` does and does not cover.
 
     A `klt lvs` envelope states its verdict, not its reach.  Two things about
@@ -507,6 +508,11 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
 
     Writes ``layout/lvs-coverage-probe.json``, and raises if any row's
     observed verdict differs from the one it asserts.
+
+    ``out_dir`` redirects the artifact *write* (not the ``klt`` runs, which
+    stay repo-rooted against the committed GDS) -- the ``gen_comparator.py
+    --check`` currency path emits into a temp dir and byte-compares
+    (issue #311).
     """
     base = (repo_root / LVS_REFERENCE).read_text()
     rows = []
@@ -575,7 +581,8 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
         "probes": rows,
         "pass": ok,
     }
-    (repo_root / "layout" / "lvs-coverage-probe.json").write_text(
+    (repo_root / "layout" if out_dir is None else Path(out_dir)
+     ).joinpath("lvs-coverage-probe.json").write_text(
         json.dumps(evidence, indent=2) + "\n")
     if not ok:
         raise RuntimeError(
@@ -583,7 +590,8 @@ def emit_lvs_coverage_probe(klt: str, repo_root: Path, signoff: dict) -> None:
             "the verdict it asserts; see layout/lvs-coverage-probe.json")
 
 
-def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
+def emit_lvs_evidence(klt: str, repo_root: Path,
+                      out_dir: Path | None = None) -> dict:
     """Run the signoff LVS over the *emitted* GDS and commit it.
 
     Mirrors :func:`emit_drc_evidence`: run from the repo root against
@@ -615,12 +623,18 @@ def emit_lvs_evidence(klt: str, repo_root: Path) -> dict:
     fail at all is no longer asserted here -- ``emit_lvs_coverage_probe``'s
     ``mos_*``/``connectivity`` rows are the same assertion, generalised, and
     run immediately after.
+
+    ``out_dir`` redirects the two artifact *writes* (not the ``klt`` run,
+    which stays repo-rooted so the envelope echoes repo-relative paths) --
+    the ``gen_comparator.py --check`` currency path emits into a temp dir
+    and byte-compares (issue #311).
     """
-    (repo_root / "layout" / "lvs-request.json").write_text(
+    target = repo_root / "layout" if out_dir is None else Path(out_dir)
+    (target / "lvs-request.json").write_text(
         json.dumps(LVS_REQUEST, indent=2) + "\n")
 
     envelope, rc = _run_lvs(klt, LVS_REQUEST, repo_root)
-    (repo_root / "layout" / "lvs-report.json").write_text(
+    (target / "lvs-report.json").write_text(
         json.dumps(envelope, indent=2) + "\n")
 
     status = envelope.get("status")
@@ -686,7 +700,8 @@ def _erc_rules(envelope: dict) -> list[str]:
     return sorted({str(f.get("rule")) for f in envelope.get("erc_findings") or []})
 
 
-def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
+def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict,
+                      out_dir: Path | None = None) -> dict:
     """Write the ERC supply spec and run it over the *emitted* GDS.
 
     T1 item 11 ("Power delivery (structural)") is the **structural** supply
@@ -720,14 +735,29 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
        ``erc_coverage.checked``, so "the check ran" is read off the envelope
        rather than inferred from the absence of a finding;
     4. the envelope's own ``provenance.spec.content_hash`` must equal the
-       sha256 of the committed spec file.  ``klt signoff``'s item-11 path
-       re-reads that spec document from disk to find the declared supply nets
-       and does **not** verify it against this hash (klt 0.6.0), so an edited
-       spec would otherwise silently change what a citation is graded on.
+       sha256 of the spec file this run just wrote: the envelope and the
+       spec are one run's two halves, and a mismatch means ``klt erc``
+       graded a different document than the one sitting beside the envelope.
+       (Through klt 0.6.0 nothing upstream caught such a split -- ``klt
+       signoff``'s item-11 path re-read the spec without verifying it
+       against this hash, klayout-tools#2496.  At the 0.8.0 pin item 11
+       checks the spec digest and grades drift ``stale_evidence``; the
+       guard stands on the generation-time invariant either way.)
+
+    ``out_dir`` redirects the two artifact *writes* (the ``klt`` runs stay
+    repo-rooted against the committed GDS) -- the ``gen_comparator.py
+    --check`` currency path emits into a temp dir and byte-compares the
+    probe built on top of this envelope (issue #311).
     """
     spec = build_erc_spec(bbox)
     spec_text = json.dumps(spec, indent=2) + "\n"
-    (repo_root / ERC_SPEC_PATH).write_text(spec_text)
+    target = repo_root / "layout" if out_dir is None else Path(out_dir)
+    spec_file = target / "erc-spec.json"
+    spec_file.write_text(spec_text)
+    # Repo-relative in the emit path so the committed envelope echoes
+    # "layout/erc-spec.json"; the --check temp path is echoed instead but
+    # only its content hash reaches the compared probe bytes (issue #311).
+    spec_arg = ERC_SPEC_PATH if out_dir is None else str(spec_file)
 
     taps = json.loads(
         run([klt, "layers", "layout/comparator.gds", "--format", "json"],
@@ -741,8 +771,9 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
             "structures in TAPS -- 'tap_is_dedicated: true' would no longer be "
             "a measured fact, so refusing to commit it")
 
-    envelope, rc = _run_erc(klt, "layout/comparator.gds", ERC_SPEC_PATH, repo_root)
-    (repo_root / ERC_REPORT_PATH).write_text(json.dumps(envelope, indent=2) + "\n")
+    envelope, rc = _run_erc(klt, "layout/comparator.gds", spec_arg, repo_root)
+    (target / "erc-report.json").write_text(
+        json.dumps(envelope, indent=2) + "\n")
 
     coverage = envelope.get("erc_coverage") or {}
     checked = set(coverage.get("checked") or [])
@@ -783,9 +814,10 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict) -> dict:
         "content_hash")
     if recorded != spec_hash:
         raise RuntimeError(
-            f"the committed spec hashes to {spec_hash} but the envelope records "
-            f"{recorded} -- klt signoff re-reads layout/erc-spec.json without "
-            "checking that hash, so the two must not be allowed to diverge")
+            f"the spec this run wrote hashes to {spec_hash} but the envelope "
+            f"records {recorded} -- klt erc graded a different document than "
+            "the one on disk, so the run's two halves must not be committed "
+            "as a pair")
     return envelope
 
 
@@ -1050,12 +1082,13 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
             "grader says for the citation the committed manifest carries (or "
             "would carry), so the item-11 verdict is a re-runnable "
             "measurement. The reasoning is in layout/README.md -> 'Why item "
-            "11 is cited'."),
+            "11 is cited'. The T1 met-count of record lives in "
+            "manifests/t1-signoff-report.json, gated by "
+            "scripts/check-t1-signoff.py gate, and is deliberately NOT "
+            "restated here."),
         "cited_parts": list(ERC_ITEM_11_PARTS),
         "item_11_status": row.get("status"),
         "item_11_reason": row.get("reason"),
-        "t1_met_count_if_cited": report.get("t1_met_count"),
-        "t1_item_count": report.get("t1_item_count"),
         "supply_nets_graded": power.get("supply_nets"),
         "power_connectivity_status": power.get("power_connectivity_status"),
         "ties_checked_by_well_assertion": power.get(
@@ -1075,7 +1108,7 @@ def _erc_grade_if_cited(klt: str, repo_root: Path, tmp: Path,
 
 
 def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
-                            signoff: dict) -> None:
+                            signoff: dict, out_dir: Path | None = None) -> None:
     """Measure whether the committed ERC supply check can fail.
 
     ``layout/erc-report.json`` states ``erc_status: "clean"`` with an empty
@@ -1091,6 +1124,11 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
     GDS.  Neither committed artifact is written to.  Writes
     ``layout/erc-coverage-probe.json`` and raises if any row's observed
     findings or coverage classification differ from the ones it asserts.
+
+    ``out_dir`` redirects the artifact *write* (not the ``klt`` runs, which
+    stay repo-rooted against the committed GDS) -- the
+    ``gen_comparator.py --check`` currency path emits into a temp dir and
+    byte-compares (issue #311).
     """
     base = build_erc_spec(bbox)
     rows = []
@@ -1135,9 +1173,8 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
             klt, repo_root, tmp,
             ((signoff.get("provenance") or {}).get("input") or {})
             .get("content_hash"))
-        print(f"    item 11 citation grades {grade['item_11_status']} "
-              f"({grade['t1_met_count_if_cited']}/{grade['t1_item_count']} T1 "
-              "items), see layout/README.md")
+        print(f"    item 11 citation grades {grade['item_11_status']}, see "
+              "layout/README.md")
     ok = all(row["pass"] for row in rows)
     evidence = {
         "tool": {"klt_pin": KLT_PIN,
@@ -1166,7 +1203,9 @@ def emit_erc_coverage_probe(klt: str, repo_root: Path, bbox: dict,
         "signoff_if_cited": grade,
         "pass": ok,
     }
-    (repo_root / ERC_PROBE_PATH).write_text(json.dumps(evidence, indent=2) + "\n")
+    probe_path = ((repo_root / ERC_PROBE_PATH) if out_dir is None
+                  else Path(out_dir) / "erc-coverage-probe.json")
+    probe_path.write_text(json.dumps(evidence, indent=2) + "\n")
     if not ok:
         raise RuntimeError(
             "ERC coverage probe FAILED -- a negative control did not produce "

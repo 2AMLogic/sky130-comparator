@@ -4,7 +4,9 @@ Everything the sibling experiment modules in this directory have in common:
 the DUT-provenance switch (`--dut schematic` / `extracted`) and the fragment
 parsing/re-tying that supports it, the fixed testbench constants, the
 record-preamble prose and the committed schematic-level baselines, the ngspice
-invocation seams, and the evidence-record head/tail.
+invocation seams, the evidence-record head/tail, and -- since issue #429 --
+the resumable chunked-campaign store (`ResumableCampaign`) that `offset` and
+`noise-tran` both subclass instead of carrying a private copy.
 
 Read `run.py`'s module docstring first: it is this experiment's documentation,
 and it explains why the experiment has a bespoke driver at all. Issue #224
@@ -27,7 +29,9 @@ out for every experiment at once.
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,17 +53,8 @@ DUT_FRAGMENT = TESTBENCH_DIR / "comparator_core.spice"
 # Both fragments are FLAT device-level SPICE that inlines at the same place in
 # every deck the sibling experiment modules build, expose the same node names (CLK/VDD/GND/VINP/VINN/OUTP/
 # OUTN plus the internal TAILP/OUTP1/OUTN1/TAIL2/CLKT), and are selected by
-# `--dut`. The post-layout pair is generated and documented by
-# `layout/extract_pex.py` -- read that module's docstring for the derivation,
-# for why `klt pex` is not the path here, and for the disclosed res_high_po
-# drawn-width delta the extracted fragment deliberately carries.
-#
-# The schematic path is BYTE-IDENTICAL to what it was before this switch
-# existed: `--dut schematic` (the default) inlines exactly the same fragment
-# into exactly the same deck text, so a post-layout figure and the committed
-# schematic-level record it is differenced against come from decks that
-# differ only in the DUT. That is the whole point of the comparison, so it is
-# a property worth stating rather than assuming.
+# `--dut`. See layout/extract_pex.py for the derivation and resistor re-draw
+# history. Stored schematic runs can use a different PDK or simulator.
 REPO_ROOT = EXPERIMENT_DIR.parent.parent
 LAYOUT_DIR = REPO_ROOT / "layout"
 PEX_FRAGMENT = LAYOUT_DIR / "comparator.pex.spice"
@@ -349,6 +344,13 @@ SCHEMATIC_NETLIST_PROVENANCE = (
     "(`design/comparator.sch` -> `./design/netlist.sh` -> "
     "`sim/comparator-decision/testbench/comparator_core.spice`)"
 )
+
+
+def extraction_versions(report: dict) -> str:
+    provenance = report["provenance"]
+    return f"klt {provenance['klt_version']} on klayout {provenance['klayout_version']}"
+
+
 def extracted_netlist_provenance() -> str:
     """The POST-LAYOUT provenance line, with its RC summary and TOOL PIN read
     out of the committed `layout/extract-parasitics.json` rather than
@@ -365,13 +367,11 @@ def extracted_netlist_provenance() -> str:
     """
     report = json.loads(PEX_ENVELOPE.read_text())
     par = report["parasitics"]
-    prov = report["provenance"]
     return (
         "- **Netlist provenance**: POST-LAYOUT / EXTRACTED "
         "(`layout/comparator.gds` -> `klt extract --parasitics` -> "
         "`layout/comparator.extract.spice` -> `layout/extract_pex.py` -> "
-        f"`layout/comparator.pex.spice`), extracted by klt "
-        f"{prov['klt_version']} on klayout {prov['klayout_version']} -- the "
+        f"`layout/comparator.pex.spice`), extracted by {extraction_versions(report)} -- the "
         "pin `docs/environment-setup.md` records and CI installs, asserted "
         "by `layout/extract_pex.py` because extracted resistances are not "
         f"stable across builds. Lumped-RC parasitics: {par['r_count']} star "
@@ -388,10 +388,9 @@ def extracted_netlist_provenance() -> str:
         "Net names are the SCHEMATIC names, carried across by the 12/12 net "
         "correspondence in the committed `layout/lvs-report.json`, so every "
         "probe in this deck names the same circuit node the schematic-level "
-        "record's probe named. This fragment deliberately carries the "
-        "`res_high_po` w=0.42 um drawn vs. w=0.35 um schematic delta disclosed "
-        "by PR #55 / `layout/lvs-coverage-probe.json` -- it is what the layout "
-        "actually draws, so it is what a post-layout measurement must see."
+        "record's probe named. The #123 re-draw used 0.35 um `res_high_po` "
+        "resistors. The XR_ instance parameters in the snapshot preserve "
+        "the extracted widths."
     )
 
 
@@ -431,10 +430,9 @@ def _record_header(
 # (issue #57 acceptance criteria: "each post-layout record documents its
 # schematic-level counterpart record path AND the numeric delta -- not just
 # the new number in isolation"). Every entry names a COMMITTED record under
-# records/ measured at the same corner/temperature/methodology constants by
-# the same sub-command, so the difference is attributable to the DUT and not
-# to the bench. Values are transcribed from those records (and are the same
-# figures the top-level README's target-spec rows cite). ---
+# records/ measured by the same sub-command at the same corner and temperature.
+# The PDK, simulator and sample counts can differ. Values are transcribed
+# from the named records. ---
 @dataclass(frozen=True)
 class Baseline:
     record_id: str
@@ -473,11 +471,11 @@ OFFSET_GRADED_CORNERS: tuple[tuple[str, float], ...] = tuple(
 
 SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     ("regen", "tt", 27.0): Baseline(
-        "20260922-070800-e084b55", "regeneration time at 50 mV overdrive",
+        "20261121-033724-4d73da9", "regeneration time at 50 mV overdrive",
         0.4025, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "ss", -40.0): Baseline(
-        "20260922-071313-e084b55", "regeneration time at 50 mV overdrive",
+        "20261121-033832-4d73da9", "regeneration time at 50 mV overdrive",
         0.3575, "ns", "7/8 sweep points resolved (0.5 mV does not resolve)",
     ),
     # The remaining five graded `regen` corners (DR-005's full-corner campaign,
@@ -485,28 +483,28 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # the two anchors #57 measured; every value is transcribed from the named
     # committed record's own 50 mV sweep row.
     ("regen", "ff", 125.0): Baseline(
-        "20260922-175252-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033850-4d73da9", "regeneration time at 50 mV overdrive",
         0.4975, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "sf", -40.0): Baseline(
-        "20260922-175425-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033907-4d73da9", "regeneration time at 50 mV overdrive",
         0.3475, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "sf", 125.0): Baseline(
-        "20260922-175554-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033940-4d73da9", "regeneration time at 50 mV overdrive",
         0.4725, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "fs", -40.0): Baseline(
-        "20260922-175734-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-033955-4d73da9", "regeneration time at 50 mV overdrive",
         0.3725, "ns", "8/8 sweep points resolved",
     ),
     ("regen", "fs", 125.0): Baseline(
-        "20260922-175918-e23c509", "regeneration time at 50 mV overdrive",
+        "20261121-034048-4d73da9", "regeneration time at 50 mV overdrive",
         0.5375, "ns", "8/8 sweep points resolved",
     ),
     ("offset-bisect", "tt", 27.0): Baseline(
-        "20261002-000502-e2b808c", "decision-flip vindiff (input-referred systematic offset)",
-        -0.0391, "mV", "18 probes, tolerance 0.1 mV; the symmetric fragment's "
+        "20261121-080004-4d73da9", "decision-flip vindiff (input-referred systematic offset)",
+        0.0391, "mV", "18 probes, tolerance 0.1 mV; the symmetric fragment's "
         "flip sits at ~0 by construction (negative control, issue #66)",
     ),
     # The ss/-40C schematic counterpart has NO single flip: a symmetric
@@ -515,16 +513,16 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # overdrive floor, centered on 0 by symmetry. The baseline value is
     # the band midpoint; the extracted counterpart's delta against it is
     # the layout's systematic SHIFT of the usable-decision region, and its
-    # own record states its band edges (record 20261002-002613-e2b808c,
+    # own record states its band edges (record 20261121-080454-4d73da9,
     # issue #66).
     ("offset-bisect", "ss", -40.0): Baseline(
-        "20261002-002613-e2b808c",
+        "20261121-080454-4d73da9",
         "decision-boundary midpoint (schematic: symmetric +/-0.8203 mV non-decision band)",
         0.0, "mV", "wrong-polarity edge -0.8203, resolved edge +0.8203 mV; "
         "18 probes, tolerance 0.1 mV",
     ),
     ("kickback", "tt", 27.0): Baseline(
-        "20260922-070119-e084b55", "peak `loaded` input-node disturbance",
+        "20261120-224448-059ee87", "peak `loaded` input-node disturbance",
         1.8902, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
@@ -533,39 +531,39 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # Added by issue #64. `sf`/-40C is the schematic-level worst case and the
     # only pre-layout stretch-figure breach, which is why #64 runs it first.
     ("kickback", "ss", -40.0): Baseline(
-        "20260922-070212-e084b55", "peak `loaded` input-node disturbance",
+        "20261121-034500-4d73da9", "peak `loaded` input-node disturbance",
         1.8605, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "ff", 125.0): Baseline(
-        "20260922-070307-e084b55", "peak `loaded` input-node disturbance",
+        "20261121-033648-4d73da9", "peak `loaded` input-node disturbance",
         1.7677, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "sf", -40.0): Baseline(
-        "20260922-180026-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034032-4d73da9", "peak `loaded` input-node disturbance",
         2.0208, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV; the only schematic-level corner over the "
         "<= 2 mV stretch figure (by 1%)",
     ),
     ("kickback", "sf", 125.0): Baseline(
-        "20260922-180157-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034028-4d73da9", "peak `loaded` input-node disturbance",
         1.7837, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "fs", -40.0): Baseline(
-        "20260922-180319-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034044-4d73da9", "peak `loaded` input-node disturbance",
         1.8408, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("kickback", "fs", 125.0): Baseline(
-        "20260922-180425-e23c509", "peak `loaded` input-node disturbance",
+        "20261121-034103-4d73da9", "peak `loaded` input-node disturbance",
         1.6091, "mV", "1 kohm source impedance, 50 mV overdrive, "
         "`ideal` control 0.0000 mV",
     ),
     ("offset", "tt", 27.0): Baseline(
-        "20260922-065300-e084b55", "input-referred offset stdev",
-        1.7857, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-073855-4d73da9", "input-referred offset stdev",
+        2.3027, "mV", "N=16 draws at `tt_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     # The other four `_mm` mismatch corners of the DR-005 schematic-level
@@ -578,36 +576,36 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # those runs would fall back to `post_layout_delta_lines()`'s
     # "no committed counterpart" note and record a bare number.
     ("offset", "ss", 27.0): Baseline(
-        "20260922-173622-e23c509", "input-referred offset stdev",
-        1.8244, "mV", "N=16 draws at `ss_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-074337-4d73da9", "input-referred offset stdev",
+        2.3962, "mV", "N=16 draws at `ss_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0; the nominally binding "
         "schematic-level corner",
     ),
     ("offset", "ff", 27.0): Baseline(
-        "20260922-174326-e23c509", "input-referred offset stdev",
-        1.5954, "mV", "N=16 draws at `ff_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-074654-4d73da9", "input-referred offset stdev",
+        2.0463, "mV", "N=16 draws at `ff_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("offset", "sf", 27.0): Baseline(
-        "20260922-174831-e23c509", "input-referred offset stdev",
-        1.6706, "mV", "N=16 draws at `sf_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-075012-4d73da9", "input-referred offset stdev",
+        2.1357, "mV", "N=16 draws at `sf_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("offset", "fs", 27.0): Baseline(
-        "20260922-175152-e23c509", "input-referred offset stdev",
-        1.8218, "mV", "N=16 draws at `fs_mm`, seed 1, pick-off 0.65 ns, "
+        "20261121-075327-4d73da9", "input-referred offset stdev",
+        2.3863, "mV", "N=16 draws at `fs_mm`, seed 1, pick-off 0.65 ns, "
         "same-seed negative control stdev exactly 0",
     ),
     ("noise", "tt", 27.0): Baseline(
-        "20260922-065534-e084b55", "differential input-referred noise",
+        "20261121-033551-4d73da9", "differential input-referred noise",
         0.5704, "mV rms", "loop-broken AC sub-model of the DR-004 preamp, "
         "1 kHz-1 GHz",
     ),
     ("noise-tran", "tt", 27.0): Baseline(
-        "20260922-192722-e23c509",
+        "20261121-091933-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1362, "mV", "N=128 pick-off seeds, 95% CI [0.1216, 0.1493] mV, "
-        "gain 64.4571 V/V, decision-transition cross-check 0.1342 mV "
+        0.1457, "mV", "N=128 pick-off seeds, 95% CI [0.1322, 0.1585] mV, "
+        "gain 64.4571 V/V, decision-transition cross-check 0.1401 mV "
         "(64 seeds/sign/point)",
     ),
     # The two graded `noise-tran` corners beyond tt/27C that the issue #41
@@ -621,20 +619,20 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
     # schematic-level `noise-tran` counterpart, so they correctly keep
     # falling through to that note.
     ("noise-tran", "ss", -40.0): Baseline(
-        "20260922-205857-ebea4e2",
+        "20261121-094511-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1213, "mV", "N=128 pick-off seeds, 95% CI [0.1084, 0.1335] mV, "
-        "gain 77.6506 V/V; the decision-transition cross-check is NOT "
-        "MEASURABLE at this corner (every pair degenerate -- the "
+        0.1292, "mV", "N=128 pick-off seeds, 95% CI [0.1144, 0.1416] mV, "
+        "gain 77.6506 V/V, 64 seeds/sign/point. The decision-transition "
+        "cross-check is NOT MEASURABLE at this corner (every pair degenerate -- the "
         "sigma-scaled overdrives sit below this corner's "
         "resolvable-overdrive floor), so the pick-off statistic stands "
         "alone",
     ),
     ("noise-tran", "ff", 125.0): Baseline(
-        "20260923-010427-ebea4e2",
+        "20261121-100659-4d73da9",
         "decision-referred input-referred noise sigma (pick-off MC)",
-        0.1754, "mV", "N=128 pick-off seeds, 95% CI [0.1594, 0.1905] mV, "
-        "gain 38.1254 V/V, decision-transition cross-check 0.1515 mV "
+        0.1554, "mV", "N=128 pick-off seeds, 95% CI [0.1410, 0.1688] mV, "
+        "gain 38.1254 V/V, decision-transition cross-check 0.1693 mV "
         "(64 seeds/sign/point)",
     ),
 }
@@ -644,7 +642,7 @@ SCHEMATIC_BASELINES: dict[tuple[str, str, float], Baseline] = {
 # its schematic-level counterpart here and compares VERDICTS plus the two
 # supply-current columns, rather than going through
 # `post_layout_delta_lines()` (issue #65).
-RESET_SCHEMATIC_COUNTERPART = "20260922-070024-e084b55"
+RESET_SCHEMATIC_COUNTERPART = "20261121-033635-4d73da9"
 
 
 def baseline_for(mode: str, corner: str, temp_c: float) -> Baseline | None:
@@ -718,6 +716,25 @@ def subset_corner_campaign_reason() -> str:
     )
 
 
+def simulation_versions(info: pdk.PdkInfo) -> tuple[str, str]:
+    return _resolve_pdk_line(info), toolchain._ngspice_version() or "unknown"
+
+
+def schematic_comparison(record_id: str, extracted_versions: tuple[str, str]) -> str:
+    record = (EXPERIMENT_DIR / "records" / f"{record_id}.md").read_text()
+    fields = dict(line[2:].split(": ", 1) for line in record.splitlines()
+                  if line.startswith(("- PDK: ", "- ngspice: ")))
+    schematic = fields["PDK"], fields["ngspice"]
+    if schematic == extracted_versions:
+        return (f"- **Comparison conditions**: Both DUTs used {schematic[0]} "
+                f"and {schematic[1]}.")
+    pdk_line, ngspice_line = extracted_versions
+    return ("- **Historical schematic comparison**: The schematic run used "
+            f"{schematic[0]} and {schematic[1]}. The extracted run used "
+            f"{pdk_line} and {ngspice_line}. The delta includes the change "
+            "of DUT and any effect of the different simulation environments.")
+
+
 def post_layout_delta_lines(
     mode: str, corner: str, temp_c: float, measured: float, unit_scale: float = 1.0,
 ) -> list[str]:
@@ -750,11 +767,7 @@ def post_layout_delta_lines(
         f"- **Schematic-level counterpart record**: "
         f"`sim/comparator-decision/records/{base.record_id}.md` "
         f"({base.conditions})",
-        "- **What differs between the two runs**: the DUT fragment, and "
-        "nothing else. Same sub-command, same corner/temperature/supply, "
-        "same methodology constants, same deck template -- the "
-        "schematic-side deck text is byte-identical to the one that "
-        "produced the counterpart record.",
+        schematic_comparison(base.record_id, simulation_versions(pdk.resolve())),
     ])
     return out
 
@@ -773,7 +786,7 @@ def post_layout_delta_lines(
 
 def _deck_preamble(
     info: pdk.PdkInfo, corner: str, temp_c: float, title: str, *,
-    params: str = "", rndseed: int | None = None,
+    params: str = "", rndseed: int | None = None, vdd: float = VDD,
 ) -> list[str]:
     """The `.lib/.temp/.param/Vdd` head every DUT deck opens with.
 
@@ -783,12 +796,13 @@ def _deck_preamble(
     space included. `rndseed`, when given, emits `.option rndseed=` between
     the `.param` line and the blank line ahead of `Vdd`, the exact position
     the seeded decks already used. `_trnoise_calibration_deck` deliberately
-    does not route through this: it is PDK-free by design."""
+    does not route through this: it is PDK-free by design. `vdd` overrides the
+    nominal supply (only `power` does, for its supply-endpoint points)."""
     lines = [
         title,
         f".lib {info.ngspice_lib} {corner}",
         f".temp {temp_c}",
-        f".param vdd_val = {VDD}{params}",
+        f".param vdd_val = {vdd}{params}",
     ]
     if rndseed is not None:
         lines.append(f".option rndseed={rndseed}")
@@ -941,12 +955,280 @@ def _finalize_record(
     write the record. `cmd` is the subcommand name, used in the "Written by"
     attribution. The PDK and ngspice identity lines are resolved here from
     `info` so no caller has to repeat that derivation."""
+    pdk_line, ngspice_line = simulation_versions(info)
     lines.extend(evidence.environment_block(
-        pdk_line=_resolve_pdk_line(info),
-        ngspice_line=toolchain._ngspice_version() or "unknown",
+        pdk_line=pdk_line, ngspice_line=ngspice_line,
         netlist_sha256=netlist_sha,
         extra=extra,
     ))
     lines.append("")
     lines.extend(evidence.footer_lines(f"sim/comparator-decision/run.py {cmd}", supersedes))
     return evidence.publish_record(record_path, "\n".join(lines))
+
+
+# --- Resumable chunked campaigns (issues #100 and #154; one base since #429).
+#
+# `offset` and `noise-tran` each run campaigns far past any single command's
+# wall-clock ceiling, and both solve it the same way: persist each deck's
+# derived value under `--resume-dir` the moment the deck completes, stop an
+# invocation cleanly on `--chunk-decks` / `--chunk-seconds`, and let a
+# documented SEQUENCE of identical sub-ceiling commands stand in for the one
+# command that cannot run. `ResumableCampaign` is that shared machinery,
+# extracted from what had grown into two line-for-line copies (offset.py's
+# issue #154 store and noise_tran.py's issue #100 store); the subclasses keep
+# only what actually differs. The on-disk layout -- `<root>/campaign.json`
+# plus `<root>/decks/<key>.json`, and the per-campaign schema constants --
+# is a COMPATIBILITY SURFACE: in-flight resume directories written before
+# the consolidation must keep resuming, so nothing here may change what is
+# written, when it is written, or what a resumed deck is trusted for.
+
+_MISSING = object()
+
+
+class CampaignIncomplete(RuntimeError):
+    """A chunked invocation stopped on its own budget with decks outstanding.
+
+    Raised INSTEAD of returning a result, so no caller can write a record
+    from a partial campaign: a partial record would state an N on its face
+    that its own statistics were not computed at. The resume directory is
+    left valid; re-running the identical command continues from where this
+    invocation stopped.
+    """
+
+    def __init__(self, message: str, *, stage: str, resume_dir: Path,
+                 completed: int, total: int) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.resume_dir = resume_dir
+        self.completed = completed
+        self.total = total
+
+
+class ResumableCampaign:
+    """Per-deck result store for one chunked campaign.
+
+    Two modes behind one interface, so the statistics downstream are
+    computed by exactly the same code either way:
+
+      * EPHEMERAL (`root=None`) -- the un-chunked behaviour the bench
+        always had: every stage's decks run in ONE batch at the caller's
+        `--jobs` width, their derived values are used immediately, nothing
+        is persisted.
+      * RESUMABLE (`root=<dir>`) -- each deck's derived value is written to
+        `<root>/decks/<key>.json` (atomically: write tmp + `os.replace`)
+        as soon as that deck completes, and a deck whose file is already
+        there is not re-run. Decks are dispatched in batches of `--jobs`
+        so persistence keeps up with completion.
+
+    A truncated or unreadable deck file is treated as missing and re-run:
+    a kill can land mid-write, and re-running one deck is always cheaper
+    and safer than trusting a partial one.
+
+    `<root>/campaign.json` holds the campaign KEY -- the `key` dict the
+    subclass passes, plus its schema constant -- and a mismatch is refused
+    loudly rather than silently mixing two campaigns' decks into one
+    record. That is the property that makes a resume directory safe to
+    point a second command at.
+
+    Subclasses supply the schema constant (`_SCHEMA`), their
+    `*CampaignIncomplete` exception (`_incomplete`), the campaign label the
+    stop message names (`_label`), `total_decks`, the deck payload shape
+    (`load_deck` / `store_deck`, plus the `_cached_*` accessors), and
+    `_file_key` where deck names are not directly portable filenames.
+    """
+
+    _SCHEMA: int
+    _incomplete: type[CampaignIncomplete]
+    _label: str
+
+    def __init__(
+        self, root: Path | None = None, key: dict | None = None,
+        chunk_decks: int | None = None, chunk_seconds: float | None = None,
+        quiet: bool = False,
+    ) -> None:
+        if root is None and (chunk_decks is not None or chunk_seconds is not None):
+            raise ValueError(
+                "--chunk-decks / --chunk-seconds need --resume-dir: a chunk "
+                "budget without a directory to persist into would throw "
+                "away every deck it ran"
+            )
+        self.root = Path(root) if root is not None else None
+        self.key = dict(key or {})
+        self.chunk_decks = chunk_decks
+        self.chunk_seconds = chunk_seconds
+        self.quiet = quiet
+        self._ran = 0
+        self._started = time.monotonic()
+        if self.root is not None:
+            self._open()
+
+    # --- resume-directory layout ------------------------------------------
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.root / "campaign.json"
+
+    @property
+    def decks_dir(self) -> Path:
+        return self.root / "decks"
+
+    def _manifest(self) -> dict:
+        return dict(self.key, schema=self._SCHEMA)
+
+    def _open(self) -> None:
+        self.decks_dir.mkdir(parents=True, exist_ok=True)
+        want = self._manifest()
+        if self.manifest_path.exists():
+            try:
+                have = json.loads(self.manifest_path.read_text())
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"{self.manifest_path} is not readable JSON ({exc}) -- "
+                    "point --resume-dir at a fresh directory"
+                ) from exc
+            if have != want:
+                differing = sorted(
+                    k for k in set(have) | set(want) if have.get(k) != want.get(k)
+                )
+                raise RuntimeError(
+                    f"--resume-dir {self.root} holds a DIFFERENT campaign: "
+                    + ", ".join(
+                        f"{k}={have.get(k)!r} on disk vs {want.get(k)!r} requested"
+                        for k in differing
+                    )
+                    + ". Resuming across a changed campaign key would mix two "
+                    "campaigns' decks into one record -- use a fresh "
+                    "--resume-dir for the new configuration."
+                )
+        else:
+            self._store_json(self.manifest_path, want)
+
+    @staticmethod
+    def _store_json(path: Path, payload: dict) -> None:
+        tmp = path.parent / (path.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        os.replace(tmp, path)
+
+    def _load_json(self, path: Path):
+        """A truncated or unreadable file is reported MISSING, not fatal: a
+        kill can land mid-write, and re-running one deck is always cheaper
+        and safer than trusting a partial one. (The writes above are atomic
+        via `os.replace`, so this should not happen -- but "should not" is
+        not the bar for a file the ceiling is expected to interrupt.)"""
+        if not path.exists():
+            return _MISSING
+        try:
+            return json.loads(path.read_text())
+        except (ValueError, OSError):
+            return _MISSING
+
+    @staticmethod
+    def _file_key(name: str) -> str:
+        """Deck name -> filename stem; overridden where a campaign's deck
+        names are not directly portable filenames."""
+        return name
+
+    def _deck_path(self, name: str) -> Path:
+        return self.decks_dir / f"{self._file_key(name)}.json"
+
+    # --- one deck's derived value; the payload shape is the subclass's ----
+
+    def load_deck(self, name: str):
+        raise NotImplementedError
+
+    def store_deck(self, name: str, value, log: str) -> None:
+        raise NotImplementedError
+
+    def _cached_value(self, cached):
+        """What `resolve`'s result gets for a deck loaded off disk."""
+        return cached
+
+    def _cached_log(self, cached):
+        """A persisted deck's raw ngspice log for `resolve`'s `logs` side
+        dict, or None when the campaign does not persist per-deck logs."""
+        return None
+
+    # --- progress and the chunk budget ------------------------------------
+
+    def total_decks(self) -> int:
+        raise NotImplementedError
+
+    def completed_decks(self) -> int:
+        """Decks whose file is present AND loadable: a truncated deck file
+        (kill mid-write) is not a completed deck, so the stop message's
+        count never overstates what a resume inherits."""
+        if self.root is None:
+            return 0
+        return sum(1 for p in self.decks_dir.glob("*.json")
+                   if self.load_deck(p.stem) is not _MISSING)
+
+    def _budget_spent(self) -> bool:
+        if self.chunk_decks is not None and self._ran >= self.chunk_decks:
+            return True
+        if self.chunk_seconds is not None:
+            return (time.monotonic() - self._started) >= self.chunk_seconds
+        return False
+
+    def _stop(self, stage: str) -> None:
+        completed = self.completed_decks()
+        total = self.total_decks()
+        elapsed = time.monotonic() - self._started
+        raise self._incomplete(
+            f"{self._label} campaign INCOMPLETE and RESUMABLE -- stopped in "
+            f"stage '{stage}' on this invocation's chunk budget after "
+            f"{self._ran} deck(s) / {elapsed / 60:.1f} min. {completed} of "
+            f"{total} campaign decks are complete in {self.root}. NO record "
+            "was written (a partial campaign must never produce one). "
+            "Re-run the IDENTICAL command to continue from here; the record "
+            "is emitted by the invocation that completes the last deck.",
+            stage=stage, resume_dir=self.root, completed=completed, total=total,
+        )
+
+    # --- the one place decks are dispatched -------------------------------
+
+    def resolve(
+        self, stage: str, builds: list, extract, run_batch, jobs: int = 1,
+        logs: dict[str, str] | None = None,
+    ) -> dict:
+        """Return `{deck name: derived value}` for every `(name, build)` in
+        `builds`, running only the decks not already persisted.
+
+        `run_batch(batch)` runs one batch of `(name, build)` pairs and
+        returns their ngspice logs; `extract(name)` reads that deck's
+        derived value out of the scratch directory right after it ran.
+        Raises the campaign's `*CampaignIncomplete` if the chunk budget
+        runs out with decks still pending.
+        """
+        values: dict = {}
+        pending: list = []
+        for name, deck in builds:
+            cached = self.load_deck(name)
+            if cached is _MISSING:
+                pending.append((name, deck))
+            else:
+                values[name] = self._cached_value(cached)
+                cached_log = self._cached_log(cached)
+                if logs is not None and cached_log is not None:
+                    logs[name] = cached_log
+        if self.root is not None and not self.quiet:
+            print(f"  [{stage}] {len(values)} of {len(builds)} decks already in "
+                  f"{self.root}, {len(pending)} to run")
+        # Ephemeral mode dispatches the whole stage as ONE batch -- byte-for-
+        # byte the call the un-chunked runner always made, including its
+        # `--jobs`-wide parallelism across the entire stage.
+        width = len(pending) if self.root is None else max(1, jobs)
+        index = 0
+        while index < len(pending):
+            if self._budget_spent():
+                self._stop(stage)
+            batch = pending[index:index + width]
+            batch_logs = run_batch(batch)
+            if logs is not None:
+                logs.update(batch_logs)
+            for name, _deck in batch:
+                value = extract(name)
+                self.store_deck(name, value, batch_logs[name])
+                values[name] = value
+            self._ran += len(batch)
+            index += len(batch)
+        return values

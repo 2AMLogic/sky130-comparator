@@ -1,0 +1,59 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=10.0mv corner=tt temp=27.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.42140e-09
+ Reference value :  8.91250e-09
+ Reference value :  1.36325e-08
+ Reference value :  1.83375e-08
+ Reference value :  2.30675e-08
+ Reference value :  2.77825e-08
+ Reference value :  3.25225e-08
+ Reference value :  3.72625e-08
+ Reference value :  4.19875e-08
+ Reference value :  4.67025e-08
+ Reference value :  5.14175e-08
+ Reference value :  5.61625e-08
+ Reference value :  6.08925e-08
+ Reference value :  6.56325e-08
+ Reference value :  7.03275e-08
+ Reference value :  7.50575e-08
+ Reference value :  7.97875e-08
+ Reference value :  8.45125e-08
+ Reference value :  8.92175e-08
+ Reference value :  9.39375e-08
+ Reference value :  9.86325e-08
+ Reference value :  1.03343e-07
+ Reference value :  1.08033e-07
+ Reference value :  1.12733e-07
+ Reference value :  1.17428e-07
+ Reference value :  1.22078e-07
+ Reference value :  1.26738e-07
+ Reference value :  1.31378e-07
+ Reference value :  1.35988e-07
+ Reference value :  1.40643e-07
+ Reference value :  1.45288e-07
+ Reference value :  1.49918e-07
+ Reference value :  1.54568e-07
+ Reference value :  1.59218e-07
+ Reference value :  1.63863e-07
+ Reference value :  1.68518e-07
+ Reference value :  1.73208e-07
+ Reference value :  1.77873e-07
+ Reference value :  1.82543e-07
+ Reference value :  1.87203e-07
+ Reference value :  1.91858e-07
+ Reference value :  1.96473e-07
+ Reference value :  2.01113e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 

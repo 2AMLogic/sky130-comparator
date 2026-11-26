@@ -17,12 +17,126 @@ python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
 python3 sim/comparator-decision/run.py noise    --record
 python3 sim/comparator-decision/run.py reset    --record
 python3 sim/comparator-decision/run.py kickback --record
+python3 sim/comparator-decision/run.py power    --record --corner tt --temp 27   # one corner per call
 ```
 
 See `sim/README.md` for the general `sim/` evidence-record and directory
 conventions (`testbench/`, `netlist-snapshots/`, `corners/`, `mc-draws/`,
 `records/`) this experiment follows; this file covers only what is specific
 to `comparator-decision/`.
+
+## Supported execution route (issue #127)
+
+The supported execution route for this experiment's campaign (issue #125's
+campaign matrix, not duplicated here) is a **`repo-script` batch job on the
+fleet's `sim` image profile** -- the operator ruling of 2026-11-17 (recorded
+on issue #127, option `a`). A dispatch worker is *not* a supported execution
+host for it: the worker fleet is a shared dispatch layer, its local
+ngspice/xschem/PDK installs are incidental, and its host rules forbid running
+simulation campaigns there. An earlier sweep measured a compliant install on
+one worker and explicitly did not accept it as satisfying the route (#127).
+
+**Why the `sim` image satisfies `sim/toolchain.json` unchanged.** The profile
+bakes everything the strict check requires, at the pinned identities, so the
+contract is never relaxed to match a host:
+
+| `sim/toolchain.json` pin | what the `sim` image bakes |
+|---|---|
+| `ngspice_min_major: 46` (floor) | ngspice **47** (the fleet's 47p1 artifact, 2am#7180) |
+| `xschem_tag: "3.4.7"` | xschem **3.4.7** (sha256-pinned artifact, on `PATH`) |
+| `open_pdks: f6eeac7dad08...` | sky130A @ **f6eeac7dad08...** from the fleet PDK store (2am#4541), unpacked under the baked PDK root |
+| `python_min: "3.9"` (floor) | Ubuntu 24.04's python3 (3.12.x) |
+
+`PDK_ROOT` is exported for every job by the fleet harness (eda-runner-env.sh's
+bake-time layer, reading the image's own manifest), so the strict check finds
+the PDK with no in-job environment setup. **A job on this route fetches
+nothing and installs nothing**; a missing or drifted tool is a real exit 1/3
+-- an image gap, to be filed against `2AMLogic/2am` -- never worked around by
+installing into the job.
+
+**The one-command check on the route.**
+[`check-env-batch.sh`](check-env-batch.sh) runs the strict check and records
+the provenance the verification needs around it. Submit it from a clean
+checkout at the commit to attribute:
+
+```sh
+<2am-checkout>/infra/aws/repo-script-submit.py \
+    --source-dir <this checkout> \
+    --script sim/comparator-decision/check-env-batch.sh \
+    --issue <n> --image-profile sim \
+    --output sim/comparator-decision/route-check \
+    --wait-for-capacity 600 \
+    --out sim/comparator-decision/route-check/collected
+```
+
+`--out` is a **submit-side** path (where the collected tree lands, as
+`<dir>/sNN/{files/,run.json,status.json,harness.log}` plus `<dir>/group.json`),
+so keep it under the already-ignored `sim/comparator-decision/route-check/`
+scratch area — a bare `--out ./route-check` would drop an untracked
+collect directory at the repo root instead.
+
+The submitter ships `git archive` of one commit; the job script runs from the
+extracted source root; `--wait-for-capacity 600` is the fleet's standing rule
+for every batch submit. The script's exit status is `run.py --check-env`'s
+own, verbatim (0 clean / 1 drift / 3 tool-or-PDK missing). What comes back
+per shard: `sNN/files/sim/comparator-decision/route-check/` with
+`env-check.log` (provenance head, the image's own baked-tool manifest, and
+the check's verbatim stdout/stderr plus exit status) and `env-check.json`,
+and `sNN/run.json` with the job's image id, instance type, exit code and wall
+time. Issue #127 holds the recorded verification evidence (UTC timestamp,
+repository commit, tarball sha256, image id, instance type, exit 0).
+
+**Invocation limits.** One shard = one job = one command, and the campaign
+runs **serially** -- one job at a time -- because each resumable chunk feeds
+the next one its scratch (below). The `sim` profile's per-job budget is
+**3600 s** (the fleet's `BATCH_MAX_JOB_SECONDS`; an unconditional in-guest
+poweroff at the cap), so size each chunk inside it with boot+teardown margin:
+`--chunk-seconds 2700`, the same 45-minute budget the chunked campaigns
+already use. The ~60-minute wall-clock ceiling the chunked-campaign section
+below records is a *dispatch-worker* cgroup property, not a property of this
+route; here the binding budget is the job cap. The per-ngspice-process budget
+(`SIM_NGSPICE_TIMEOUT_S`) still applies inside a job.
+
+**Scratch persistence -- resumable across jobs, not sessions.** Job scratch
+does not survive the job; nothing under the job's work directories carries
+over between jobs. "Resumable across sessions" therefore becomes **resumable
+across jobs**: declare the campaign scratch as a shard output and stage it
+back into the next job's source tarball, at its original path.
+
+1. Submit a chunk (`--shard` args are `run.py`'s own; `.py` scripts run under
+   the image's python3 from the source root):
+
+   ```sh
+   ... --script sim/comparator-decision/run.py \
+       --shard "noise-tran --dut extracted --corner ss --temp -40 --n 128 \
+                --seeds-per-point 64 --jobs 1 --resume-dir nt-ss-m40 \
+                --chunk-seconds 2700" \
+       --shard-output 0:nt-ss-m40 ...
+   ```
+
+   `--shard-output 0:nt-ss-m40` collects the campaign scratch (the campaign
+   key, the persisted AC/calibration preamble, and one derived scalar per
+   completed deck -- see the chunked-campaign section below for what the
+   directory holds and why raw logs are not kept).
+
+2. Exit 3 = incomplete and resumable (the driver's own contract, unchanged
+   by the route). Cut the next job's `--tarball` from the same commit plus
+   the collected `nt-ss-m40/` at its original path in the tree (the
+   submitter's `--tarball` input takes any tarball, and entry ownership does
+   not matter).
+
+3. Resubmit the identical shard args against that tarball. The campaign key
+   refuses a directory whose key differs, so a garbled round trip fails
+   loudly instead of merging two campaigns.
+
+A record is still written exactly once, by whichever job completes the last
+deck; an interrupted campaign writes none (the property the chunked section
+pins with its own test). The chunk-budgeting guidance carries over unchanged
+-- what changes is that a "chunk" is a job, not a terminal command. Campaign
+batch spend runs at the ordinary scale of this repo's simulation work per the
+ruling on #127: a spend estimate is quoted on the campaign's issue before the
+first submit regardless of size; if it exceeds ~$50, say so there and wait
+for the operator.
 
 ## Driver module layout
 
@@ -33,7 +147,7 @@ convention `sim/README.md` records for `sim/harness/`):
 | Module | Owns |
 |---|---|
 | [`run.py`](run.py) | the CLI (`main()`), and a read-only re-export of the flat attribute surface the unit suite reads |
-| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`) and the evidence-record head/tail |
+| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`), the evidence-record head/tail, and the resumable chunked-campaign store (`ResumableCampaign`, issue #429) that `offset` and `noise-tran` subclass |
 | [`regen.py`](regen.py) | `regen` |
 | [`offset.py`](offset.py) | `offset` and `offset-bisect` (they share the `_pickoff_*` machinery) |
 | [`noise.py`](noise.py) | `noise` |
@@ -210,7 +324,7 @@ SIM_NGSPICE_TIMEOUT_S=900 \
   python3 sim/comparator-decision/run.py regen --dut extracted --record
 ```
 
-**The extraction is pinned to `klayout-tools==0.7.0` on `klayout==0.30.12`** (issue #123; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and are historical -- not re-measured at the current geometry)
+**The extraction is pinned to `klayout-tools==0.8.0` on `klayout==0.30.12`** (the pin `docs/environment-setup.md` records and the workflow installs; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and were re-measured at the current geometry and PDK pin by the #179/#361 re-qualification campaign, 2026-11-23 -- see the banner at "Post-layout records" below)
 -- the same pin `docs/environment-setup.md` records and both
 `.github/workflows/t1-signoff.yml` jobs install -- and `extract_pex.py`
 *asserts* it rather than merely recording it. That is not provenance hygiene:
@@ -239,12 +353,10 @@ offers `--distributed-rc` with `--critical-net` for a per-segment ladder;
 re-running the supply nets that way is follow-on work (issue #64), not done
 here.
 
-`--dut schematic` is the default and its deck text is **byte-identical** to
-what it was before the switch existed, so a post-layout figure and the
-schematic-level record it is differenced against come from decks that differ
-only in the DUT. That property is what makes the delta attributable to the
-layout, and it is pinned by a test
-(`sim/tests/test_comparator_decision.py::TestDutProvenance`).
+`--dut schematic` is the default. The DUT switch selects the fragment used
+by the deck builder. When interpreting a delta against a committed schematic
+record, compare the open_pdks revision, ngspice version and sampling counts
+in the two records. A change in any of them can also affect the delta.
 
 **All six sub-commands support both provenances.** Four did from issue #57;
 `reset` and `noise-tran` refused `--dut extracted` until issue #65, because
@@ -317,6 +429,15 @@ The grading consequence is real and is filed as friction rather than hidden:
 `klt signoff` accepts **only** a `klt pex` envelope for T1 item 7, so this
 evidence cannot be cited there
 ([`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478)).
+That last sentence is history, not the present: #2478 closed on 2026-09-25 and
+`klt pex --measure-command` drives exactly this caller-side post-processing, so
+item 7 is now cited from a real `klt pex` envelope —
+[`layout/pex-report.json`](../../layout/pex-report.json), produced by
+[`pex-batch.sh`](pex-batch.sh) on the batch route (issue #187; see
+`manifests/README.md` → item 7). The extract-plus-swap path this section
+documents remains the netlist source: the runners simulate the committed
+fragments it produces, and the adapter's byte-identity gate refuses any
+extraction that drifts from them.
 
 The extracted decks need a longer per-deck ngspice budget than the 120 s
 default -- hence `SIM_NGSPICE_TIMEOUT_S=900` above. That is a wall-clock
@@ -407,9 +528,19 @@ the four pilot requests re-run as `*-combinedlib` variants (one changed key
 each, all four legs one `--batch-set` invocation) moved the worst-node
 kickback peak by **+0.89 %** (schematic) and **+0.81 %** (extracted) at
 `tt`/27 C. On the grading library the schematic pilot reproduces the
-`run.py` baseline exactly (1.8902 mV), so the kickback note's -0.88 % delta
-was **entirely the library**; the PEX note's -15.0 % delta becomes -14.33 %,
-so the library is a sized seventh confounder there, not the explanation.
+`run.py` baseline exactly (1.8902 mV); the PEX note's -15.0 % delta becomes
+-14.33 %, so the library is a sized seventh confounder there, not the
+explanation. A follow-up leg made the schematic figure single-variable
+([`records/klt-pilot-library-effect-schematic-ngspice47-20261116.md`](records/klt-pilot-library-effect-schematic-ngspice47-20261116.md),
+issue #283: the committed `ngspice`-lib schematic request re-run on
+ngspice-47, `models.lib` held fixed): the library alone is worth **+0.53 %**
+on the schematic worst-node peak (vs +0.81 % extracted) and the
+ngspice-46 -> 47 solver bump is **+0.35 %** -- outside the < 0.03 % bound the
+note above had inferred for it from the pilot-vs-baseline residual (that
+residual was measured on `combined`-library decks; the bump shows on the
+`ngspice`-lib deck). So the kickback note's -0.88 % delta was **dominated by
+the library (+0.53 % of the +0.89 % bundle), not entirely it**; the library
+remains its largest single term and nothing in it was the circuit.
 
 `offset` and `reset` have not
 been attempted, and the serial-on-host decision below is the historical record
@@ -802,6 +933,22 @@ All at the same DR-004 topology (netlist-identical, campaign commit
   [0.1594, 0.1905], cross-check 0.1515 mV -- agrees).
 
 ### Post-layout records (issue #57 -- T1 item 7, `--dut extracted`)
+
+> **Supersession notice (2026-11-23, issues
+> #179/#361).** Every post-layout record named in this section and the
+> campaign sections below -- the #57 anchors, the #64 corner set, the #80
+> `_mm` set, the #83/#89/#95 `noise-tran` set -- is **superseded** by the
+> re-qualification campaign's terminal records, minted on open_pdks
+> `f6eeac7` / ngspice-47 against the 0.35 µm layout extracted under
+> klt 0.8.0 / klayout 0.30.12. The tables and figures below stand as the
+> historical 0.42 µm / `c6d73a35` record and are not what any current row
+> cites; the current figures live in
+> [`../characterization-report.md`](../characterization-report.md) and the
+> per-corner old/new movement in
+> [`../../spec/decision-records/DR-012-requalification.md`](../../spec/decision-records/DR-012-requalification.md).
+> The terminal record for each superseded id is its `Supersedes` chain's
+> end, gated by `check-requalify-plan.py` in `sim/selftest.sh`
+> (`--print-terminals` prints the map).
 
 The first records against a DUT that is **not** `design/comparator.sch`'s
 netlist: the parasitics-annotated extraction of `layout/comparator.gds` (see
@@ -1210,10 +1357,11 @@ record is filed and DR-006's disposition is unchanged**.
 **Corner scaling on the regeneration-inclusive basis is now complete across
 all seven graded corners**: 0.0929 mV (`sf`/-40C), 0.1084 mV (`fs`/-40C),
 0.1382 mV (`ss`/-40C), 0.1448 mV (`tt`/27C), 0.1682 mV (`sf`/125C), 0.1956 mV
-(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is not simply "cold is low,
-hot is high": the two coldest skew corners (`sf`/-40C, `fs`/-40C) sit *below*
-`tt`/27C, while the two hottest skew corners (`sf`/125C, `ff`/125C) sit above
-it alongside `fs`/125C, which remains the worst corner on this row exactly as
+(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is monotone in temperature:
+all three -40C corners sit below `tt`/27C, which sits below all three 125C
+corners. Within each temperature the process corners order `sf` < `fs` < `ss`
+(cold) and `sf` < `ff` < `fs` (hot), so no single process corner is worst
+across temperature; `fs`/125C remains the worst corner on this row exactly as
 DR-006 Amendment 1 recorded.
 
 **Item 2 (full-N re-runs) and item 3 (the decision it needs first) are
@@ -1312,8 +1460,19 @@ Three flags, `noise-tran` only:
 | `--chunk-decks N` | Stop this invocation cleanly after `N` **campaign** decks — every deck the invocation dispatches, the same all-deck count the stop message and the completed/total pair report. The first four decks of a fresh campaign are the gain calibration (which runs with no noise at all), so a fresh campaign reaches `N - 4` Monte Carlo decks and any `N <= 4` reaches none. Needs `--resume-dir`. |
 | `--chunk-seconds S` | Stop this invocation cleanly once it has been running `S` seconds, checked between decks. Needs `--resume-dir`. The clock starts at campaign setup, so it covers the AC/calibration preamble too. |
 
-**The invocation pattern.** Run the *identical* command repeatedly until it
-exits 0. Nothing about the command changes between chunks — the scratch
+**The invocation pattern — dispatch-worker shape, superseded for the
+campaign.** The command below re-runs the *identical* line against a scratch
+directory in the invoking host's `/tmp`. That is the **dispatch-worker**
+shape of the chunked runner, and it is **not the supported execution route**
+for the campaign (issue #127's ruling): a dispatch worker is not a supported
+campaign host, and the ~60-minute ceiling the comment below names is that
+host's cgroup property, not the route's. On the supported route each chunk
+is a `repo-script` batch job and the `--resume-dir` travels between jobs as
+a declared shard output — see [Supported execution route (issue
+#127)](#supported-execution-route-issue-127) above; the flags, the chunk
+budgeting and the exit-code contract are identical, and the resubmitted
+args are likewise identical. The example stays for the machinery it
+documents. Nothing about the command changes between chunks — the scratch
 directory is what carries the progress:
 
 ```sh
@@ -1395,6 +1554,41 @@ the *whole* pick-off set, so the decision decks have no keys until statistic (a)
 is complete. A chunk that stops inside the pick-off stage simply never names
 them. This is not an extra constraint the chunking adds — it is the existing
 data dependency, made visible.
+
+### Resumable `offset` campaigns (issue #154)
+
+`offset` takes the same three flags as `noise-tran` (`--resume-dir`,
+`--chunk-decks`, `--chunk-seconds`) so a larger-sample extracted-DUT campaign
+(N=200 is `4 + 2 x 200 = 404` decks: gain calibration, mismatch draws and the
+same-seed mismatch-disabled negative control) can run as a sequence of
+identical sub-budget commands on the route in [Supported execution route (issue
+#127)](#supported-execution-route-issue-127), with `--resume-dir` carried
+between jobs as a declared shard output and `--jobs 1`.
+
+- Each deck's pick-off value **and raw ngspice log** are persisted atomically
+  (`tmp` + `os.replace`) as it completes. A truncated/unreadable deck file is
+  treated as missing and re-run; a leftover `.tmp` is inert.
+- `<resume-dir>/campaign.json` is the campaign key: DUT provenance and netlist
+  sha256, PDK and ngspice identities, corner, temperature, N, seed and seed
+  schedule (`seed + i` for draw *i* and its negative control), calibration
+  points and every pick-off/stimulus parameter. A differing key is refused
+  (`RuntimeError`) rather than mixed.
+- Exit status `3` means "incomplete, resumable, no record"; `--record` writes
+  a record only on the invocation that completes the last deck, and the
+  negative control is a campaign stage like any other, so a record cannot
+  exist without it.
+- Chunked and un-chunked runs yield identical results (pinned by
+  `TestOffsetResumableCampaign`).
+
+```sh
+# One chunk; resubmit this EXACT line until it exits 0.
+SIM_NGSPICE_TIMEOUT_S=900 python3 sim/comparator-decision/run.py offset \
+    --dut extracted --corner tt --temp 27 --n 200 --seed 1 --jobs 1 \
+    --resume-dir <scratch>/offset-tt-27 --chunk-seconds 2700 --record
+```
+
+The N=200 extracted-DUT measurements themselves are tracked separately; this
+subsection documents only the runner.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
@@ -1718,3 +1912,17 @@ The twelve-record list is exactly the set matched, at `72504f6`
 ```bash
 for f in $(git grep -l "PVT coverage remains open work" origin/main -- sim/comparator-decision/records | sed 's/^origin\/main://'); do git show origin/main:$f | grep -q "tt/27C" && basename $f; done
 ```
+
+## `power`: supply energy and average power (issue #134)
+
+`power.py` integrates the energy the supply delivers over complete, settled
+clock periods (`E = -VDD * integral(i(Vdd) dt)`; ngspice's `i(Vdd)` is
+negative when the supply delivers) and reports per-period energy, the
+reset/evaluate split, average power (`E / period`) and energy per decision
+(one decision per period). Defaults -- 10 ns period, 50% evaluate duty,
++10 mV differential input, 10 fF per output -- are recorded experiment
+conditions, not a ratified clock rate or load. The first 3 of 8 periods are
+excluded as settling; the run fails if retained-period energy does not
+converge within 1% or if reset + evaluate differs from the full period. It
+selects no spec bound and leaves the DRAFT/OPEN power row unratified.
+A multi-corner grid must go through the batch route above, not a local loop.

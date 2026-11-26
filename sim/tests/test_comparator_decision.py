@@ -39,6 +39,7 @@ import importlib.util
 import io
 import json
 import math
+import os
 import re
 import sys
 import tempfile
@@ -473,11 +474,8 @@ class TestRunManyTsRetryParallelSeam(unittest.TestCase):
 class TestDutProvenance(unittest.TestCase):
     """`--dut schematic|extracted` -- the post-layout swap (issue #57).
 
-    The whole value of the post-layout comparison is that the ONLY thing
-    differing between a schematic-level record and its post-layout
-    counterpart is the DUT. These tests pin that: the schematic deck text is
-    unchanged by the switch existing, and the extracted deck really does
-    carry the extracted netlist (and its parasitics).
+    Check that the switch preserves the schematic deck and selects the
+    extracted devices and parasitics for a post-layout deck.
     """
 
     def setUp(self):
@@ -517,6 +515,25 @@ class TestDutProvenance(unittest.TestCase):
                        "XM_LATP_P", "XM_LATP_N", "XM_RST_P", "XM_RST_N",
                        "XR_CLKS", "XM_CLKCAP"):
             self.assertNotIn(absent, deck)
+
+    def test_extracted_noise_record_preserves_both_output_voltages_and_tool_pin(self):
+        cd_run.set_dut_provenance("extracted")
+        result = cd_run.noise.NoiseResult(
+            single_ended_rms_v=0.00046, differential_rms_v=0.00065,
+            op_tailp_v=0.18, op_outp1_v=1.203299, op_outn1_v=1.208241,
+            log_text="", corner="ff", temp_c=125.0,
+        )
+        with tempfile.TemporaryDirectory() as scratch:
+            runs = Path(scratch)
+            with unittest.mock.patch.object(cd_run.noise, "_begin_dut_record",
+                    return_value=(self.info, "test", "sha", runs / "record.md", runs)), \
+                    unittest.mock.patch.object(cd_run.noise, "_finalize_record") as finish:
+                cd_run.noise.write_noise_evidence(result)
+        text = "\n".join(finish.call_args.args[0])
+        self.assertIn("| Op point: v(OUTP1) | 1.203299 V |", text)
+        self.assertIn("| Op point: v(OUTN1) | 1.208241 V |", text)
+        provenance = json.loads(cd_run._shared.PEX_ENVELOPE.read_text())["provenance"]
+        self.assertIn(f"klt {provenance['klt_version']} on klayout {provenance['klayout_version']}", text)
 
     def test_unknown_provenance_raises(self):
         with self.assertRaises(ValueError):
@@ -793,10 +810,43 @@ class TestPostLayoutDelta(unittest.TestCase):
         cd_run.set_dut_provenance("extracted")
         text = "\n".join(
             cd_run.post_layout_delta_lines("regen", "tt", 27.0, 0.4425))
-        self.assertIn("20260922-070800-e084b55", text)
+        self.assertIn("20261121-033724-4d73da9", text)
         self.assertIn("0.4025 ns", text)
         self.assertIn("+0.0400 ns", text)
         self.assertIn("1.099x", text)
+
+    def test_comparison_reports_each_records_environment(self):
+        extracted = ("sky130A @ f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7", "ngspice-47")
+        for record_id in (cd_run._shared.RESET_SCHEMATIC_COUNTERPART,
+                          cd_run.baseline_for("regen", "tt", 27).record_id):
+            with self.subTest(record_id=record_id):
+                text = cd_run._shared.schematic_comparison(record_id, extracted)
+                self.assertIn("Both DUTs used", text)
+                self.assertIn(extracted[0], text)
+                self.assertIn(extracted[1], text)
+        nominal = cd_run.baseline_for("kickback", "tt", 27)
+        self.assertIn("Both DUTs used", cd_run._shared.schematic_comparison(
+            nominal.record_id, extracted))
+
+    def test_comparison_reports_differing_environments_as_historical(self):
+        nominal = cd_run.baseline_for("kickback", "tt", 27)
+        extracted = ("sky130A @ test-extracted-revision", "ngspice-46")
+        text = cd_run._shared.schematic_comparison(nominal.record_id, extracted)
+        self.assertNotIn("Both DUTs used", text)
+        self.assertIn("Historical schematic comparison", text)
+        schematic_sentence, extracted_sentence = text.split("The extracted run used ")
+        # The record's own environment belongs to the schematic run ...
+        self.assertIn("The schematic run used sky130A @ f6eeac7", schematic_sentence)
+        self.assertIn("ngspice-47", schematic_sentence)
+        self.assertNotIn("test-extracted-revision", schematic_sentence)
+        self.assertNotIn("ngspice-46", schematic_sentence)
+        # ... and the supplied tuple to the extracted run.
+        self.assertTrue(extracted_sentence.startswith(
+            "sky130A @ test-extracted-revision and ngspice-46."))
+        self.assertNotIn("f6eeac7", extracted_sentence)
+        self.assertNotIn("ngspice-47", extracted_sentence)
+        self.assertIn("The delta includes the change of DUT and any effect "
+                      "of the different simulation environments.", text)
 
     def test_missing_baseline_says_so_instead_of_faking_a_delta(self):
         # `noise` (the AC loop-broken sub-model) has a committed
@@ -873,8 +923,8 @@ class TestPostLayoutDelta(unittest.TestCase):
         against it (issue #89 item 1's whole point)."""
         cd_run.set_dut_provenance("extracted")
         for corner, temp_c, record_id, sigma in (
-            ("ss", -40.0, "20260922-205857-ebea4e2", 0.1213),
-            ("ff", 125.0, "20260923-010427-ebea4e2", 0.1754),
+            ("ss", -40.0, "20261121-094511-4d73da9", 0.1292),
+            ("ff", 125.0, "20261121-100659-4d73da9", 0.1554),
         ):
             with self.subTest(corner=corner, temp_c=temp_c):
                 text = "\n".join(cd_run.post_layout_delta_lines(
@@ -1005,6 +1055,295 @@ class TestSubsetCornerCampaignReason(unittest.TestCase):
                     msg=f"{path.name} re-asserts the retired claim "
                     f"(issue #284): {text!r}",
                 )
+
+
+class TestRatificationProseMatchesReadmeTable(unittest.TestCase):
+    """Issue #290: the comparator-decision drivers hardcode the top-level
+    README target-spec table's per-row ratification status into the text
+    they write into append-only `sim/comparator-decision/records/`
+    evidence, and nothing failed if the table's statuses drifted -- the
+    same silent-falsification failure mode the #246 / #258 / #284 chain
+    fixed for the retired "blocked on ratification" claim (whose guard,
+    `TestSubsetCornerCampaignReason`, keys on the retired *wording*, not
+    on the *status facts* the replacement prose asserts).
+
+    The seven live sites, all correct against the committed table today:
+
+    - `_shared.CLAIM_TEXT` -- names Offset sigma, Input-referred noise,
+      and Kickback RATIFIED (DR-002), Decision time vs. overdrive
+      RATIFIED (DR-005), Supply/power the one DRAFT/OPEN row;
+    - `_shared.subset_corner_campaign_reason()` -- "four of the ... five
+      rows are RATIFIED ...", Supply/power "the one DRAFT/OPEN row";
+    - `reset.py`'s corner-matrix clause -- Supply/power "still
+      DRAFT/OPEN", "the table's other four rows are RATIFIED";
+    - `offset.py`, `noise.py`, `noise_tran.py`, `kickback.py` -- one
+      "Ratified bound comparison" line each, claiming its own row
+      RATIFIED.
+
+    This test parses each table row's leading bold status token
+    (`**RATIFIED**` vs `**DRAFT / OPEN**`; trailing qualifiers such as
+    the noise row's RE-OPENED/RE-CLOSED history and Kickback's
+    COMPLIANT clause are ignored) and asserts the prose agrees: the
+    multi-row sites name exactly the table's RATIFIED row set and its
+    DRAFT/OPEN row set, and each per-row site's row is RATIFIED in the
+    table. A future status change -- Supply/power ratified by a DR, or
+    a DR-006-style re-open of a RATIFIED row -- now fails here instead
+    of silently falsifying every record written afterwards. The
+    negative tests mutate a COPY of the table text (never the README)
+    to prove the guard bites.
+
+    Test-only change: no README, record, or decision-record content is
+    modified (issue #290's acceptance criteria)."""
+
+    README = SIM_DIR.parent / "README.md"
+
+    # Table row name -> the name the driver prose uses for it (the prose
+    # writes "Supply/power" without spaces; the table's cell is
+    # "Supply / power").
+    ROW_NAMES = {
+        "Offset sigma": "Offset sigma",
+        "Input-referred noise": "Input-referred noise",
+        "Decision time vs. overdrive": "Decision time vs. overdrive",
+        "Kickback": "Kickback",
+        "Supply / power": "Supply/power",
+    }
+
+    # CLAIM_TEXT's status clauses, as (regex over the whitespace-collapsed
+    # text, status asserted, table rows the clause names). A pattern
+    # failing to match means the wording drifted and this test's row
+    # bookkeeping must be re-cut alongside it.
+    CLAIM_TEXT_CLAUSES = (
+        (r"the Offset sigma, Input-referred noise, and Kickback rows "
+         r"are RATIFIED",
+         "RATIFIED", ("Offset sigma", "Input-referred noise", "Kickback")),
+        (r"Decision time vs\. overdrive is RATIFIED",
+         "RATIFIED", ("Decision time vs. overdrive",)),
+        (r"only Supply/power stays DRAFT/OPEN",
+         "DRAFT/OPEN", ("Supply / power",)),
+    )
+
+    # subset_corner_campaign_reason()'s status clauses, same shape.
+    SUBSET_REASON_CLAUSES = (
+        (r"four of the target-spec table's five rows are RATIFIED "
+         r"\(DR-002: Offset sigma, Input-referred noise, Kickback; "
+         r"DR-005: Decision time vs\. overdrive\)",
+         "RATIFIED", ("Offset sigma", "Input-referred noise", "Kickback",
+                      "Decision time vs. overdrive")),
+        (r"Supply/power coverage \(the one DRAFT/OPEN row",
+         "DRAFT/OPEN", ("Supply / power",)),
+    )
+
+    # reset.py's clause is a complement claim: Supply/power DRAFT/OPEN,
+    # every OTHER table row RATIFIED -- checked as such below.
+    RESET_CLAUSE_PATTERNS = (
+        r"the target-spec table's Supply/power row is still DRAFT/OPEN",
+        r"the table's other four rows are RATIFIED \(DR-002, DR-005\)",
+    )
+
+    # Per-row "Ratified bound comparison" sites: (module file, table row).
+    PER_ROW_SITES = (
+        ("offset.py", "Offset sigma"),
+        ("noise.py", "Input-referred noise"),
+        ("noise_tran.py", "Input-referred noise"),
+        ("kickback.py", "Kickback"),
+    )
+
+    def _readme_row_statuses(self, readme_text=None):
+        """Parse README.md's target-spec table into
+        {row name: "RATIFIED" | "DRAFT / OPEN"} from each row's leading
+        bold status token. `readme_text` lets the negative tests parse a
+        mutated copy instead of the committed file."""
+        if readme_text is None:
+            readme_text = self.README.read_text(encoding="utf-8")
+        statuses = {}
+        in_table = False
+        for line in readme_text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                if in_table:
+                    break  # the table ended; stop scanning
+                continue
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if cells[:2] == ["Parameter", "Status"]:
+                in_table = True
+                continue
+            if not in_table:
+                continue
+            if all(set(c) <= set("-: ") for c in cells):
+                continue  # the |---|---| separator row
+            m = re.match(r"\*\*(RATIFIED|DRAFT / OPEN)\b", cells[1])
+            self.assertIsNotNone(
+                m,
+                f"unrecognized leading status token in the target-spec "
+                f"table's {cells[0]!r} row: {cells[1]!r} -- the prose "
+                f"sites and this parser must move together (issue #290)",
+            )
+            statuses[cells[0]] = m.group(1)
+        return statuses
+
+    def _assert_prose_agrees_with(self, statuses):
+        """Cross-check the seven hardcoded status claims against the
+        parsed table. Raises AssertionError on any disagreement, so the
+        negative tests can drive it with mutated table copies."""
+        prose_ratified = {
+            self.ROW_NAMES[r] for r, s in statuses.items() if s == "RATIFIED"}
+        prose_draft = {
+            self.ROW_NAMES[r] for r, s in statuses.items()
+            if s == "DRAFT / OPEN"}
+
+        # (a) the three multi-row sites must name exactly the table's
+        # RATIFIED row set and its DRAFT/OPEN row set.
+        for text, clauses, what in (
+            (" ".join(cd_run._shared.CLAIM_TEXT.split()),
+             self.CLAIM_TEXT_CLAUSES, "_shared.CLAIM_TEXT"),
+            (" ".join(cd_run.subset_corner_campaign_reason().split()),
+             self.SUBSET_REASON_CLAUSES,
+             "_shared.subset_corner_campaign_reason()"),
+        ):
+            claimed_ratified, claimed_draft = set(), set()
+            for pattern, status, rows in clauses:
+                self.assertRegex(
+                    text, pattern,
+                    f"{what}'s status wording drifted; re-cut it and this "
+                    f"test's row bookkeeping together (issue #290): "
+                    f"expected {pattern!r}",
+                )
+                (claimed_ratified if status == "RATIFIED"
+                 else claimed_draft).update(
+                     self.ROW_NAMES[r] for r in rows)
+            self.assertEqual(
+                claimed_ratified, prose_ratified,
+                f"{what} claims {sorted(claimed_ratified)} RATIFIED "
+                f"but the table says {sorted(prose_ratified)} "
+                f"(issue #290)",
+            )
+            self.assertEqual(
+                claimed_draft, prose_draft,
+                f"{what} claims {sorted(claimed_draft)} DRAFT/OPEN "
+                f"but the table says {sorted(prose_draft)} "
+                f"(issue #290)",
+            )
+
+        # (b) reset.py's complement claim: its clause must still say
+        # Supply/power "still DRAFT/OPEN" and "the table's other four
+        # rows are RATIFIED", and the table must agree with that
+        # complement -- exactly Supply/power DRAFT/OPEN, every other
+        # row RATIFIED.
+        reset_texts = TestSubsetCornerCampaignReason._string_constants(
+            SIM_DIR / "comparator-decision" / "reset.py")
+        clause = [t for t in reset_texts if "full ratified PVT matrix" in t]
+        self.assertEqual(
+            len(clause), 1,
+            "reset.py's subset-corner clause moved or vanished "
+            "(issue #290)",
+        )
+        for pattern in self.RESET_CLAUSE_PATTERNS:
+            self.assertRegex(
+                clause[0], pattern,
+                "reset.py's corner-matrix status wording drifted; re-cut "
+                f"it and this test together (issue #290): expected "
+                f"{pattern!r}",
+            )
+        self.assertEqual(
+            prose_draft, {"Supply/power"},
+            f"reset.py's clause claims Supply/power as the only "
+            f"DRAFT/OPEN row but the table says {sorted(prose_draft)} "
+            f"(issue #290)",
+        )
+        self.assertEqual(
+            prose_ratified,
+            set(self.ROW_NAMES.values()) - {"Supply/power"},
+            f"reset.py's clause claims the other four rows RATIFIED but "
+            f"the table says {sorted(prose_ratified)} (issue #290)",
+        )
+
+        # (c) each per-row site claims its own row, and the table agrees.
+        for filename, row in self.PER_ROW_SITES:
+            texts = TestSubsetCornerCampaignReason._string_constants(
+                SIM_DIR / "comparator-decision" / filename)
+            self.assertTrue(
+                any(f"the {row} row is RATIFIED" in t for t in texts),
+                f"{filename} no longer states the {row} row's RATIFIED "
+                f"status; re-cut it and this test together (issue #290)",
+            )
+            self.assertEqual(
+                statuses[row], "RATIFIED",
+                f"{filename} still claims the {row} row RATIFIED, but "
+                f"the table now says {statuses[row]!r} (issue #290)",
+            )
+
+    def _flip_leading_status(self, readme_text, row, new_token):
+        """Return a COPY of `readme_text` with `row`'s leading bold
+        status token replaced by `new_token` -- a stand-in for the README
+        change the prose failed to track. The real README is never
+        written (issue #290's acceptance criteria)."""
+        lines = readme_text.splitlines(keepends=True)
+        prefix = f"| {row} |"
+        for i, line in enumerate(lines):
+            if line.startswith(prefix):
+                new_line, n = re.subn(
+                    r"\*\*(?:RATIFIED|DRAFT / OPEN)\b",
+                    f"**{new_token}**", line, count=1)
+                self.assertEqual(
+                    n, 1, f"no leading status token found on {row!r}'s "
+                    f"table row -- the parser and this helper drifted")
+                lines[i] = new_line
+                return "".join(lines)
+        self.fail(f"row {row!r} not found in the table text")
+
+    def test_prose_agrees_with_the_committed_table(self):
+        """The cross-check itself, against the committed README (issue
+        #290 acceptance criterion 3: passes on current main, changing no
+        README/record/DR content)."""
+        statuses = self._readme_row_statuses()
+        self.assertEqual(
+            set(statuses), set(self.ROW_NAMES),
+            "README target-spec table rows were added, removed, or "
+            "renamed -- the prose sites and this test must move together "
+            "(issue #290)",
+        )
+        self._assert_prose_agrees_with(statuses)
+
+    def test_guard_bites_when_a_draft_row_flips_to_ratified(self):
+        """Negative case, on a mutated COPY of the table: flipping the
+        one DRAFT/OPEN row (Supply/power today) to RATIFIED without
+        touching the prose must fail the cross-check (issue #290
+        acceptance criterion 1). This is the DR-ratifies-Supply/power
+        scenario the issue names as the likeliest trigger."""
+        statuses = self._readme_row_statuses()
+        draft_rows = [r for r, s in statuses.items() if s == "DRAFT / OPEN"]
+        self.assertEqual(
+            len(draft_rows), 1,
+            f"expected exactly one DRAFT/OPEN row, got {draft_rows}")
+        mutated = self._flip_leading_status(
+            self.README.read_text(encoding="utf-8"),
+            draft_rows[0], "RATIFIED")
+        # The parse runs OUTSIDE the assertRaises block: the parser
+        # itself raises AssertionError on an unrecognized status token,
+        # and letting that satisfy the block would prove nothing about
+        # the guard biting.
+        mutated_statuses = self._readme_row_statuses(mutated)
+        with self.assertRaisesRegex(AssertionError, "issue #290"):
+            self._assert_prose_agrees_with(mutated_statuses)
+
+    def test_guard_bites_when_a_ratified_row_flips_to_draft(self):
+        """Negative case, on a mutated COPY of the table: flipping a
+        RATIFIED row (Offset sigma today, first in table order) to
+        DRAFT/OPEN without touching the prose must fail the cross-check
+        (issue #290 acceptance criterion 1). This is the DR-006-style
+        re-open scenario the issue names as the other trigger."""
+        statuses = self._readme_row_statuses()
+        ratified_rows = sorted(
+            r for r, s in statuses.items() if s == "RATIFIED")
+        mutated = self._flip_leading_status(
+            self.README.read_text(encoding="utf-8"),
+            ratified_rows[0], "DRAFT / OPEN")
+        # Same hoist as the draft->RATIFIED case: only the cross-check
+        # may raise inside the block, so a parse failure of the mutated
+        # copy cannot satisfy the test.
+        mutated_statuses = self._readme_row_statuses(mutated)
+        with self.assertRaisesRegex(AssertionError, "issue #290"):
+            self._assert_prose_agrees_with(mutated_statuses)
 
 
 class _FakeNgspiceDecks:
@@ -1606,6 +1945,310 @@ class TestOffsetBisectCli(unittest.TestCase):
                 cd_run.main(["offset-bisect", "--help"])
         self.assertEqual(cm.exception.code, 0)
         self.assertIn("offset-bisect", buf.getvalue())
+
+
+class TestPowerIntegration(unittest.TestCase):
+    """`power` windowing against analytically known waveforms (issue #134)."""
+
+    VDD = 1.8
+    P = 10e-9
+    DUTY = 0.5
+    I_EVAL = 200e-6   # A drawn during evaluate
+    I_RST = 50e-6     # A drawn during reset
+    N = 6
+
+    def _wave(self, startup_extra=0.0, sign=-1.0):
+        # Piecewise-constant square current with samples ON each edge so the
+        # trapezoid rule is exact. Period k starts at t0 + k*P, t0 = P.
+        eps = 1e-15
+        t, i = [0.0], [sign * self.I_RST]
+        for k in range(self.N + 1):
+            a = self.P * (1 + k)
+            extra = startup_extra if k == 0 else 0.0
+            mid = a + self.DUTY * self.P
+            for tt, v in ((a, self.I_RST), (a + eps, self.I_EVAL + extra),
+                          (mid, self.I_EVAL + extra), (mid + eps, self.I_RST)):
+                t.append(tt)
+                i.append(sign * v)
+        return t, i
+
+    def _run(self, **kw):
+        t, i = self._wave(**{k: kw.pop(k) for k in ("startup_extra", "sign") if k in kw})
+        return cd_run.power.analyze_power(
+            t, i, t0_s=self.P, period_s=self.P, duty=self.DUTY, n_periods=self.N,
+            settle=kw.pop("settle", 2), **kw)
+
+    def test_energies_match_analytic_values(self):
+        r = self._run()
+        e_eval = self.VDD * self.I_EVAL * self.DUTY * self.P
+        e_rst = self.VDD * self.I_RST * (1 - self.DUTY) * self.P
+        self.assertAlmostEqual(r.mean_eval_j / e_eval, 1.0, places=6)
+        self.assertAlmostEqual(r.mean_reset_j / e_rst, 1.0, places=6)
+        self.assertAlmostEqual(r.mean_energy_j / (e_eval + e_rst), 1.0, places=6)
+        self.assertAlmostEqual(r.average_power_w, (e_eval + e_rst) / self.P, delta=1e-12)
+        self.assertEqual(r.problems, [])
+
+    def test_negative_control_sign_error_detected(self):
+        r = self._run(sign=+1.0)
+        self.assertTrue(any(p.startswith("SIGN") for p in r.problems))
+
+    def test_negative_control_window_error_detected(self):
+        # A window shifted half a duty off the edges mis-splits reset/eval:
+        # the analytic split no longer matches.
+        t, i = self._wave()
+        shifted = cd_run.power.analyze_power(
+            t, i, t0_s=self.P + 0.25 * self.P, period_s=self.P, duty=self.DUTY,
+            n_periods=self.N - 1, settle=1)
+        e_eval = self.VDD * self.I_EVAL * self.DUTY * self.P
+        self.assertGreater(abs(shifted.mean_eval_j / e_eval - 1.0), 0.1)
+
+    def test_startup_energy_flagged_without_settling_exclusion(self):
+        self.assertEqual(self._run(startup_extra=300e-6, settle=1).problems, [])
+        r = self._run(startup_extra=300e-6, settle=0)
+        self.assertTrue(any(p.startswith("CONVERGENCE") for p in r.problems))
+
+    def test_window_outside_samples_is_refused(self):
+        with self.assertRaises(ValueError):
+            cd_run.power.integrate([0.0, 1.0], [1.0, 1.0], 0.0, 2.0)
+
+    def test_deck_has_clock_loads_and_supply_probe(self):
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8)
+        self.assertIn("PULSE(0 {vdd_val} 10.0n", deck)
+        self.assertIn("Cloadp OUTP 0 10.0f", deck)
+        self.assertIn("wrdata x.csv i(Vdd)", deck)
+
+    def _record_lines(self, results):
+        """Render the power record with the record plumbing mocked out and
+        return the bullet lines the writer emitted."""
+        power = cd_run.power
+        captured = {}
+
+        def fake_finalize(lines, *a, **k):
+            captured["lines"] = lines
+            return Path("unused")
+
+        with contextlib.ExitStack() as stack:
+            patch = stack.enter_context
+            patch(unittest.mock.patch.object(
+                power, "_begin_dut_record",
+                lambda kind: (FakePdkInfo(), "rec", "sha", Path("r.md"), Path("c"))))
+            patch(unittest.mock.patch.object(power, "_record_header", lambda rid: []))
+            patch(unittest.mock.patch.object(power, "_finalize_record", fake_finalize))
+            patch(unittest.mock.patch.object(power.evidence, "write_new_text", lambda *a, **k: None))
+            power.write_power_evidence(results)
+        return captured["lines"]
+
+    def test_record_states_only_the_coverage_and_conditions_it_ran(self):
+        # Issue #414 review / #423: the record must derive its coverage and
+        # clock / stimulus / load from the results, not hardcode them.
+        r = self._run(vindiff_mv=25.0, cload_ff=40.0)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("**Corner matrix run**: tt/27.0C", text)
+        self.assertIn("1 PVT point(s) run", text)
+        self.assertNotIn("three anchors", text)
+        self.assertNotIn("PVT conditions", text)
+        self.assertIn("evaluate duty 0.5", text)
+        self.assertIn("25mV", text)
+        self.assertIn("40fF", text)
+        self.assertIn("supply_v=[1.8]", text)
+
+    def test_supply_endpoint_reaches_deck_and_record(self):
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8, vdd=1.62)
+        self.assertIn(".param vdd_val = 1.62", deck)
+        r = self._run(vdd=1.62)
+        self.assertEqual(r.vdd, 1.62)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("supply_v=[1.62]", text)
+        self.assertIn("| 1.62V |", text)
+
+    def test_record_states_the_supply_and_conv_tol_it_ran(self):
+        # Issue #427: conv_tol is a recorded condition like vdd -- derived
+        # from the results, not restated from the POWER_CONV_TOL constant.
+        r = self._run(vdd=1.62, conv_tol=0.02)
+        text = "\n".join(self._record_lines([r]))
+        self.assertIn("supply_v=[1.62]", text)
+        self.assertIn("tolerance 0.02", text)
+        self.assertNotIn("tolerance 0.01", text)
+
+    def test_record_states_each_rows_settling_when_results_differ(self):
+        # Issue #427: the settling bullet read results[0] only; a mixed
+        # list must state each row's values, not just the first's.
+        text = "\n".join(self._record_lines([self._run(settle=2), self._run(settle=3)]))
+        self.assertIn("first 2/3 of 6 periods excluded", text)
+
+    def test_deck_tstop_extends_past_the_final_window(self):
+        # Issue #427: the final window's right edge is t0 + n*P = (n+1)*P;
+        # tstop equaled it exactly, so a last sample falling short of tstop
+        # pushed the window outside the sampled span and analyze_power
+        # raised instead of writing a record.
+        deck = cd_run.power._power_deck(
+            FakePdkInfo(), "tt", 27.0, "x", period_ns=10.0, duty=0.5,
+            vindiff_mv=10.0, cload_ff=10.0, n_periods=8)
+        self.assertIn("tran 0.005n 90.1n", deck)
+
+    def test_vdd_flag_refused_outside_power(self):
+        err = io.StringIO()
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(err):
+                cd_run.main(["regen", "--vdd", "1.62"])
+        self.assertIn("--vdd only applies to `power`", err.getvalue())
+
+
+class TestOffsetResumableCampaign(unittest.TestCase):
+    """`offset --resume-dir/--chunk-decks`: the resumable serial campaign
+    (issue #154). Hermetic: ngspice and the PDK are faked; every deck's value
+    is a pure function of its name, as it is on the real bench (each Monte
+    Carlo deck pins its own rndseed)."""
+
+    N = 5
+
+    def setUp(self):
+        self.addCleanup(cd_run.set_dut_provenance, "schematic")
+        self.fake = _FakeOffsetDecks()
+
+    @contextlib.contextmanager
+    def _stubbed(self, pdk_line="fake-pdk"):
+        with contextlib.ExitStack() as stack:
+            patch = stack.enter_context
+            patch(unittest.mock.patch.object(cd_run._shared, "_run", self.fake))
+            patch(unittest.mock.patch.object(cd_run.pdk, "resolve_or_raise", lambda: FakePdkInfo()))
+            patch(unittest.mock.patch.object(
+                cd_run.offset, "simulation_versions", lambda info: (pdk_line, "ngspice-fake")))
+            yield
+
+    def _run(self, **kw):
+        kw.setdefault("n", self.N)
+        return cd_run.run_offset_mc(corner="tt", temp_c=27.0, seed=1, quiet=True, **kw)
+
+    def _finish_in_chunks(self, resume_dir, chunk_decks):
+        invocations = 0
+        while True:
+            invocations += 1
+            self.assertLess(invocations, 100, "campaign never completed")
+            try:
+                return self._run(resume_dir=resume_dir, chunk_decks=chunk_decks), invocations
+            except cd_run.OffsetCampaignIncomplete:
+                pass
+
+    def test_interrupted_and_resumed_matches_uninterrupted(self):
+        with self._stubbed():
+            plain = self._run()
+            plain_calls = list(self.fake.calls)
+            self.fake.calls.clear()
+            with tempfile.TemporaryDirectory() as tmp:
+                resumed, invocations = self._finish_in_chunks(Path(tmp), 3)
+        self.assertGreater(invocations, 1)
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(resumed))
+        # No deck dropped and none repeated across all the chunks.
+        self.assertEqual(sorted(self.fake.calls), sorted(plain_calls))
+        self.assertEqual(len(self.fake.calls), len(set(self.fake.calls)))
+        self.assertEqual(len(self.fake.calls), 4 + 2 * self.N)
+
+    def test_completed_negative_control_is_part_of_the_resumed_result(self):
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            result, _ = self._finish_in_chunks(Path(tmp), 4 + self.N + 1)
+        self.assertEqual(len(result.negctrl_offset_v), self.N)
+        self.assertEqual(len(set(result.negctrl_offset_v)), 1)
+        self.assertEqual(len(result.draws_offset_v), self.N)
+
+    def test_incomplete_campaign_writes_no_record_and_exits_resumable(self):
+        writer = unittest.mock.Mock()
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(cd_run.offset, "write_offset_evidence", writer), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc = cd_run.main(["offset", "--n", str(self.N), "--record", "--quiet",
+                              "--resume-dir", tmp, "--chunk-decks", "5"])
+        self.assertEqual(rc, cd_run.OFFSET_INCOMPLETE_EXIT)
+        writer.assert_not_called()
+
+    def test_incompatible_checkpoint_is_refused(self):
+        variants = [dict(n=self.N + 1), dict(seed=2), dict(corner="ss"), dict(temp_c=-40.0)]
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(cd_run.OffsetCampaignIncomplete):
+                self._run(resume_dir=Path(tmp), chunk_decks=2)
+            for change in variants:
+                args = dict(corner="tt", temp_c=27.0, seed=1, n=self.N, quiet=True,
+                            resume_dir=Path(tmp))
+                args.update(change)
+                with self.assertRaisesRegex(RuntimeError, "DIFFERENT campaign"):
+                    cd_run.run_offset_mc(**args)
+        # PDK identity and netlist hash are bound too.
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(cd_run.OffsetCampaignIncomplete):
+                self._run(resume_dir=Path(tmp), chunk_decks=2)
+            with self._stubbed(pdk_line="other-pdk"):
+                with self.assertRaisesRegex(RuntimeError, "pdk"):
+                    self._run(resume_dir=Path(tmp))
+            with unittest.mock.patch.object(
+                    cd_run.offset.evidence, "sha256_file", lambda p: "0" * 64):
+                with self.assertRaisesRegex(RuntimeError, "netlist_sha256"):
+                    self._run(resume_dir=Path(tmp))
+
+    def test_interrupted_checkpoint_write_loses_nothing(self):
+        real_replace = os.replace
+        state = {"armed": True}
+
+        def flaky_replace(src, dst):
+            if state["armed"] and str(dst).endswith("draw_2.json"):
+                state["armed"] = False
+                raise OSError("simulated kill during checkpoint write")
+            return real_replace(src, dst)
+
+        with self._stubbed():
+            plain = self._run()
+            self.fake.calls.clear()
+            with tempfile.TemporaryDirectory() as tmp:
+                with unittest.mock.patch.object(cd_run._shared.os, "replace", flaky_replace):
+                    with self.assertRaises(OSError):
+                        self._run(resume_dir=Path(tmp))
+                # The half-written deck is not a checkpoint; its temp file is inert.
+                decks = Path(tmp) / "decks"
+                self.assertFalse((decks / "draw_2.json").exists())
+                resumed = self._run(resume_dir=Path(tmp))
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(resumed))
+        self.assertEqual(self.fake.calls.count("draw_2"), 2)  # re-run once
+        self.assertEqual(self.fake.calls.count("draw_1"), 1)  # not repeated
+
+    def test_truncated_deck_file_is_rerun_not_trusted(self):
+        with self._stubbed(), tempfile.TemporaryDirectory() as tmp:
+            plain = self._run(resume_dir=Path(tmp))
+            (Path(tmp) / "decks" / "draw_1.json").write_text("{\"deck\": \"dr")
+            self.fake.calls.clear()
+            again = self._run(resume_dir=Path(tmp))
+        self.assertEqual(self.fake.calls, ["draw_1"])
+        self.assertEqual(dataclasses.asdict(plain), dataclasses.asdict(again))
+
+    def test_chunk_flags_still_refused_for_other_modes(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            cd_run.main(["regen", "--resume-dir", "x"])
+
+
+class _FakeOffsetDecks:
+    GAIN_V_PER_V = 50.0
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    def __call__(self, deck_text: str, scratch_dir: Path, log_name: str) -> str:
+        self.calls.append(log_name)
+        if log_name.startswith("gaincal_"):
+            diff = self.GAIN_V_PER_V * float(log_name[len("gaincal_"):-len("mV")]) / 1000.0
+        elif log_name.startswith("draw_"):
+            digest = hashlib.sha256(log_name.encode()).digest()
+            diff = 1e-3 * (int.from_bytes(digest[:8], "big") / 2.0 ** 64 - 0.5)
+        elif log_name.startswith("negctrl_"):
+            diff = 2e-4
+        else:
+            raise AssertionError(f"unexpected deck {log_name!r}")
+        target_s = (cd_run.RESET_NS + cd_run.RESET_TR_NS + cd_run.PICKOFF_NS) * 1e-9
+        rows = [(0.0, 0.0), (target_s, diff), (10.0 * target_s, diff)]
+        (scratch_dir / f"{log_name}.csv").write_text(
+            "".join(f"{t:.12g} {v:.12g} {t:.12g} 0\n" for t, v in rows))
+        return f"* fake ngspice log for {log_name}\n"
 
 
 if __name__ == "__main__":

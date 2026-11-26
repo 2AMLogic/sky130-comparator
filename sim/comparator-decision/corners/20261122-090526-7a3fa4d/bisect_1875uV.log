@@ -1,0 +1,58 @@
+
+Note: Compatibility modes selected: hs a
+
+
+Circuit: * comparator-decision decision-flip offset bisection -- vindiff=1.875mv corner=ss temp=-40.0c (issue #66)
+
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+option SCALE: Scale is set to 1e-06 for instance and model parameters
+Doing analysis at TEMP = -40.000000 and TNOM = 27.000000
+
+Using KLU as Direct Linear Solver
+ Reference value :  0.00000e+00
+ Reference value :  4.57140e-09
+ Reference value :  9.24250e-09
+ Reference value :  1.40425e-08
+ Reference value :  1.88425e-08
+ Reference value :  2.36425e-08
+ Reference value :  2.84525e-08
+ Reference value :  3.32675e-08
+ Reference value :  3.80725e-08
+ Reference value :  4.28025e-08
+ Reference value :  4.76075e-08
+ Reference value :  5.24125e-08
+ Reference value :  5.72175e-08
+ Reference value :  6.20125e-08
+ Reference value :  6.68125e-08
+ Reference value :  7.16225e-08
+ Reference value :  7.64125e-08
+ Reference value :  8.11975e-08
+ Reference value :  8.59925e-08
+ Reference value :  9.07575e-08
+ Reference value :  9.55325e-08
+ Reference value :  1.00313e-07
+ Reference value :  1.05098e-07
+ Reference value :  1.09868e-07
+ Reference value :  1.14643e-07
+ Reference value :  1.19408e-07
+ Reference value :  1.24183e-07
+ Reference value :  1.28953e-07
+ Reference value :  1.33723e-07
+ Reference value :  1.38508e-07
+ Reference value :  1.43288e-07
+ Reference value :  1.48058e-07
+ Reference value :  1.52833e-07
+ Reference value :  1.57588e-07
+ Reference value :  1.62348e-07
+ Reference value :  1.67108e-07
+ Reference value :  1.71873e-07
+ Reference value :  1.76643e-07
+ Reference value :  1.81413e-07
+ Reference value :  1.86183e-07
+ Reference value :  1.90953e-07
+ Reference value :  1.95713e-07
+ Reference value :  2.00478e-07
+No. of Data Rows : 41034
+Note: Simulation executed from .control section 

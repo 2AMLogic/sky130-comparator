@@ -16,8 +16,13 @@ repo root against the *emitted* GDS by ``layout/evidence_emit.py`` --
 see that module.
 
     python3 layout/gen_comparator.py            # regenerate + verify + emit
-    python3 layout/gen_comparator.py --check    # byte-compare against the
-                                                # committed GDS, change nothing
+    python3 layout/gen_comparator.py --check    # byte-compare the GDS and the
+                                                # five evidence artifacts
+                                                # (issue #311) against the
+                                                # committed copies, change
+                                                # nothing
+    python3 layout/gen_comparator.py --selftest # hermetic proof the evidence
+                                                # comparator bites (no klt/PDK)
 
 PDK resolution defaults to the repo pin (``sim/pdk.json``: sky130A at
 ``~/.ciel``, open_pdks ``f6eeac7dad...``); override with ``--pdk-root``.
@@ -101,7 +106,17 @@ naming convention):
 Determinism: no randomness and no dict-ordering dependence anywhere (the
 router's candidate ordering is a pure function of the geometry), so a
 re-run at the same klt pin reproduces ``comparator.gds`` byte-for-byte --
-that is exactly what ``--check`` asserts.
+that is exactly what ``--check`` asserts, and the same determinism is why
+``--check`` can also byte-compare the five evidence artifacts no citation
+pins (``compose-report.json``, ``route-summary.json``, ``lvs-request.json``
+and the two coverage probes, issue #311): re-derived under the same pin,
+they must reproduce their committed bytes or CI goes red.  One documented
+exception (issue #319): ``compose-report.json`` is compared with its
+host-dependent ``provenance.pdk.ambiguous_sources`` subtree stripped from
+both sides -- klt emits it only when the generating host has more than one
+PDK search root, so its presence records the host, not the design; the
+tool pins inside the same provenance block stay strict
+(:func:`compose_canonical_bytes`, :func:`compose_pin_error`).
 """
 from __future__ import annotations
 
@@ -112,6 +127,7 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 # --- layer table (sky130A GDS numbers, as klt's own curated deck names them) --
@@ -1000,6 +1016,123 @@ def flow(klt: str, pdk_root: Path, out_dir: Path) -> int:
     return 0
 
 
+def compose_bbox(compose: dict) -> dict | None:
+    """The composed bbox a gen-compose response records (any key shape)."""
+    bbox = compose.get("bbox_um") or compose.get("composed_bbox_um")
+    if not bbox:
+        bbox = compose.get("bbox")
+    return bbox
+
+
+def compose_canonical_bytes(path: Path) -> bytes:
+    """Canonical compose-report bytes: host-dependent provenance removed.
+
+    Invariant (issue #319 review): a gated artifact's compared bytes must be
+    a function of the pin and the design, never of the generating host's
+    installed PDK roots.  ``provenance.pdk.ambiguous_sources`` records PDK
+    search roots *other than* the one klt resolved against -- klt emits it
+    only when more than one search root exists on the generating host and
+    omits the key entirely on a single-root host (it never emits ``[]``) --
+    so it is stripped by name from both sides before the compare.  Stripped,
+    not normalized to ``[]``: a key present on one side and absent on the
+    other would still differ after list-normalization (the single-root host
+    would stay 40 bytes apart).  The committed copy keeps the key its own
+    generating host emitted -- the ambiguity warning was true there -- only
+    the gate ignores exactly this subtree.  The tool pins in the same
+    provenance block stay strict: see :func:`compose_pin_error`.  The
+    indent-2 round-trip is byte-exact on the committed artifact (measured,
+    issue #319); a side effect is that pure formatting differences would no
+    longer fail this one artifact -- its invariant is content, not bytes.
+    """
+    report = json.loads(Path(path).read_text())
+    pdk = (report.get("provenance") or {}).get("pdk")
+    if isinstance(pdk, dict):
+        pdk.pop("ambiguous_sources", None)
+    return (json.dumps(report, indent=2) + "\n").encode()
+
+
+def compose_pin_error(path: Path) -> str | None:
+    """The off-pin diagnostic for a compose report, or ``None`` if on pin.
+
+    Mirrors ``layout/extract_pex.py``'s ``_assert_pinned``: the canonical
+    compare would still fail an off-pin compose report (the version strings
+    are compared bytes), but this names the actual problem instead of
+    reporting generic drift -- an off-pin report is a different measurement,
+    not a stale copy of this one.
+    """
+    report = json.loads(Path(path).read_text())
+    provenance = report.get("provenance") or {}
+    got = (provenance.get("klt_version"), provenance.get("klayout_version"))
+    if got != (KLT_VERSION, KLAYOUT_VERSION):
+        return (f"records klt {got[0]!r} on klayout {got[1]!r}, but this "
+                f"repo pins klt {KLT_VERSION!r} on klayout "
+                f"{KLAYOUT_VERSION!r} (docs/environment-setup.md, "
+                ".github/workflows/t1-signoff.yml)")
+    return None
+
+
+def compare_evidence(pairs: list[tuple[str, Path, Path]
+                     | tuple[str, Path, Path, Callable[[Path], bytes]]]
+                     ) -> tuple[list[str], list[str]]:
+    """Byte-compare each ``(name, committed, fresh)`` evidence artifact pair.
+
+    The currency half of ``--check`` (issue #311): five committed layout/
+    artifacts were re-derived by no gate -- the exact silent-drift shape
+    layout/README.md disclaims -- so ``--check`` names every artifact it
+    compares and fails naming the drifted ones.  A missing committed or
+    fresh file counts as drift of that artifact (a file deleted from
+    layout/, or one the flow no longer produces), not an error.  Returns
+    ``(passed, failed)`` name lists; prints one line per artifact.
+
+    A pair may carry a fourth element, a normalizer mapping each side's
+    path to the bytes actually compared.  The invariant it exists for
+    (issue #319 review): a gated artifact's compared bytes must be a
+    function of the pin and the design, never of the generating host's
+    installed PDK roots -- the normalizer strips exactly such host-dependent
+    subtrees from both sides, everything else (pin fields included) still
+    bites.
+    """
+    passed: list[str] = []
+    failed: list[str] = []
+    for item in pairs:
+        name, committed, fresh = item[0], item[1], item[2]
+        normalize = item[3] if len(item) > 3 else None
+        if not Path(committed).exists():
+            print(f"  evidence {name}: FAIL -- committed copy missing",
+                  file=sys.stderr)
+            failed.append(name)
+        elif not Path(fresh).exists():
+            print(f"  evidence {name}: FAIL -- not re-derived (fresh copy "
+                  f"{fresh} missing)", file=sys.stderr)
+            failed.append(name)
+        else:
+            if normalize is not None:
+                a, b = normalize(committed), normalize(fresh)
+            else:
+                a, b = Path(committed).read_bytes(), Path(fresh).read_bytes()
+            if a == b:
+                if normalize is not None:
+                    print(f"  evidence {name}: PASS (byte-identical after "
+                          f"host-provenance normalization, {len(a)} "
+                          "canonical bytes)")
+                else:
+                    print(f"  evidence {name}: PASS "
+                          f"({len(a)} bytes byte-identical)")
+                passed.append(name)
+            else:
+                if normalize is not None:
+                    print(f"  evidence {name}: FAIL -- drifted beyond the "
+                          f"excluded host-provenance subtree (canonical "
+                          f"committed {len(a)} bytes vs canonical fresh "
+                          f"{len(b)} bytes)", file=sys.stderr)
+                else:
+                    print(f"  evidence {name}: FAIL -- drifted (committed "
+                          f"{len(a)} bytes vs fresh {len(b)} bytes)",
+                          file=sys.stderr)
+                failed.append(name)
+    return passed, failed
+
+
 def emit(out_dir: Path, layout_dir: Path) -> dict:
     """Copy the verified deliverables from scratch into layout/ and return
     the composed bbox (the measured-area source)."""
@@ -1013,10 +1146,108 @@ def emit(out_dir: Path, layout_dir: Path) -> dict:
     for item in deliverables:
         src, dst = item if isinstance(item, tuple) else (item, item)
         shutil.copyfile(out_dir / src, layout_dir / dst)
-    bbox = compose.get("bbox_um") or compose.get("composed_bbox_um")
-    if not bbox:
-        bbox = compose.get("bbox")
-    return bbox
+    return compose_bbox(compose)
+
+
+def selftest() -> int:
+    """Hermetic negative controls for :func:`compare_evidence` (issue #311).
+
+    A currency gate means nothing until "a drifted artifact fails it" has
+    been shown reachable on the same code path ``--check`` runs (the
+    ``sim/selftest.sh`` stage-4 discipline, applied to the evidence
+    comparator).  Fixtures only -- no klt, no PDK, no repo state -- so this
+    runs in any checkout; the case-tally convention is the shared
+    ``scripts/_gate_common.py`` one (issue #69).
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from _gate_common import report_cases
+
+    names = ["compose-report.json", "route-summary.json", "lvs-request.json",
+             "lvs-coverage-probe.json", "erc-coverage-probe.json"]
+    case_results = []
+    with tempfile.TemporaryDirectory(prefix="loom-evid-selftest-") as t_str:
+        committed = Path(t_str) / "committed"
+        fresh = Path(t_str) / "fresh"
+        for directory in (committed, fresh):
+            directory.mkdir()
+        for i, name in enumerate(names):
+            body = json.dumps({"artifact": name, "value": i}, indent=2) + "\n"
+            (committed / name).write_text(body)
+            (fresh / name).write_text(body)
+        pairs = [(f"layout/{n}", committed / n, fresh / n) for n in names]
+
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"five freshly-derived artifacts byte-equal their committed "
+             f"copies (passed={len(passed)}, failed={len(failed)})",
+             not failed))
+
+        probe = json.loads((committed / "erc-coverage-probe.json").read_text())
+        probe["value"] = "mutated"
+        (committed / "erc-coverage-probe.json").write_text(
+            json.dumps(probe, indent=2) + "\n")
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"a one-value mutation of the committed erc-coverage-probe.json "
+             f"is named exactly (failed={failed})",
+             failed == ["layout/erc-coverage-probe.json"]))
+
+        (fresh / "route-summary.json").unlink()
+        passed, failed = compare_evidence(pairs)
+        case_results.append(
+            (f"an artifact the flow no longer re-derives fails its row "
+             f"(failed={failed})",
+             "layout/route-summary.json" in failed))
+
+        # Issue #319: compose-report.json's provenance.pdk.ambiguous_sources
+        # is host-dependent -- klt emits it only when the generating host has
+        # more than one PDK search root and omits the key entirely on a
+        # single-root host -- so the gate compares that artifact through
+        # compose_canonical_bytes.  The live CI run is the only surface that
+        # could originally surface the class (every host in a given repo has
+        # a fixed PDK-root inventory), so these repo-authored fixtures are
+        # the hermetic control for it.
+        def compose_fixture(klt_version: str, ambiguous: bool) -> str:
+            pdk: dict = {"name": "sky130A", "source": "search root: ~/.ciel"}
+            if ambiguous:
+                pdk["ambiguous_sources"] = ["search root: ~/.volare"]
+            report = {"provenance": {"klt_version": klt_version,
+                                     "klayout_version": "0.30.12",
+                                     "pdk": pdk}}
+            return json.dumps(report, indent=2) + "\n"
+
+        (committed / "compose-report.json").write_text(
+            compose_fixture("0.8.0", ambiguous=True))
+        (fresh / "compose-report.json").write_text(
+            compose_fixture("0.8.0", ambiguous=False))
+        compose_pair = ("layout/compose-report.json",
+                        committed / "compose-report.json",
+                        fresh / "compose-report.json")
+        passed, failed = compare_evidence(
+            [compose_pair + (compose_canonical_bytes,)])
+        case_results.append(
+            ("a compose report whose only delta is the host-dependent "
+             f"ambiguous_sources key passes once stripped (failed={failed})",
+             passed == ["layout/compose-report.json"]))
+        passed, failed = compare_evidence([compose_pair])
+        case_results.append(
+            ("the same pair fails the raw byte-compare the other artifacts "
+             f"get -- the normalizer is what bites (failed={failed})",
+             failed == ["layout/compose-report.json"]))
+        (fresh / "compose-report.json").write_text(
+            compose_fixture("0.9.9", ambiguous=False))
+        passed, failed = compare_evidence(
+            [compose_pair + (compose_canonical_bytes,)])
+        case_results.append(
+            ("an off-pin fresh compose report still fails after "
+             f"normalization (failed={failed})",
+             failed == ["layout/compose-report.json"]))
+        off_pin = compose_pin_error(fresh / "compose-report.json")
+        case_results.append(
+            (f"compose_pin_error names the off-pin pair (got {off_pin!r})",
+             off_pin is not None and "0.9.9" in off_pin
+             and "0.8.0" in off_pin))
+    return report_cases(case_results)
 
 
 def main() -> int:
@@ -1030,13 +1261,22 @@ def main() -> int:
     )
     parser.add_argument("--check", action="store_true",
                         help="regenerate into a temp dir and byte-compare the "
-                             "GDS against layout/comparator.gds; commit nothing")
+                             "GDS and the five evidence artifacts (compose-"
+                             "report, route-summary, lvs-request and the two "
+                             "coverage probes, issue #311) against layout/; "
+                             "commit nothing")
+    parser.add_argument("--selftest", action="store_true",
+                        help="hermetic proof that the --check evidence "
+                             "comparator bites (no klt, no PDK)")
     parser.add_argument("--klt", default="klt")
     parser.add_argument("--pdk-root", default=PDK_ROOT_DEFAULT)
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
     pdk_root = Path(args.pdk_root).expanduser()
+
+    if args.selftest:
+        return selftest()
 
     if args.check:
         committed = repo_root / "layout" / "comparator.gds"
@@ -1051,14 +1291,79 @@ def main() -> int:
                 return rc
             fresh = tmp / "comparator.gds"
             a, b = committed.read_bytes(), fresh.read_bytes()
-            if a == b:
-                print("gen_comparator.py --check: PASS -- regenerated GDS "
-                      "is byte-identical to layout/comparator.gds")
-                return 0
-            print("gen_comparator.py --check: FAIL -- regenerated GDS "
-                  f"differs (committed {len(a)} bytes vs fresh {len(b)} bytes)",
-                  file=sys.stderr)
-            return 1
+            if a != b:
+                print("gen_comparator.py --check: FAIL -- regenerated GDS "
+                      f"differs (committed {len(a)} bytes vs fresh {len(b)} "
+                      "bytes)", file=sys.stderr)
+                return 1
+            print("gen_comparator.py --check: GDS byte-identical "
+                  f"({len(a)} bytes); re-deriving the evidence artifacts "
+                  "(issue #311)")
+            # The flow above already re-derived compose-report and
+            # route-summary into tmp; the LVS request constant and the two
+            # coverage-probe matrices are re-derived here, emitted into the
+            # temp dir (out_dir) instead of layout/, and everything is
+            # byte-compared against the committed copies.  The klt runs stay
+            # repo-rooted against the committed GDS, which the compare above
+            # just proved byte-identical to the fresh one.
+            evidence_out = tmp / "evidence"
+            evidence_out.mkdir()
+            # The compose report's tool pins are asserted explicitly, both
+            # sides, before the compare: the canonical compare would still
+            # fail an off-pin report, but this names it as a different
+            # measurement rather than generic drift (issue #319).
+            compose_fresh = tmp / "compose.json"
+            layout_dir = repo_root / "layout"
+            for where, path in (("committed layout/compose-report.json",
+                                 layout_dir / "compose-report.json"),
+                                ("the fresh compose report", compose_fresh)):
+                if not path.exists():
+                    continue  # compare_evidence names the missing copy
+                pin_err = compose_pin_error(path)
+                if pin_err is not None:
+                    print(f"gen_comparator.py --check: FAIL -- {where} "
+                          f"{pin_err}", file=sys.stderr)
+                    return 1
+            print("[check] signoff LVS request + envelope (probe input)")
+            signoff_lvs = emit_lvs_evidence(args.klt, repo_root,
+                                            out_dir=evidence_out)
+            print("[check] LVS coverage probe (what that match covers)")
+            emit_lvs_coverage_probe(args.klt, repo_root, signoff_lvs,
+                                    out_dir=evidence_out)
+            bbox = compose_bbox(json.loads((tmp / "compose.json").read_text()))
+            print("[check] signoff ERC supply spec + run (probe input)")
+            signoff_erc = emit_erc_evidence(args.klt, repo_root, bbox,
+                                            out_dir=evidence_out)
+            print("[check] ERC coverage probe (whether the supply check "
+                  "can fail)")
+            emit_erc_coverage_probe(args.klt, repo_root, bbox, signoff_erc,
+                                    out_dir=evidence_out)
+            _, failed = compare_evidence([
+                ("layout/compose-report.json",
+                 layout_dir / "compose-report.json", compose_fresh,
+                 compose_canonical_bytes),
+                ("layout/route-summary.json",
+                 layout_dir / "route-summary.json",
+                 tmp / "route.summary.json"),
+                ("layout/lvs-request.json",
+                 layout_dir / "lvs-request.json",
+                 evidence_out / "lvs-request.json"),
+                ("layout/lvs-coverage-probe.json",
+                 layout_dir / "lvs-coverage-probe.json",
+                 evidence_out / "lvs-coverage-probe.json"),
+                ("layout/erc-coverage-probe.json",
+                 layout_dir / "erc-coverage-probe.json",
+                 evidence_out / "erc-coverage-probe.json"),
+            ])
+            if failed:
+                print("gen_comparator.py --check: FAIL -- evidence "
+                      f"artifact(s) drifted: {', '.join(failed)} -- "
+                      "regenerate with `python3 layout/gen_comparator.py` "
+                      "and commit the refreshed artifacts", file=sys.stderr)
+                return 1
+            print("gen_comparator.py --check: PASS -- regenerated GDS and "
+                  "all 5 evidence artifacts are byte-identical to layout/")
+            return 0
     rc = flow(args.klt, pdk_root, repo_root / "layout" / "_gen")
     if rc != 0:
         return rc

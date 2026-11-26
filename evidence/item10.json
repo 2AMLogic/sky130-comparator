@@ -3,21 +3,21 @@
   "kind": "generic",
   "status": "pass",
   "t1_item": 10,
-  "summary": "T1 item 10 (Repo hygiene): 11/11 attestation checks passed (klt signoff --attest)",
+  "summary": "T1 item 10 (Repo hygiene): 13/13 attestation checks passed (klt signoff --attest)",
   "source": "attest/item10.json",
   "attestation": {
     "producer": "klt signoff --attest",
     "inventory_schema_version": 1,
     "hash_algorithm": "sha256-raw-bytes",
-    "check_count": 11,
-    "passed_count": 11,
+    "check_count": 13,
+    "passed_count": 13,
     "checks": [
       {
         "check": "present",
         "role": "hygiene",
         "path": ".github/workflows/t1-signoff.yml",
         "passed": true,
-        "content_hash": "sha256:d6578515bece9de6536014bb7120560ae9c195bc4746109b236775a911658ea4"
+        "content_hash": "sha256:122f9013035da00563bc5675f9f7ee659ecb2999189d684b8c4441be72fef24c"
       },
       {
         "check": "present",
@@ -31,7 +31,7 @@
         "role": "hygiene",
         "path": "README.md",
         "passed": true,
-        "content_hash": "sha256:ffc1fa1c63c9a91ee845ae463c27d88db523c1a08d0a6db55eb8a3f86c5552d6"
+        "content_hash": "sha256:45dd02195d2699fc3c76df9dad55d49c26e9cd70f2575bc170bf0b1494ac0997"
       },
       {
         "check": "present",
@@ -48,6 +48,32 @@
           "python3",
           "scripts/check-t1-signoff.py",
           "selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "t1-items56-envelope-selftest",
+        "argv": [
+          "python3",
+          "scripts/t1-items56-envelope.py",
+          "--selftest"
+        ],
+        "cwd": ".",
+        "exit_status": 0,
+        "passed": true
+      },
+      {
+        "check": "command",
+        "role": "audit",
+        "name": "t1-items56-envelope-fresh",
+        "argv": [
+          "python3",
+          "scripts/t1-items56-envelope.py",
+          "--check"
         ],
         "cwd": ".",
         "exit_status": 0,
@@ -147,7 +173,7 @@
         "path": "attest/item10.json",
         "scope": "repo"
       },
-      "content_hash": "sha256:0a3c842f91fa9db25af29a6cb8807ef7c6c238ebee5ba0ce2aa028d85fee0f60"
+      "content_hash": "sha256:dcb10145e46076ae4da28a98437eb2230651cafa44ce408c4f1c619c6c9397dc"
     }
   }
 }

@@ -18,6 +18,12 @@ sim/build/
 # `klt artifact put` stores them; only the manifest under manifests/artifacts/
 # and the Markdown record are committed. Never un-ignore.
 sim/.work/
+# repo-script route-check scratch (issue #127): check-env-batch.sh writes its
+# env-check evidence inside the tree wherever it runs. On the batch route the
+# declared output is collected out of the job tree by the submitter (issue
+# #127 holds the committed evidence); a local run's copy is scratch, never
+# committed evidence.
+sim/comparator-decision/route-check/
 design/build/
 # layout generator scratch (layout/_gen/, per layout/README.md): the committed
 # deliverables are layout/comparator.gds + the evidence JSONs, regenerated
@@ -27,6 +33,9 @@ layout/_gen/
 flow/build/
 # local klt install, created by the setup script
 .venv/
+# daemon-written account-pool availability ranking, one file per runtime
+# suffix (issue #399); live dispatch state, never committed, never quarantined
+.loom/account-ranking.*
 # >>> loom-managed (do not edit) >>>
 # Loom runtime state (don't commit these)
 .loom-in-use
@@ -107,3 +116,7 @@ flow/build/
 .loom/gh-config-by-owner-*/
 /.loom-local/
 # <<< loom-managed <<<
+# klt-t1 batch collects (issue #188): each out-*/report.json duplicates the
+# committed top-level report-*.json byte-for-byte (the citation target); the
+# batch-receipt.json beside it is the committed job provenance.
+sim/comparator-decision/klt-t1/out-*/report.json

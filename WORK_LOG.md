@@ -6,8 +6,193 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 - [2026-09](work_log/WORK_LOG_2026-09.md)
 
+### 2026-11-24
+
+- **PR #439**: feat(t1): cite item 7 from a klt pex --measure-command envelope over the graded corners
+- **Issue #187** (closed): Re-cite T1 item 7 with klt pex --measure-command after the post-layout re-measure
+- **PR #437**: docs(t1): fix relative issue link and out-*/ note in klt-t1 README
+- **Issue #435** (closed): Fix broken issue link and out-*/ provenance note in sim/comparator-decision/klt-t1/README.md
+- **PR #434**: feat(t1): grade items 5 and 6 from klt sim/yield envelopes over the ratified rows
+- **PR #433**: fix: power record derives conv_tol and settling from the run; tstop margin keeps the last window in span
+- **PR #431**: refactor: extract shared ResumableCampaign base from offset/noise-tran stores
+- **PR #430**: feat: batch-route power records, supply-endpoint option and report aggregation
+- **PR #426**: fix: correct pex-measure deck counts and name non-finite decision times
+- **Issue #429** (closed): Consolidate OffsetCampaign and NoiseTranCampaign: duplicated resumable-deck store
+- **Issue #427** (closed): power mode: supply voltage and convergence tolerance in the record are still writer-side constants, and the last integration window has zero margin
+- **Issue #424** (closed): pex-measure adapter follow-ups: stale --corners deck arithmetic, unnamed non-finite decision message, untested variants validation
+- **Issue #188** (closed): Make T1 items 5 and 6 gradeable: klt sim and klt yield envelopes over the ratified rows
+- **Issue #134** (closed): Measure comparator supply energy and average power at stated clock conditions
+- **PR #422**: ci: verify WORK_LOG.md entries against this repo's forge
+- **PR #414**: feat: add supply-energy power mode to comparator-decision runner
+- **Issue #423** (closed): power mode: evidence record states default conditions, not the ones actually simulated
+- **Issue #418** (closed): No gate verifies WORK_LOG.md entries against this repo's own forge (cross-repo contamination reached review in PR #415)
+
+### 2026-11-23
+
+- **PR #425**: docs: DR-006 header pointer names Amendment 2 and covers §4
+- **PR #421**: test: cover schematic_comparison differing-environment branch
+- **PR #420**: fix: harden pex measure adapter (required --corners, loaded-only kickback, NaN-safe output)
+- **PR #419**: fix: run selftest --quick attestation gates under the pinned klt
+- **PR #413**: docs: replace self-contradicted ordering claim in corner-scaling summary
+- **PR #411**: feat: resumable chunked offset campaigns with bound checkpoints
+- **PR #409**: feat: add klt pex measure-command adapter for decision-time and kickback rows
+- **PR #408**: fix: grade exits 2 naming the file on unreadable or malformed response
+- **PR #405**: fix: stop calling ff/125C a skew corner; record the skew-naming convention
+- **PR #382**: docs: date the ERC spec-pinning rationale to klt 0.6.0
+- **Issue #417** (closed): sim/selftest.sh --quick fails on item-10 drift when the host klt is newer than the 0.8.0 pin
+- **Issue #416** (closed): Harden scripts/pex-measure-command.py: host-rule-safe --corners default, wasted ideal kickback deck, NaN-safe stdout
+- **Issue #407** (closed): prose: comparator-decision README's "ordering is not simply 'cold is low, hot is high'" is contradicted by the seven figures it cites
+- **Issue #406** (closed): spec: DR-006's "Amended by" header pointer names only Amendment 1, and tells a §4 citer §4 is unchanged
+- **Issue #404** (closed): ladder.py grade: an unreadable or undecodable response file raises an uncaught traceback instead of the exit-2 input error
+- **Issue #402** (closed): prose: "skew corner" names three different corner sets across the noise write-ups
+- **Issue #390** (closed): Restore test coverage for schematic_comparison()'s differing-environment branch
+- **Issue #241** (closed): Retire the stale ERC-spec pinning rationale: the pinned klt 0.8.0 verifies provenance.spec.content_hash and ships klt erc --check
+- **Issue #179** (closed): Re-qualify reference records and regenerate evidence under open_pdks f6eeac7 (177 part 2)
+- **Issue #398** (closed): characterization-report: "the two hot skew corners fell" contradicts the sf/125 °C rise named in the same sentence
+- **PR #403**: fix: relabel two noise-tran figures that fell past their old CIs
+- **Issue #396** (closed): ladder.py grade: a response JSON missing the `corners` key raises an uncaught KeyError instead of the exit-2 input error
+- **PR #401**: fix: reject a grade response with no corners key (exit 2, naming the file)
+- **Issue #399** (closed): check-main-clean.sh exit 3: daemon-written .loom/account-ranking.<runtime> is not on the Loom-owned list
+- **PR #400**: fix: ignore daemon-written .loom/account-ranking.* in gitignore
+- **PR #383**: docs: Guide document maintenance update
+- **Issue #384** (closed): Reject zero-corner responses before selecting a regeneration ladder grade
+- **PR #387**: fix: reject zero-corner grade input as an error in all ladder modes
+- **Issue #395** (closed): Correct three derived-summary figures in the f6eeac7 re-qualification write-up (DR-012 + characterization report)
+- **PR #397**: fix: correct three derived-summary figures in re-qualification write-up
+- **Issue #361** (closed): Re-qualification campaign, final step: rebuild the characterization report, envelope and integrator view from the new-pin records; write the old/new decision record
+- **PR #394**: feat: rebuild the characterization evidence from the f6eeac7 records; record the old/new movement in DR-012
+- **Issue #389** (closed): Share stored-manifest validation so the evidence writer rejects duplicate names before CI
+- **PR #393**: fix(sim): share the stored-manifest schema with the evidence writer
+- **Issue #391** (closed): Documented item-9 re-mint command omits SELFTEST_ITEM9_REENTRY=1, so it always fails on a drifted envelope
+- **PR #392**: docs: prefix item-9 re-mint command with SELFTEST_ITEM9_REENTRY=1
+- **Issue #360** (closed): Re-qualification campaign, step 3: schematic-DUT offset (N=16 and N=200), offset-bisect and noise-tran records; re-point the schematic baselines
+- **PR #388**: fix(sim): re-point schematic baselines at the f6eeac7 re-qualification records
+- **PR #369**: sim: requalify schematic offset, offset-bisect and noise-tran records under f6eeac7
+- **PR #379**: docs: Guide document maintenance update
+- **PR #381**: docs: date-stamp item 8's no-provenance rationale to the klt 0.6.0 era
+- **PR #366**: sim: requalify schematic kickback/noise/reset/regen records under open_pdks f6eeac7
+- **PR #376**: fix: validate the append-only waiver manifest on every gate run
+- **PR #347**: feat: add operator-gated removal waiver manifest to sim append-only gate
+- **Issue #234** (closed): characterization-envelope.py's 'no provenance block' design rests on a klt 0.6.0 gap the pinned klt 0.8.0 no longer has
+- **Issue #359** (closed): Re-qualification campaign, step 2: schematic-DUT kickback, noise, reset and regen records under open_pdks f6eeac7
+- **Issue #349** (closed): Waiver manifest follow-ups: lazy manifest validation, weak bytes-differ selftest, missing manifests/README row
+- **Issue #348** (closed): Waiver manifest: the cited decision record is not bound to the path it waives (DR-011 / PR #347)
+- **Issue #326** (closed): Sanctioned removal of protected pilot notes cannot pass the required signoff gate (DR-010 / #303 / PR #325)
+
+### 2026-11-22
+
+- **PR #374**: docs: Guide document maintenance update
+- **PR #372**: docs: Guide document maintenance update
+- **PR #370**: docs: Guide document maintenance update
+- **PR #371**: sim: requalify all extracted-DUT campaign records at the 0.35um re-draw (klt 0.8.0, open_pdks f6eeac7)
+- **PR #368**: fix: require RS_SOURCE_COMMIT to be a full 40-hex commit ID before stamping provenance
+- **Issue #365** (closed): git_info() accepts any RS_SOURCE_COMMIT shape; validate it before stamping provenance
+
+### 2026-11-21
+
+- **PR #367**: docs: Guide document maintenance update
+- **PR #364**: docs: Guide document maintenance update
+- **PR #363**: feat: batch-route provenance fix, 64-entry requalify plan, and batch-route proof record
+- **Issue #358** (closed): Re-qualification campaign, step 1: commit the invocation plan, make evidence.git_info() correct in batch job trees, land one proof record
+
+### 2026-11-20
+
+- **PR #362**: docs: Guide document maintenance update
+- **PR #357**: docs: Guide document maintenance update
+- **PR #354**: docs: Guide document maintenance update
+- **PR #356**: docs: point README campaign status at the verified fleet batch route
+- **Issue #355** (closed): Update README campaign status now that the batch execution route is verified
+
+### 2026-11-19
+
+- **PR #353**: docs: Guide document maintenance update
+- **PR #352**: docs: Guide document maintenance update
+
+### 2026-11-18
+
+- **PR #351**: docs: Guide document maintenance update
+- **PR #350**: docs: Guide document maintenance update
+- **PR #346**: docs: Guide document maintenance update
+- **PR #343**: docs: Guide document maintenance update
+- **PR #342**: docs: Guide document maintenance update
+- **PR #341**: docs: Guide document maintenance update
+- **PR #340**: docs: Guide document maintenance update
+- **PR #338**: docs: Guide document maintenance update
+- **PR #335**: docs: Guide document maintenance update
+- **PR #345**: gate: fail CI when WORK_PLAN.md's plan-body region carries a _Generated stamp
+- **Issue #344** (closed): Guide docs ticks keep re-adding a _Generated: stamp inside the guide:plan-body region, defeating the WORK_PLAN debounce
+- **PR #339**: docs: make the campaign spend quote unconditional, gate only the wait on ~$50
+- **Issue #337** (closed): README route section understates the campaign spend-quote condition (quote is unconditional, only the wait is $50-gated)
+- **PR #336**: sim: add the repo-script batch route for the strict env check
+- **Issue #127** (closed): Establish a verified execution route for comparator campaign #125
+
+### 2026-11-17
+
+- **PR #333**: docs: Guide document maintenance update
+- **PR #331**: docs: Guide document maintenance update
+- **PR #330**: docs: Guide document maintenance update
+- **PR #327**: docs: Guide document maintenance update
+- **PR #324**: docs: Guide document maintenance update
+- **PR #323**: docs: Guide document maintenance update
+- **PR #300**: docs: Guide document maintenance update
+- **PR #332**: ci: report the sim/ append-only gate on merge_group commits (merge queue step 1)
+- **Issue #329** (closed): WORK_PLAN 'PRs Awaiting Review' presents operator-gated PRs as Judge work (no hold filter, no *(held)* annotation)
+- **PR #319**: feat: re-derive and byte-compare the five ungated layout evidence artifacts in --check
+- **PR #262**: ci: reword layout-envelope comment to match actual step behavior
+- **Issue #311** (closed): Five committed layout/ evidence artifacts are re-derived by no gate: --check byte-compares only the GDS
+- **Issue #232** (closed): Stale CI comment at t1-signoff.yml:111 names the retired 'member'/'digest' mechanism
+- **PR #321**: chore(loom): resync installed Loom to v0.19.1306
+- **PR #291**: feat: gate the sky130 PDK pin restatements against sim/pdk.json
+- **PR #322**: fix: reject spread keys in report-only reverse_ladder.checks at manifest load
+- **PR #305**: test: parametrise TestCliFailsClosed over both --record CLIs
+- **PR #320**: fix: install pinned klt before the harness selftest step in t1-signoff.yml
+- **PR #301**: sim: make the schematic kickback library A/B single-variable (ngspice47 leg)
+- **PR #302**: docs: correct regen/kickback-pex clause in noise pilot record
+- **PR #318**: test: add item-9 attestation freshness gate with cold-start re-entry guard
+- **Issue #275** (closed): Extend the toolchain-pin gate to the sky130 PDK pin
+- **Issue #295** (closed): A correctly-spelled spread floor in ladder.json's reverse_ladder block is graded by nothing
+- **Issue #276** (closed): sim/tests: mc_cli's --record fail-closed gate has no end-to-end test
+- **Issue #266** (closed): check-t1-signoff gate red on main: T1 item 9 grades stale_evidence
+- **Issue #315** (closed): harness-selftest is red on every push: item-10 freshness gate needs klt before it is installed
+- **Issue #283** (closed): Schematic kickback library A/B is not single-variable (ngspice-46 vs ngspice-47)
+- **Issue #286** (closed): Noise pilot record mischaracterizes the regen pilot's caveat status
+- **Issue #309** (closed): sim/selftest.sh freshness gates skip the item-9 attestation envelope
+
 ### 2026-11-16
 
+- **PR #297**: docs: Guide document maintenance update
+- **PR #261**: docs: Guide document maintenance update
+- **PR #294**: chore(loom): resync installed Loom to v0.19.1302
+- **PR #316**: feat: extend toolchain-pin gate to the workflow's xschem literals
+- **PR #314**: test: hoist mutated-table parse out of assertRaises in the #290 guard negative tests
+- **PR #312**: fix: correct stale item-1 CI comment in t1-signoff.yml and re-mint the item-10 envelope
+- **PR #296**: fix: drop stale ungated T1 met-count from ERC coverage probe
+- **PR #306**: test: cross-check ratification-status prose against README's target-spec table
+- **PR #307**: test: run CI's pin-freshness gates in sim/selftest.sh stage 1
+- **PR #308**: fix: re-mint item-9 attestation envelope against current main (main-red fix)
+- **PR #268**: docs: restate target-spec ratification status per-row in comparator-decision and design READMEs
+- **PR #289**: fix(scripts): add the _gate_common sys.path preamble to layout-envelope.py
+- **PR #298**: gate(scripts): fail the toolchain-pin gate on off-pin evidence envelope producers
+- **Issue #313** (closed): check-toolchain-pin gate covers klt/klayout but not xschem_tag
+- **Issue #310** (closed): Negative tests for the #290 ratification guard parse the mutated table inside assertRaises
+- **Issue #248** (closed): t1-signoff workflow comment says item 1 has no CI step
+- **Issue #285** (closed): layout/erc-coverage-probe.json records a stale t1_met_count_if_cited
+- **Issue #290** (closed): Tie the hardcoded target-spec ratification-status prose to README.md's table
+- **Issue #292** (closed): sim/selftest.sh does not cover the content-hash freshness gates CI enforces
+- **Issue #304** (closed): main red: item-9 attestation envelope drifted
+- **Issue #259** (closed): comparator-decision/README.md still asserts the target-spec table is DRAFT/unratified
+- **Issue #239** (closed): scripts/layout-envelope.py lacks the sys.path.insert preamble
+- **Issue #271** (closed): Nothing gates committed evidence envelopes' provenance.klt_version against the repo pin
+- **PR #293**: fix(harness): reject ungradeable spread checks at manifest load
+- **PR #279**: ci: re-check the item-9 attestation envelope PDK-free in the signoff job
+- **PR #278**: sim: quantify the sky130 model-library effect on the kickback/PEX pilots
+- **PR #273**: refactor(layout): split signoff evidence emitters into layout/evidence_emit.py
+- **PR #218**: docs: roadmap as of 2026-11-13
+- **Issue #274** (closed): Validate spread-axis names at manifest load: a typo'd axis is now silently ungraded in both benches
+- **Issue #270** (closed): Item-9 envelope drift is only detectable after merge: harness-selftest never runs on pull_request
+- **Issue #244** (closed): klt-pilot kickback/PEX requests name libs.tech/ngspice, but run.py grades on libs.tech/combined
+- **Issue #226** (closed): Split layout/gen_comparator.py (2225 lines): the evidence emitters are half the file and a one-way seam
+- **Issue #125** (closed): Re-measure post-layout (extracted-DUT) campaigns at the 0.35 um geometry and klt 0.7.0 pin
 - **PR #287**: fix(sim): restate the PVT campaign open-work reason without the retired ratification claim
 - **PR #277**: fix: dispatch noise_tran's parallel MC batch through the _shared._run seam
 - **PR #256**: Drop untested verify twin of klt artifact verify from check-artifact-manifests
@@ -44,6 +229,8 @@ Chronological record of merged pull requests and closed issues, maintained by th
 
 ### 2026-11-14
 
+- **PR #251**: docs: Guide document maintenance update
+- **PR #223**: docs: Guide document maintenance update
 - **PR #238**: refactor(sim): split the comparator-decision driver into sibling experiment modules
 - **PR #233**: refactor: bind layout envelope to a scalar GDS path, not a one-element list
 - **PR #230**: refactor: route check-artifact-manifests selftest through _gate_common.report_cases
@@ -245,42 +432,4 @@ Chronological record of merged pull requests and closed issues, maintained by th
 - **PR #48**: layout: commit the DRC signoff envelope and cite it for T1 item 3
 - **Issue #47** (closed): chore: bump the klt pin off 0.5.0 to pick up input_verified + citation.coverage
 - **Issue #46** (closed): layout: DRC-clean signoff citation for the comparator (T1 item 3)
-
-### 2026-09-23
-
-- **PR #45**: feat: add klt-generated comparator GDS layout with device-count CI gate
-- **Issue #44** (closed): layout: create GDS/OASIS for the comparator (T1 item 2)
-- **PR #43**: feat: full-corner Monte Carlo + PVT campaign (DR-005) -- ratify Decision-time, complete every row's corner set
-- **Issue #41** (closed): Run the full-corner Monte Carlo and PVT campaigns the ratified target-spec rows still lack
-
-### 2026-09-22
-
-- **PR #40**: feat: static preamp ahead of StrongARM latch, closing the kickback gap (DR-004)
-- **PR #39**: docs: add decision-record TEMPLATE.md and point spec/README at it
-- **PR #38**: feat: add rule-9 consumers record and gated integrator view
-- **Issue #36** (closed): 2am: reuse rule 9 — name this block's consumers in the spec, carry their requirement rows, publish the integrator view as data
-- **Issue #34** (closed): design: kickback full compliance needs the topology class DR-001 scoped out (preamp/double-tail) — DR-001-supersession-grade follow-on
-- **Issue #33** (closed): spec: codify decision-records/TEMPLATE.md now that DR-003 is the third record
-
-### 2026-09-21
-
-- **PR #35**: feat: add ~250ps soft-clock shaper, cutting comparator kickback 41%
-- **PR #32**: feat: grade T1 state via klt signoff manifest + CI re-run gate
-- **Issue #31** (closed): Commit a klt signoff block manifest so this block's T1 state is graded, not hand-read
-- **Issue #30** (closed): design: kickback mitigation for comparator input stage (DR-002 non-compliance, 144.60 mV vs. ≤5 mV/≤2 mV)
-
-### 2026-09-16
-
-- **PR #29**: spec: DR-002 target-spec ratification pass (porting-plan next step 5)
-- **Issue #28** (closed): spec: target-spec ratification decision record, informed by real measurements (porting-plan next step 5)
-- **PR #27**: feat: add kickback input-node disturbance experiment
-- **Issue #26** (closed): sim: design an original kickback experiment for design/comparator.sch (porting-plan next step 4)
-- **PR #25**: design: draft design/comparator.sch + derived netlist per DR-001
-- **Issue #24** (closed): design: draft design/comparator.sch schematic + derived netlist per DR-001 (porting-plan next step 1)
-
-### 2026-09-15
-
-- **Issue #23** (closed): design: comparator schematic (design/comparator.sch), sized against DR-001 (porting-plan next step 2)
-- **PR #22**: spec: comparator topology decision record (DR-001)
-- **Issue #21** (closed): design: comparator topology decision record (porting-plan next step 1)
 

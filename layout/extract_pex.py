@@ -105,8 +105,7 @@ difference (weff 0.4009 vs 0.3262 um -> ~19 % lower load resistance, i.e.
 paper over it: normalising the extracted width would make this script's
 output stop being a measurement of the committed layout. Since #123 the layout
 is drawn at 0.35 um, so the extraction now carries w=0.35 and the delta is gone;
-the committed `sim/comparator-decision/records/` post-layout records predate
-that and are historical (see layout/README.md).
+post-layout records measured before the re-draw retain the old geometry.
 
 THE TOOLCHAIN PIN IS PART OF THE MEASUREMENT (issue #57, PR #67 review)
 -----------------------------------------------------------------------
@@ -570,10 +569,9 @@ def _render(header: list[str], elements: list[Element], kind: str) -> str:
 * their schematic counterparts via layout/lvs-report.json's 12/12 net
 * correspondence, device instances renamed to the schematic instance they
 * pair with structurally. No R, C, or device parameter value is altered.
-* See layout/extract_pex.py's module docstring for the full derivation, for
-* why `klt pex` is not the path here, and for the disclosed res_high_po
-* w=0.42um-drawn vs w=0.35um-schematic delta this fragment deliberately
-* carries through.
+* The #123 re-draw used 0.35 um res_high_po resistors. The instance w values
+* below are carried through from the extraction.
+* See layout/extract_pex.py for the derivation and resistor re-draw history.
 {extra}*
 * --- extractor's own parasitic-model disclosure, verbatim ---
 """
