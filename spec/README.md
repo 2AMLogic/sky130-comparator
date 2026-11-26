@@ -107,6 +107,22 @@ changes nothing until an operator ratifies it. Per `CLAUDE.md`, the
 proposal is filed by the pass that measured the facts; the ratification is
 not the agent's to give.
 
+**Update (issue #253,
+[DR-009](decision-records/DR-009-target-spec-basis-column-condensed.md),
+2026-11-16, **proposed**).** The ratified table's **Basis** column itself is
+the artifact this record disposes: the four graded rows' cells had grown to
+~35 KB of per-campaign narrative (~75% of `README.md`), duplicating figures
+that already live in the records above and in
+`sim/characterization-report.md`, and had twice gone stale and needed hand
+repair (#148, #130). Under @rjwalters' operator ruling of 2026-11-15
+(#253), each cell is condensed to its measurement method plus links to the
+owning DRs and the row's section of the characterization report — no
+Parameter/Status/Target/Stretch cell changes, no bound changes. The three
+prior-art figures that existed only in `README.md` moved (not dropped) into
+a "Prior art — sky130-sar-adc" section of the characterization report. From
+this record on, Basis cells stay at method + links: campaign results land in
+the report and records, not in the table.
+
 ## Review bar
 
 One-command characterization plus README reproducibility is a standing bar

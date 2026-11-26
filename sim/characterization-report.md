@@ -643,6 +643,32 @@ Reading, without grading (no bound is ratified, so none is met or breached):
 
 ---
 
+## Prior art — sky130-sar-adc (same-PDK context, not ported)
+
+These three figures are **measurements of another repo's block**, carried here
+so the target-spec table's Basis cells can link instead of restating campaign
+history (DR-009). They are context on what the same PDK / supply rail can do at
+an unoptimized sizing, **not** targets this repo inherited, **not** measurements
+of this block, and they appear in no evidence record here. The citations point
+at `sim/comparator-decision/records/` and `spec/decision-records/` in the
+sky130-sar-adc repository, per that repo's own layout.
+
+- **Offset (row 1 context)** — sky130-sar-adc's own embedded (non-standalone)
+  comparator, at a first-pass `W = 4 µm` input-pair sizing with no
+  offset-budget target, measured input-referred offset mean **35.24 mV** /
+  stdev **97.08 mV** across N = 16 draws (`tt_mm`,
+  `sim/comparator-decision/records/` in that repo) — same-PDK prior art on
+  mismatch magnitude at an unoptimized sizing.
+- **Input-referred noise (row 2 context)** — sky130-sar-adc's DR-004 measured
+  **0.7064 mV rms** differential (estimated) for its own embedded-comparator
+  sizing at `tt`, 27 °C — same-PDK, same-supply prior art, not a ported spec
+  value.
+- **Decision time (row 3 context)** — sky130-sar-adc's embedded comparator
+  measured **0.5325–1.3975 ns** across a 0.5–50 mV differential sweep
+  (`tt`, 27 °C) — same-PDK, same-rail prior art, not a ported number.
+
+---
+
 ## Coverage — what is and is not measured post-layout
 
 | Sub-command | Row(s) it feeds | Post-layout corner coverage | Gap |
