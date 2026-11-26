@@ -104,6 +104,49 @@ run_mc() {
 # klt call.
 KLT_GATE_RAN=0
 ITEM9_REENTRY_SKIP=0
+
+# Issue #417: the attestation gates must run the SAME klt CI does. The
+# committed evidence/item{9,10}.json were minted under the pinned klt
+# (layout/gen_comparator.py KLT_VERSION, the single source of truth -- never
+# restated here); a newer host klt adds metadata (attestation.description)
+# and reports drift no branch caused. resolve_pinned_klt fills KLT_CMD with
+# the bare klt when its version equals the pin (the CI path), else with a
+# throwaway `uvx --from klayout-tools==PIN klt`. If neither is usable it
+# leaves KLT_CMD empty and KLT_UNAVAILABLE says why (found vs. pinned).
+KLT_CMD=()
+KLT_UNAVAILABLE=""
+KLT_PIN=""
+KLT_RESOLVED=0
+resolve_pinned_klt() {
+  [ "${KLT_RESOLVED}" -eq 1 ] && return 0
+  KLT_RESOLVED=1
+  KLT_PIN="$(cd "${REPO_ROOT}" && python3 -c 'import sys; sys.path.insert(0, "layout"); from gen_comparator import KLT_VERSION; print(KLT_VERSION)' 2>/dev/null)"
+  if [ -z "${KLT_PIN}" ]; then
+    KLT_UNAVAILABLE="could not read KLT_VERSION from layout/gen_comparator.py"
+    return 0
+  fi
+  local found="not installed" found_ver=""
+  if command -v klt >/dev/null 2>&1; then
+    found="$(klt --version 2>&1 | head -n 1)"
+    found_ver="${found##* }"
+    if [ "${found_ver}" = "${KLT_PIN}" ]; then
+      KLT_CMD=(klt)
+      return 0
+    fi
+  fi
+  if command -v uvx >/dev/null 2>&1; then
+    if timeout 180 uvx --from "klayout-tools==${KLT_PIN}" klt --version >/dev/null 2>&1; then
+      KLT_CMD=(uvx --from "klayout-tools==${KLT_PIN}" klt)
+      return 0
+    fi
+    KLT_UNAVAILABLE="host klt: ${found}; pinned: ${KLT_PIN}; uvx could not provide the pinned klt (offline or cache miss)"
+    return 0
+  fi
+  KLT_UNAVAILABLE="host klt: ${found}; pinned: ${KLT_PIN}; no uvx to fetch the pinned klt"
+}
+REMINT_HINT="      Re-mint ONLY with the pinned klt (uvx --from klayout-tools==<KLT_VERSION>
+      klt ..., see manifests/README.md), never the host klt -- a newer klt
+      adds metadata that turns CI red."
 run_freshness_gates() {
   local failed=0
 
@@ -122,23 +165,25 @@ run_freshness_gates() {
 
   echo
   echo "-- freshness gate: item-10 attestation envelope --"
-  if command -v klt >/dev/null 2>&1; then
+  resolve_pinned_klt
+  if [ "${#KLT_CMD[@]}" -gt 0 ]; then
     KLT_GATE_RAN=1
-    if ! (cd "${REPO_ROOT}" && klt signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json); then
+    if ! (cd "${REPO_ROOT}" && "${KLT_CMD[@]}" signoff --attest 10 --inventory attest/item10.json --check evidence/item10.json); then
       echo "FAIL: item-10 attestation envelope re-check -- an inventoried file"
       echo "      or gate moved since evidence/item10.json was minted (the drift"
       echo "      list above names which)."
+      echo "${REMINT_HINT}"
       failed=1
     fi
   else
     if [ "${REQUIRE_PDK}" -eq 1 ]; then
-      echo "FAIL: item-10 attestation envelope re-check needs klt, which is not"
-      echo "      installed (--require-pdk turns the absence into a failure)."
+      echo "FAIL: item-10 attestation envelope re-check needs the pinned klt"
+      echo "      (${KLT_UNAVAILABLE:-unavailable}); --require-pdk turns this into a failure."
       failed=1
     else
-      echo "SKIP: item-10 attestation (klt not installed)"
-      echo "      The other freshness gates ran; install klt to gate this one"
-      echo "      locally too."
+      echo "SKIP: item-10 attestation (pinned klt unavailable: ${KLT_UNAVAILABLE:-unknown})"
+      echo "      The other freshness gates ran; install klt==pin (or uvx) to gate"
+      echo "      this one locally too."
     fi
   fi
 
@@ -149,23 +194,24 @@ run_freshness_gates() {
     echo "SKIP: item-9 attestation -- this run IS the attestation's own"
     echo "      cold_start (SELFTEST_ITEM9_REENTRY is set), so re-running the"
     echo "      gate here would recurse; the other freshness gates still run."
-  elif command -v klt >/dev/null 2>&1; then
+  elif resolve_pinned_klt; [ "${#KLT_CMD[@]}" -gt 0 ]; then
     KLT_GATE_RAN=1
-    if ! (cd "${REPO_ROOT}" && SELFTEST_ITEM9_REENTRY=1 klt signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json); then
+    if ! (cd "${REPO_ROOT}" && SELFTEST_ITEM9_REENTRY=1 "${KLT_CMD[@]}" signoff --attest 9 --inventory attest/item9.json --check evidence/item9.json); then
       echo "FAIL: item-9 attestation envelope re-check -- an inventoried"
       echo "      testbench or harness file moved since evidence/item9.json was"
       echo "      minted (the drift list above names which)."
+      echo "${REMINT_HINT}"
       failed=1
     fi
   else
     if [ "${REQUIRE_PDK}" -eq 1 ]; then
-      echo "FAIL: item-9 attestation envelope re-check needs klt, which is not"
-      echo "      installed (--require-pdk turns the absence into a failure)."
+      echo "FAIL: item-9 attestation envelope re-check needs the pinned klt"
+      echo "      (${KLT_UNAVAILABLE:-unavailable}); --require-pdk turns this into a failure."
       failed=1
     else
-      echo "SKIP: item-9 attestation (klt not installed)"
-      echo "      The other freshness gates ran; install klt to gate this one"
-      echo "      locally too."
+      echo "SKIP: item-9 attestation (pinned klt unavailable: ${KLT_UNAVAILABLE:-unknown})"
+      echo "      The other freshness gates ran; install klt==pin (or uvx) to gate"
+      echo "      this one locally too."
     fi
   fi
 
@@ -188,11 +234,13 @@ if ! run_freshness_gates; then
 fi
 
 echo
-echo "-- plan gate: requalify-plan.json (issue #358 re-qualification campaign) --"
+echo "-- plan gate: requalify-plan.json (issues #358/#361 re-qualification campaign) --"
 if ! python3 "${SIM_DIR}/comparator-decision/check-requalify-plan.py"; then
   echo
   echo "FAIL: requalify-plan.json is inconsistent -- every entry must name an"
-  echo "      existing record exactly once (see the failures above)."
+  echo "      existing record exactly once, and (since issue #361) every entry's"
+  echo "      Supersedes chain must end at one terminal record carrying the"
+  echo "      sim/pdk.json open_pdks pin (see the failures above)."
   exit 1
 fi
 
@@ -244,7 +292,7 @@ if [ "${QUICK}" -eq 1 ]; then
   else
     echo "PASS (partial): harness plumbing is present; the characterization-"
     echo "      envelope selftest + re-hash ran, but the item-10 and item-9"
-    echo "      attestation re-checks SKIPPED (klt not installed); PVT/MC"
+    echo "      attestation re-checks SKIPPED (pinned klt unavailable); PVT/MC"
     echo "      switching NOT verified."
   fi
   exit 0

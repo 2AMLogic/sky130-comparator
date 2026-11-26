@@ -166,10 +166,16 @@ should re-examine:
 > supply R, e.g. `VDD` 2357 → 1890 Ω, `VINN` 407 → 219 Ω) and the 0.35 µm
 > re-draw added +0.07 kΩ (0.5 %) and −0.14 fF. The per-record post-layout
 > numbers below and in `sim/comparator-decision/records/` are therefore
-> **historical** and have **not** been re-measured at the new geometry/pin;
-> that campaign is tracked as #125 (it is a multi-corner
-> Monte Carlo campaign that does not fit this host). Do not read them as
-> measurements of the current `layout/comparator.gds`.
+> **historical**: they were re-measured at the new geometry and the `f6eeac7`
+> PDK pin by the #179/#361 re-qualification campaign (2026-11-23, on the
+> issue-#127 batch route), which superseded every one of them with a record
+> minted on klt 0.8.0 / klayout 0.30.12 (current extraction envelope:
+> **17.814 kΩ** total series R, 123.02 fF ground C). Do not read the figures
+> in this section as measurements of the current `layout/comparator.gds` --
+> the current record set is
+> [`sim/characterization-report.md`](../sim/characterization-report.md) and
+> the old/new comparison is
+> [DR-012](../spec/decision-records/DR-012-requalification.md).
 
 The extraction and re-simulation this section anticipated has since run — see
 [`sim/comparator-decision/README.md`](../sim/comparator-decision/README.md)'s
@@ -258,8 +264,11 @@ klayout-tools#2436 and shipped in the published `klayout-tools==0.7.0`.
 Issue #123 bumped the pin, regenerated the layout at 0.35 µm, and changed the
 LVS request so the geometry is compared. Artifacts that were produced from the
 0.42 µm layout (the `sim/comparator-decision/records/` post-layout records)
-are historical: they describe the layout and toolchain of their date and are
-**not** re-measured here; see "What the post-layout re-verification measured".
+are historical: they describe the layout and toolchain of their date; the
+#179/#361 re-qualification campaign (2026-11-23) re-measured every live one
+at the current geometry and PDK pin and superseded it append-only -- see
+"What the post-layout re-verification measured" and
+[DR-012](../spec/decision-records/DR-012-requalification.md).
 
 Regenerating moved the geometry only where the resistors sit: the GDS is
 32156 → 32284 bytes, the composed bbox is unchanged (40.59 × 82.04 µm,
@@ -748,12 +757,17 @@ one a way the committed file could otherwise fail to support the claim above:
 65/44 is drawn only by the two body ties; `erc_status` is `clean` with zero
 findings; `erc_coverage.skipped` is empty **and** every declared supply and tie
 appears in `checked`; and the envelope's own `provenance.spec.content_hash`
-equals the sha256 of the committed `erc-spec.json`. That last one closes a real
-hole: `klt signoff`'s item-11 path **re-reads the spec document from disk** to
-discover which nets were declared `supply`, and (klt 0.6.0) does *not* check it
-against that recorded hash — so an edited spec would silently change what a
-citation is graded on. Filed generically as
-[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496).
+equals the sha256 of the committed `erc-spec.json`. That last one is a
+generation-time invariant — the envelope and the spec are one run's two
+halves, and the guard refuses to commit a pair whose halves disagree. It
+was written against a real hole: through klt 0.6.0, `klt signoff`'s item-11
+path **re-read the spec document from disk** to discover which nets were
+declared `supply` and did *not* check it against that recorded hash — so an
+edited spec would silently change what a citation was graded on. Filed
+generically as
+[klayout-tools#2496](https://github.com/2AMLogic/klayout-tools/issues/2496),
+which the 0.8.0 pin carries: item 11 now checks the spec digest and grades
+drift as `stale_evidence`.
 
 ### Whether the supply check can fail — `erc-coverage-probe.json`
 

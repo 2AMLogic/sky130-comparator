@@ -23,6 +23,7 @@ fragment's own device lines, so it tracks the schematic automatically.
     python3 sim/comparator-decision/run.py noise-tran --record --n 128
     python3 sim/comparator-decision/run.py reset    --record
     python3 sim/comparator-decision/run.py kickback --record
+    python3 sim/comparator-decision/run.py power --record
 
 Provenance (per sim/comparator-decision/README.md, in full): the bespoke
 regen/offset/noise MEASUREMENT METHODOLOGY (in the sibling modules listed
@@ -68,6 +69,7 @@ is the CLI over them):
     noise_tran.py  `noise-tran`, and its chunked/resumable campaign driver
     reset.py       `reset`
     kickback.py    `kickback`
+    power.py       `power` (supply energy / average power, issue #134)
 
 They are reached through sys.path, not as a package -- this directory's
 hyphenated name is not a legal package name, so this file is loaded by path.
@@ -95,6 +97,7 @@ import noise  # noqa: E402
 import noise_tran  # noqa: E402
 import reset  # noqa: E402
 import kickback  # noqa: E402
+import power  # noqa: E402
 # `pdk` is not used in this module: it is here for the re-export surface
 # below. Every module in this directory resolves the PDK through this one
 # module object, so patching `run.py`'s `pdk` attribute does reach them all.
@@ -161,8 +164,12 @@ from offset import (  # noqa: E402,F401
     _bisect_probe_mv,
     _bisect_probe_name,
     _offset_bisect_deck,
+    OFFSET_INCOMPLETE_EXIT,
+    OffsetCampaignIncomplete,
     _pickoff_deck,
     run_offset_bisect,
+    run_offset_mc,
+    write_offset_evidence,
 )
 from noise import (  # noqa: E402,F401
     NoiseResult,
@@ -198,12 +205,17 @@ from kickback import (  # noqa: E402,F401
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="comparator-decision standalone testbench driver (issue #9)")
     ap.add_argument(
-        "mode", nargs="?", choices=["regen", "offset", "offset-bisect", "noise", "noise-tran", "reset", "kickback"],
+        "mode", nargs="?", choices=["regen", "offset", "offset-bisect", "noise", "noise-tran", "reset", "kickback", "power"],
         help="which characterization to run",
     )
     ap.add_argument("--check-env", action="store_true", help="check toolchain + PDK, print summary, exit")
     ap.add_argument("--corner", default="tt")
     ap.add_argument("--temp", type=float, default=27.0)
+    ap.add_argument(
+        "--vdd", type=float, default=None,
+        help="power: supply voltage in V for a supply-endpoint point "
+        f"(default: the nominal {_shared.VDD} V). Refused for every other mode.",
+    )
     ap.add_argument("--seed", type=int, default=1, help="offset: MC base seed")
     ap.add_argument("--n", type=int, default=16, help="offset / noise-tran: MC sample count")
     ap.add_argument(
@@ -214,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--resume-dir", default="",
-        help="noise-tran: scratch directory for a CHUNKED, RESUMABLE campaign "
+        help="noise-tran / offset: scratch directory for a CHUNKED, RESUMABLE campaign "
         "(issue #100). Each deck's derived value is persisted under it as that "
         "deck completes, and a re-invocation of the IDENTICAL command runs only "
         "the decks still missing. The record is written by whichever invocation "
@@ -223,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-decks", type=int, default=None,
-        help="noise-tran: stop this invocation cleanly after N campaign decks "
+        help="noise-tran / offset: stop this invocation cleanly after N campaign decks "
         "(needs --resume-dir). N counts EVERY deck this invocation dispatches -- "
         "the same all-deck 'campaign decks' count the stop message reports -- so "
         "the four gain-calibration decks are included: on a fresh campaign a "
@@ -234,7 +246,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--chunk-seconds", type=float, default=None,
-        help="noise-tran: stop this invocation cleanly once it has been running "
+        help="noise-tran / offset: stop this invocation cleanly once it has been running "
         "this long, checked between decks (needs --resume-dir). The wall-clock "
         "form of --chunk-decks, and the one that actually matches the ceiling "
         "given the measured 35-285 s per-deck spread; the clock starts at "
@@ -278,6 +290,9 @@ def main(argv: list[str] | None = None) -> int:
         ap.print_help()
         return 2
 
+    if args.vdd is not None and args.mode != "power":
+        ap.error(f"--vdd only applies to `power`, not `{args.mode}`")
+
     chunk_flags = [
         name for name, given in (
             ("--resume-dir", bool(args.resume_dir)),
@@ -285,12 +300,12 @@ def main(argv: list[str] | None = None) -> int:
             ("--chunk-seconds", args.chunk_seconds is not None),
         ) if given
     ]
-    if chunk_flags and args.mode != "noise-tran":
+    if chunk_flags and args.mode not in ("noise-tran", "offset"):
         # Refused rather than ignored: silently dropping a resume flag would
         # make a long campaign look resumable when nothing was persisted.
         ap.error(
             f"{', '.join(chunk_flags)} only appl{'y' if len(chunk_flags) > 1 else 'ies'} "
-            f"to `noise-tran` (issue #100), not `{args.mode}`"
+            f"to `noise-tran` (issue #100) and `offset` (issue #154), not `{args.mode}`"
         )
     if (args.chunk_decks is not None or args.chunk_seconds is not None) and not args.resume_dir:
         ap.error("--chunk-decks / --chunk-seconds need --resume-dir to persist into")
@@ -304,10 +319,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if not unresolved else 1
 
     if args.mode == "offset":
-        result = offset.run_offset_mc(
-            corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n,
-            quiet=args.quiet, jobs=args.jobs,
-        )
+        try:
+            result = offset.run_offset_mc(
+                corner=args.corner, temp_c=args.temp, seed=args.seed, n=args.n,
+                quiet=args.quiet, jobs=args.jobs,
+                resume_dir=Path(args.resume_dir) if args.resume_dir else None,
+                chunk_decks=args.chunk_decks, chunk_seconds=args.chunk_seconds,
+            )
+        except offset.OffsetCampaignIncomplete as incomplete:
+            # Not a failure: the chunk did what it was asked; no record exists.
+            print(str(incomplete))
+            return offset.OFFSET_INCOMPLETE_EXIT
         if args.record:
             path = offset.write_offset_evidence(result, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
@@ -359,6 +381,18 @@ def main(argv: list[str] | None = None) -> int:
         points = kickback.run_kickback(corner=args.corner, temp_c=args.temp, quiet=args.quiet, jobs=args.jobs)
         if args.record:
             path = kickback.write_kickback_evidence(points, note=args.note, supersedes=args.supersedes)
+            print(f"wrote {path}")
+        return 0 if all(p.ok for p in points) else 1
+
+    if args.mode == "power":
+        # One corner per invocation (a multi-corner grid goes to the batch
+        # route, not a local loop); defaults to the tt/27C anchor.
+        points = power.run_power(
+            points=[(args.corner, args.temp)], quiet=args.quiet,
+            vdd=_shared.VDD if args.vdd is None else args.vdd,
+        )
+        if args.record:
+            path = power.write_power_evidence(points, note=args.note, supersedes=args.supersedes)
             print(f"wrote {path}")
         return 0 if all(p.ok for p in points) else 1
 

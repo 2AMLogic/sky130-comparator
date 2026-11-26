@@ -1,0 +1,165 @@
+{
+  "samples": "sim/comparator-decision/klt-t1/yield/samples-tt_mm.json",
+  "limits": "sim/comparator-decision/klt-t1/yield/spec-limits.json",
+  "source": {
+    "kind": "sample-set",
+    "netlist": null,
+    "monte_carlo": null,
+    "provenance": {
+      "seed": 1,
+      "rng": "ngspice AGAUSS per-instance mismatch (sky130 mc_mm_switch)",
+      "draws_per_population": 200,
+      "common_random_numbers": false,
+      "corner_matrix": [
+        "tt_mm",
+        "ss_mm"
+      ]
+    },
+    "sample_count": 200,
+    "native": {
+      "module": "klt_yield_native",
+      "version": "0.1.0"
+    }
+  },
+  "schema_version": 1,
+  "confidence": 0.95,
+  "target_ci_halfwidth": 0.01,
+  "min_samples": 2,
+  "status": "pass",
+  "measurement_count": 1,
+  "measurements": [
+    {
+      "name": "vos_ir_mv",
+      "unit": "mV",
+      "n": 200,
+      "errored": 0,
+      "failed_unmeasurable": 0,
+      "censored": 0,
+      "inconclusive": 0,
+      "limits": {
+        "min": -15.0,
+        "max": 15.0,
+        "target_sigma": 3.0
+      },
+      "source_corners": [
+        "tt_mm/novdd/27C"
+      ],
+      "distribution": {
+        "model": "normal",
+        "mean": 0.3709051983064439,
+        "stddev": 2.2273848078447074,
+        "min": -5.153649011593,
+        "max": 4.98966930824,
+        "median": 0.40984688477160003,
+        "skewness": -0.11674516104109646,
+        "excess_kurtosis": -0.49499744457964523,
+        "normality": {
+          "test": "anderson-darling",
+          "statistic": 0.21506954716063145,
+          "critical_value": 0.787,
+          "significance": 0.05,
+          "verdict": "consistent"
+        }
+      },
+      "yield": {
+        "empirical": {
+          "method": "clopper-pearson",
+          "estimate": 1.0,
+          "confidence": 0.95,
+          "confidence_interval": {
+            "low": 0.9817246596448637,
+            "high": 1.0
+          },
+          "n": 200
+        },
+        "normal": {
+          "method": "normal-delta",
+          "estimate": 0.9999999999718897,
+          "confidence": 0.95,
+          "confidence_interval": {
+            "low": 0.9999999998474584,
+            "high": 1.0
+          },
+          "n": 200
+        },
+        "variance_reduced": null
+      },
+      "capability": {
+        "cp": 2.2447849973611738,
+        "cpk": 2.189278169054402,
+        "cpk_confidence_interval": {
+          "low": 1.9692892094848105,
+          "high": 2.409267128623993
+        },
+        "sigma_to_spec": 6.567834507163205,
+        "sigma_to_spec_confidence_interval": {
+          "low": 5.907867628454431,
+          "high": 7.227801385871979
+        },
+        "limiting_side": "upper"
+      },
+      "sample_size": {
+        "n": 200,
+        "observed_ci_halfwidth": 0.009137670177568169,
+        "target_ci_halfwidth": 0.01,
+        "required_n": 183,
+        "required_n_for_target": null,
+        "verdict": "sufficient",
+        "method": "clopper-pearson-zero-failures",
+        "variance_reduced": null
+      },
+      "negative_control": {
+        "description": "per-instance mismatch sigma scaled 4x (monte_carlo.mismatch_scale), seed 424242",
+        "n": 200,
+        "errored": 0,
+        "failed_unmeasurable": 0,
+        "censored": 0,
+        "yield": {
+          "empirical": {
+            "method": "clopper-pearson",
+            "estimate": 0.865,
+            "confidence": 0.95,
+            "confidence_interval": {
+              "low": 0.809690827316599,
+              "high": 0.9091128982451031
+            },
+            "n": 200
+          },
+          "normal": {
+            "method": "normal-delta",
+            "estimate": 0.9002491056886996,
+            "confidence": 0.95,
+            "confidence_interval": {
+              "low": 0.8670413663923541,
+              "high": 0.9334568449850452
+            },
+            "n": 200
+          },
+          "variance_reduced": null
+        },
+        "nominal_empirical_estimate": 1.0,
+        "degradation_detected": true,
+        "verdict": "detected"
+      },
+      "analytic_cross_check": null,
+      "sampling": {
+        "strategy": "plain_random",
+        "replicates": null,
+        "effective_sample_size": null
+      },
+      "sigma_target": {
+        "k": 3.0,
+        "sigma_to_spec": 6.567834507163205,
+        "lower_bound": 5.907867628454431,
+        "gate": "lower_bound",
+        "met": true
+      },
+      "status": "pass",
+      "warnings": [
+        "measurement 'vos_ir_mv': no sample fell outside the limits, so the empirical yield is bounded only from below -- \"at least 98.1725% at 95% confidence, N = 200\" is the honest statement, not \"100% yield\""
+      ],
+      "spec_row": "offset_sigma"
+    }
+  ],
+  "warnings": []
+}

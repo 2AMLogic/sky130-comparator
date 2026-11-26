@@ -17,6 +17,7 @@ python3 sim/comparator-decision/run.py offset   --record --n 16 --seed 1
 python3 sim/comparator-decision/run.py noise    --record
 python3 sim/comparator-decision/run.py reset    --record
 python3 sim/comparator-decision/run.py kickback --record
+python3 sim/comparator-decision/run.py power    --record --corner tt --temp 27   # one corner per call
 ```
 
 See `sim/README.md` for the general `sim/` evidence-record and directory
@@ -146,7 +147,7 @@ convention `sim/README.md` records for `sim/harness/`):
 | Module | Owns |
 |---|---|
 | [`run.py`](run.py) | the CLI (`main()`), and a read-only re-export of the flat attribute surface the unit suite reads |
-| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`) and the evidence-record head/tail |
+| [`_shared.py`](_shared.py) | the `--dut` provenance switch, extracted-fragment parsing and the POST-LAYOUT DECK SURGERY rules, the fixed testbench constants, the record preamble prose and `SCHEMATIC_BASELINES`, the ngspice seams (`_run` / `_run_many`), the evidence-record head/tail, and the resumable chunked-campaign store (`ResumableCampaign`, issue #429) that `offset` and `noise-tran` subclass |
 | [`regen.py`](regen.py) | `regen` |
 | [`offset.py`](offset.py) | `offset` and `offset-bisect` (they share the `_pickoff_*` machinery) |
 | [`noise.py`](noise.py) | `noise` |
@@ -323,7 +324,7 @@ SIM_NGSPICE_TIMEOUT_S=900 \
   python3 sim/comparator-decision/run.py regen --dut extracted --record
 ```
 
-**The extraction is pinned to `klayout-tools==0.7.0` on `klayout==0.30.12`** (issue #123; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and are historical -- not re-measured at the current geometry)
+**The extraction is pinned to `klayout-tools==0.8.0` on `klayout==0.30.12`** (the pin `docs/environment-setup.md` records and the workflow installs; the post-layout records below were measured under 0.6.0 / 0.30.10 on the earlier 0.42 µm-resistor layout and were re-measured at the current geometry and PDK pin by the #179/#361 re-qualification campaign, 2026-11-23 -- see the banner at "Post-layout records" below)
 -- the same pin `docs/environment-setup.md` records and both
 `.github/workflows/t1-signoff.yml` jobs install -- and `extract_pex.py`
 *asserts* it rather than merely recording it. That is not provenance hygiene:
@@ -428,6 +429,15 @@ The grading consequence is real and is filed as friction rather than hidden:
 `klt signoff` accepts **only** a `klt pex` envelope for T1 item 7, so this
 evidence cannot be cited there
 ([`2AMLogic/klayout-tools#2478`](https://github.com/2AMLogic/klayout-tools/issues/2478)).
+That last sentence is history, not the present: #2478 closed on 2026-09-25 and
+`klt pex --measure-command` drives exactly this caller-side post-processing, so
+item 7 is now cited from a real `klt pex` envelope —
+[`layout/pex-report.json`](../../layout/pex-report.json), produced by
+[`pex-batch.sh`](pex-batch.sh) on the batch route (issue #187; see
+`manifests/README.md` → item 7). The extract-plus-swap path this section
+documents remains the netlist source: the runners simulate the committed
+fragments it produces, and the adapter's byte-identity gate refuses any
+extraction that drifts from them.
 
 The extracted decks need a longer per-deck ngspice budget than the 120 s
 default -- hence `SIM_NGSPICE_TIMEOUT_S=900` above. That is a wall-clock
@@ -924,6 +934,22 @@ All at the same DR-004 topology (netlist-identical, campaign commit
 
 ### Post-layout records (issue #57 -- T1 item 7, `--dut extracted`)
 
+> **Supersession notice (2026-11-23, issues
+> #179/#361).** Every post-layout record named in this section and the
+> campaign sections below -- the #57 anchors, the #64 corner set, the #80
+> `_mm` set, the #83/#89/#95 `noise-tran` set -- is **superseded** by the
+> re-qualification campaign's terminal records, minted on open_pdks
+> `f6eeac7` / ngspice-47 against the 0.35 µm layout extracted under
+> klt 0.8.0 / klayout 0.30.12. The tables and figures below stand as the
+> historical 0.42 µm / `c6d73a35` record and are not what any current row
+> cites; the current figures live in
+> [`../characterization-report.md`](../characterization-report.md) and the
+> per-corner old/new movement in
+> [`../../spec/decision-records/DR-012-requalification.md`](../../spec/decision-records/DR-012-requalification.md).
+> The terminal record for each superseded id is its `Supersedes` chain's
+> end, gated by `check-requalify-plan.py` in `sim/selftest.sh`
+> (`--print-terminals` prints the map).
+
 The first records against a DUT that is **not** `design/comparator.sch`'s
 netlist: the parasitics-annotated extraction of `layout/comparator.gds` (see
 [Post-layout (extracted) DUT](#post-layout-extracted-dut----dut-extracted)).
@@ -1331,10 +1357,11 @@ record is filed and DR-006's disposition is unchanged**.
 **Corner scaling on the regeneration-inclusive basis is now complete across
 all seven graded corners**: 0.0929 mV (`sf`/-40C), 0.1084 mV (`fs`/-40C),
 0.1382 mV (`ss`/-40C), 0.1448 mV (`tt`/27C), 0.1682 mV (`sf`/125C), 0.1956 mV
-(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is not simply "cold is low,
-hot is high": the two coldest skew corners (`sf`/-40C, `fs`/-40C) sit *below*
-`tt`/27C, while the two hottest skew corners (`sf`/125C, `ff`/125C) sit above
-it alongside `fs`/125C, which remains the worst corner on this row exactly as
+(`ff`/125C), 0.2540 mV (`fs`/125C). The ordering is monotone in temperature:
+all three -40C corners sit below `tt`/27C, which sits below all three 125C
+corners. Within each temperature the process corners order `sf` < `fs` < `ss`
+(cold) and `sf` < `ff` < `fs` (hot), so no single process corner is worst
+across temperature; `fs`/125C remains the worst corner on this row exactly as
 DR-006 Amendment 1 recorded.
 
 **Item 2 (full-N re-runs) and item 3 (the decision it needs first) are
@@ -1527,6 +1554,41 @@ the *whole* pick-off set, so the decision decks have no keys until statistic (a)
 is complete. A chunk that stops inside the pick-off stage simply never names
 them. This is not an extra constraint the chunking adds — it is the existing
 data dependency, made visible.
+
+### Resumable `offset` campaigns (issue #154)
+
+`offset` takes the same three flags as `noise-tran` (`--resume-dir`,
+`--chunk-decks`, `--chunk-seconds`) so a larger-sample extracted-DUT campaign
+(N=200 is `4 + 2 x 200 = 404` decks: gain calibration, mismatch draws and the
+same-seed mismatch-disabled negative control) can run as a sequence of
+identical sub-budget commands on the route in [Supported execution route (issue
+#127)](#supported-execution-route-issue-127), with `--resume-dir` carried
+between jobs as a declared shard output and `--jobs 1`.
+
+- Each deck's pick-off value **and raw ngspice log** are persisted atomically
+  (`tmp` + `os.replace`) as it completes. A truncated/unreadable deck file is
+  treated as missing and re-run; a leftover `.tmp` is inert.
+- `<resume-dir>/campaign.json` is the campaign key: DUT provenance and netlist
+  sha256, PDK and ngspice identities, corner, temperature, N, seed and seed
+  schedule (`seed + i` for draw *i* and its negative control), calibration
+  points and every pick-off/stimulus parameter. A differing key is refused
+  (`RuntimeError`) rather than mixed.
+- Exit status `3` means "incomplete, resumable, no record"; `--record` writes
+  a record only on the invocation that completes the last deck, and the
+  negative control is a campaign stage like any other, so a record cannot
+  exist without it.
+- Chunked and un-chunked runs yield identical results (pinned by
+  `TestOffsetResumableCampaign`).
+
+```sh
+# One chunk; resubmit this EXACT line until it exits 0.
+SIM_NGSPICE_TIMEOUT_S=900 python3 sim/comparator-decision/run.py offset \
+    --dut extracted --corner tt --temp 27 --n 200 --seed 1 --jobs 1 \
+    --resume-dir <scratch>/offset-tt-27 --chunk-seconds 2700 --record
+```
+
+The N=200 extracted-DUT measurements themselves are tracked separately; this
+subsection documents only the runner.
 
 ### Post-layout corner campaign (issue #64, `--dut extracted`)
 
@@ -1850,3 +1912,17 @@ The twelve-record list is exactly the set matched, at `72504f6`
 ```bash
 for f in $(git grep -l "PVT coverage remains open work" origin/main -- sim/comparator-decision/records | sed 's/^origin\/main://'); do git show origin/main:$f | grep -q "tt/27C" && basename $f; done
 ```
+
+## `power`: supply energy and average power (issue #134)
+
+`power.py` integrates the energy the supply delivers over complete, settled
+clock periods (`E = -VDD * integral(i(Vdd) dt)`; ngspice's `i(Vdd)` is
+negative when the supply delivers) and reports per-period energy, the
+reset/evaluate split, average power (`E / period`) and energy per decision
+(one decision per period). Defaults -- 10 ns period, 50% evaluate duty,
++10 mV differential input, 10 fF per output -- are recorded experiment
+conditions, not a ratified clock rate or load. The first 3 of 8 periods are
+excluded as settling; the run fails if retained-period energy does not
+converge within 1% or if reset + evaluate differs from the full period. It
+selects no spec bound and leaves the DRAFT/OPEN power row unratified.
+A multi-corner grid must go through the batch route above, not a local loop.

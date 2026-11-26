@@ -18,13 +18,38 @@ move.
 
 ## The current verdict, honestly
 
-**T1 is not awarded and no catalog tier is claimed. Three rows are open —
-item 5 "Full corner verification vs a ratified spec", item 6 "Statistical
-claims carry Monte Carlo evidence" and item 7 "Post-layout verification", each
-`unmet` with `reason: no_evidence`. Every other T1 item is `met`: item 1
-"Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
-item 8 "Characterization report", item 9 "Testbenches shipped", item 10 "Repo
-hygiene" and item 11 "Power delivery (structural)".**
+**T1 is not awarded and no catalog tier is claimed. Two rows are open:
+item 5 "Full corner verification vs a ratified spec" and item 6 "Statistical
+claims carry Monte Carlo evidence", each `unmet` with `reason:
+partial_coverage` over declared gaps. Every other T1 item is `met`: item
+1 "Design sources", item 2 "Layout", item 3 "DRC clean", item 4 "LVS clean",
+item 7 "Post-layout verification" (cited from `layout/pex-report.json`, a
+`klt pex --measure-command` envelope over the current `layout/comparator.gds`
+— #187; see the item 7 section below), item
+8 "Characterization report", item 9 "Testbenches shipped", item 10
+"Repo hygiene" and item 11 "Power delivery (structural)".**
+
+Items 5 and 6 moved off `no_evidence` in #188: both now carry real `klt`
+envelopes over the ratified rows — three `klt sim` reports across the seven
+graded PVT corners for item 5, two `klt yield` reports over a fresh N=200
+offset campaign for item 6 — with the manifest's `spec_rows` declaring each
+item's row set, every row either covered by a **derived** citation (the
+envelope's own `spec_row`-tagged, limits-bearing measurements) or a declared
+gap naming the issue that would close it. They stay `unmet` because a
+declared gap blocks the tier by design (operator ruling on klayout-tools
+#5858: a gap is pending work, never coverage). See
+[`sim/comparator-decision/klt-t1/README.md`](../sim/comparator-decision/klt-t1/README.md)
+for the row map, the campaign record and every stated convention difference
+(the item-5 decision-time measurement's 50 ps trigger convention; the
+interpolated pick-off behind item 6's 64.052698 V/V gain), and the gap
+rationales under its `gaps/` directory. The open gaps: **`power`** (item 5 —
+DRAFT/OPEN, no ratified bound exists to verify against),
+**`offset_sigma_extracted`** (item 6 — waiting on #412, the extracted-DUT
+N=200 campaign) and **`noise_ir_tran`** (item 6 — waiting on
+[klayout-tools#7762](https://github.com/2AMLogic/klayout-tools/issues/7762);
+the transient-noise MC has no `klt sim` expression and its per-draw values
+are not committed, so no `klt yield` report can be derived without inventing
+numbers).
 
 The count of record is the report's own `t1_met_count`/`t1_item_count`; this
 file states the per-item verdicts but deliberately does not restate the tally
@@ -65,12 +90,12 @@ byte appended to `LICENSE`): `--check` went `match` (exit 0) to `drifted`
 is cited from `evidence/item1.json`, the envelope `klt signoff --attest 1
 --inventory attest/item1.json -o evidence/item1.json` produces (4/4 checks,
 klt 0.8.0); item 9, "Testbenches shipped", from `evidence/item9.json`, produced
-the same way with `--attest 9 --inventory attest/item9.json` (32/32 checks,
+the same way with `--attest 9 --inventory attest/item9.json` (33/33 checks,
 klt 0.8.0). The manifest cites each with its inventory's hash
-(`sha256:5802a001…` and `sha256:fb6b6f2e…`), and CI re-runs both commands with
+(`sha256:5802a001…` and `sha256:c1ded433…`), and CI re-runs both commands with
 `--check`, which exits 3 (`drifted`) when an inventoried file changes. Item 1's
 envelope hashes `design/comparator.sch`, `design/netlist.sh` and
-`sim/comparator-decision/testbench/comparator_core.spice`; item 9's hashes 29
+`sim/comparator-decision/testbench/comparator_core.spice`; item 9's hashes 30
 `sim/**` paths — so **re-attest in the same change that edits any of them**.
 
 Unlike item 10's, these two envelopes are not pure file hashing: item 1 carries
@@ -129,13 +154,13 @@ default-scope match alone is not what is cited. Standing disclosures: resistor
 engine's (KLayout), not a cross-check. Full reasoning in
 [`layout/README.md`](../layout/README.md) → "Why item 4 is cited".
 
-**Item 7 ("Post-layout verification") is the second row with real evidence
-that cannot be cited — and here the blocker is the grader's own input
-contract, not a defect in the evidence** (issue #57). Post-layout
-re-simulation has run: `layout/extract-parasitics.json` and
+**Item 7 ("Post-layout verification") spent this repo's first year as the row
+whose blocker was the grader's own input contract, not a defect in the
+evidence** (issue #57). Post-layout re-simulation has run throughout:
+`layout/extract-parasitics.json` and
 `layout/comparator.extract.spice` are a committed `klt extract --parasitics`
-envelope and netlist over `layout/comparator.gds`, and five append-only
-records under `sim/comparator-decision/records/` re-measure four spec rows
+envelope and netlist over `layout/comparator.gds`, and the append-only
+records under `sim/comparator-decision/records/` re-measure the spec rows
 against it with the schematic-vs-extracted delta stated per row
 (`sim/comparator-decision/README.md` → "Post-layout records").
 
@@ -153,14 +178,70 @@ and upstream **has since closed it as completed**: `klt pex` grew a
 `--measure-command`, so caller-side post-processing no longer puts the envelope
 out of reach.
 
-What blocks the row today is this repo's own work, in order: **#125**
-re-measures the post-layout campaigns at the 0.35 µm geometry (the committed
-records predate the re-draw and are stale until re-measured), and then **#187**
-re-cites item 7 through `klt pex --measure-command` against those fresh
-numbers. Both are open and `loom:blocked`, and #187 is the increment that
-carries the re-citation — not this file. Until it lands the row stays
-`unmet`/`no_evidence` rather than being decorated with a citation of the wrong
-kind.
+What blocked the row was this repo's own work, in order: **#125**
+re-measured the post-layout campaigns at the 0.35 µm geometry (records
+`20261122-*-a22c816`, PR #371), and then **#187** re-cited item 7 through
+`klt pex --measure-command` against those fresh numbers. Both have landed.
+
+**Item 7 is cited** from [`layout/pex-report.json`](../layout/pex-report.json):
+one `klt pex` envelope over the current `layout/comparator.gds` (input
+content-hash `sha256:d626061f…`, the same GDS pin items 3/4/11 cite), produced
+with `--measure-command scripts/pex-measure-command.py --corners all` and
+`--reference-netlist sim/comparator-decision/testbench/comparator_core.spice`,
+at the repo's toolchain pin (klt 0.8.0 / klayout 0.30.12, open_pdks `f6eeac7`).
+It was run on the batch route (`sim/comparator-decision/pex-batch.sh`, one
+repo-script job on the `sim` image profile with the pin pip-installed by the
+submitter — the #127 operator ruling; a dispatch worker is not a supported
+execution host). `status: "pass"` with 14 `delta[]` rows over the seven graded
+corners: `decision_time_50mV_ns` and `kickback_loaded_peak_mV` per corner,
+schematic vs extracted, every row `pass` (the honest post-layout degradation is
+carried in the deltas themselves — decision time +38 % to +48 % and kickback
++5 % to +35 % corner-dependent, the lumped-RC loading the extracted leg adds).
+The extraction inside the run re-hashes byte-identical to the committed
+`layout/comparator.extract.spice` (`extraction.netlist_sha256`), which is also
+the adapter's own gate: it refuses (exit 3) any extracted netlist that differs,
+and a schematic netlist that differs from the committed
+`sim/comparator-decision/testbench/comparator_core.spice`. The adapter
+(`scripts/pex-measure-command.py`, #409) wraps `sim/comparator-decision`'s
+existing `regen` and `kickback` runners per graded corner — it measures nothing
+of its own — and is covered by hermetic tests
+(`sim/tests/test_pex_measure_command.py`).
+
+**Both legs reproduce #125's committed records exactly** — the tolerance
+statement the re-citation owes: worst absolute deviation across all 28
+leg·corner·row values is 5e-16 ns (decision time; floating-point equality on
+the runners' 25 ps waveform grid) and 5e-5 mV (kickback; the records' own
+4-decimal print precision) against the extracted records
+`20261122-1236{11,12,13,14,15,16,17}-a22c816` (regen) and
+`20261122-123{556,559,600,601,602,603,604}-a22c816` (kickback), and the
+schematic records `20261121-033724`/`-033832`/`-033850`/`-033907`/`-033940`/
+`-033955`/`-034048` (regen) and `20261120-224448-059ee87` (kickback tt/27) +
+`20261121-033648`/`-034028`/`-034032`/`-034044`/`-034103`/`-034500`
+(kickback, the other six corners). The comparison uses this record set
+(`a22c816` extracted, `4d73da9`/`059ee87` schematic) as committed at the
+pinned open_pdks `f6eeac7` state — the same state
+`layout/pex-report.json`'s own provenance records, and the state #179's
+re-qualification is regenerating; no re-derived record set was substituted.
+
+**`body_bias` disclosure (checklist-enforced, claimant-stated).** The
+envelope's `body_bias` block reads `status: "biased"`,
+`unbiased_device_count: 0`, `unbiased_nets: []` — no device body sits on an
+anonymous deck-synthesized net, so the post-layout numbers this row is claimed
+from were measured on a **properly biased** extracted netlist. `klt signoff`
+surfaces the block verbatim on the citation (`citation.body_bias`) and does
+not grade on it; this paragraph is the claimant's read of the field.
+
+Two disclosures the envelope itself carries, both status-neutral by contract
+(`docs/cli/pex.md`): `model_mismatch` names the reference-vs-extracted device
+naming divergence (`res_high_po_0p35` schematic wrapper vs the extractor's
+parametrised base device, plus the split-finger nfet count — the #123/#125
+re-draw representation, 16 drawn vs 18 extracted device cards), and
+`measurement.mode: "command"` records that both legs were measured by the
+caller-supplied adapter, not by `klt sim` testbenches. Offset sigma and
+`noise-tran` are **not** rows of this envelope (Monte Carlo / chunked
+campaigns that cannot fit one `--measure-timeout-s` invocation); they remain
+item-6 gaps (`offset_sigma_extracted` → #412, `noise_ir_tran` →
+klayout-tools#7762), unchanged by this citation.
 
 **Item 11 ("Power delivery (structural)")** is cited as the compound entry
 `layout/erc-report.json` + `layout/lvs-report.json`. The ERC half is clean:
@@ -181,17 +262,35 @@ over-claiming; the limit is stated, not removed. Item 11 is the structural
 supply question only (IR drop/EM are `klt power`, outside it). See
 [`layout/README.md`](../layout/README.md) → "Why item 11 is cited".
 
-The three open items — 5, 6 and 7 — render `unmet` with
-`reason: no_evidence`: apart from item 7's post-layout envelope above (awaiting
-#125 then #187, as described there), no PEX citation exists, and this repo's
-`sim/` harness records evidence as append-only Markdown records, not
-`klt sim`/`klt yield` JSON envelopes, so nothing gradeable can be cited
-honestly for items 5 and 6 yet. Making those two gradeable — `klt sim` and
-`klt yield` envelopes over the ratified spec rows — is **#188** (open,
-`loom:blocked`). Item 8 is the one exception to that last clause, and
+**Items 5 and 6 — the #188 evidence model.** Both items are cited through
+the `spec_rows` multi-citation form (klayout-tools #2959/#2908, carried by
+the pinned klt 0.8.0): the manifest declares each item's row set, each
+citation names the rows it covers and pins its artifact by content hash, and
+the grader derives coverage from the envelope's own `spec_row`-tagged,
+`limits`-bearing measurements (`row_sources: "derived"`, not the manifest's
+say-so). The envelopes live in
+[`sim/comparator-decision/klt-t1/`](../sim/comparator-decision/klt-t1/README.md):
+`report-regen.json` / `report-kickback.json` / `report-noise.json` are
+`klt sim` runs over the seven graded PVT corners with the ratified target
+bounds as graded limits, and `yield/report-{tt_mm,ss_mm}.json` are `klt
+yield` reports over a fresh N=200 offset Monte Carlo run as `klt sim`
+`monte_carlo` requests (seed 1, sequential per-draw seeds — the committed
+campaigns' own convention — plus a 4×-sigma known-bad leg that grades
+`detected`, and a same-seed mismatch-off leg whose stdev is exactly 0). The
+old premise — "the `sim/` harness records evidence as append-only Markdown
+records, not `klt` JSON envelopes, so nothing gradeable can be cited" — is
+what #188 retired, by making the envelope-producing runs themselves klt-native.
+Both items stay `unmet`/`partial_coverage` because of their declared gaps
+(`power`; `offset_sigma_extracted` → #412; `noise_ir_tran` →
+klayout-tools#7762): a gap blocks the tier by design, and each gap names
+the issue that would close it.
+
+Item 7 renders `met` from the `pex`-kind envelope above (#187); items 5 and 6
+are the open rows. Item 8 is the one exception to the "no hand-assembled
+records" clause, and
 only because the checklist makes it one: it is the sole T1 item whose grading
 table accepts a hand-assembled record through the opt-in `generic` envelope
-(see its section below). Those `unmet` rows are the correct result per issue
+(see its section below). The open rows are the correct result per issue
 #31's own "An all-`unmet` manifest is a correct result" section: they are the
 machine-readable statement of the gap, and they must not be decorated with
 citations that do not actually support them (items 1, 2, 9 and 10 were
@@ -205,8 +304,10 @@ Items 1 (schematic `design/comparator.sch` + `design/netlist.sh`) and 9
 (`sim/comparator-decision` testbenches) are the worked example — their content
 was committed long before either row graded `met`, and both stayed
 `unmet`/`no_evidence` until the `klt signoff --attest` envelopes described above
-actually backed them. Items 5 and 6 are where that distinction still bites
-today: the `sim/` records exist, but no gradeable envelope cites them (#188).
+actually backed them. Items 5 and 6 were the same story until #188: the
+campaigns and records existed all along, and the rows stayed
+`unmet`/`no_evidence` until gradeable `klt sim`/`klt yield` envelopes actually
+cited them.
 The historical per-item prose context lives in tracker issue #3's edit history
 and `## Verified corrections`.
 
@@ -286,7 +387,7 @@ because citing it would tell a fleet integrator something untrue. Here the
 citation *is* made, because the thing it asserts — "an aggregated, current
 characterization artifact exists" — is exactly what item 8 asks for and is
 exactly true. What must not happen is the two being conflated: a `met` item 8
-next to an `unmet` item 7 does not mean the characterization is signed off, it
+next to an open item 5/6 does not mean the characterization is signed off, it
 means the aggregation exists.
 
 ### How freshness is enforced
@@ -359,6 +460,10 @@ Regenerate whenever:
 
 - a citation is added, removed, or its pinned artifact changes (the
   committed record and the manifest must tell the same story),
+- an item-5/6 campaign is re-run: the new report moves its citation's pin —
+  refresh the manifest with `python3 scripts/t1-items56-envelope.py --pins`
+  (and `--check`, which the item-10 inventory runs in CI, verifies the pins
+  against the artifacts) in the same change,
 - the klt pin is bumped, or
 - the vendored checklist doc is re-pinned to a newer upstream revision.
 
@@ -375,7 +480,13 @@ envelope is refused.)
   that changed, vanished, or was replaced — CI goes red instead of
   grading yesterday's evidence); on any regression vs the committed
   record; on a met citation whose re-hashed input disagreed
-  (`input_verified: false`);
+  (`input_verified: false`). One scoped exception (#188): a cited item
+  whose fresh verdict is the *recorded* `spec_rows` `partial_coverage`
+  state — every citation inside it `met`, no uncovered or failing row, and
+  the committed report already showing the same verdict — passes, because
+  a declared gap keeps such an item unmet by design. Every deviation from
+  that exact state (a rotting citation, an uncovered row, a drift away
+  from a previously-`met` record) still fails;
 - **warns** (loudly, never passes silently) on a null `input_verified`
   with a recorded hash, a checklist-count move, or a new pass not yet
   reflected in the committed record;
@@ -465,8 +576,12 @@ back, 2AMLogic/2am#7309); a post-merge auto-repair job (needs
 `permissions: contents: write` on this currently read-only workflow — CI
 pushing evidence to `main`); and accepting the recurrence. Until the queue is
 live, the response to a stale envelope on `main` stays the one-command item-9
-re-mint: `uvx --from klayout-tools==0.8.0 klt signoff --attest 9 --inventory
-attest/item9.json -o evidence/item9.json`.
+re-mint: `SELFTEST_ITEM9_REENTRY=1 uvx --from klayout-tools==0.8.0 klt signoff
+--attest 9 --inventory attest/item9.json -o evidence/item9.json`. The
+`SELFTEST_ITEM9_REENTRY=1` prefix is required because item 9's inventory
+declares `cold_start = "bash sim/selftest.sh --quick"`, and the nested `--quick`
+cold_start would otherwise gate on the very stale envelope being re-minted —
+see `sim/selftest.sh:95-104`.
 
 ## The integrator-view gate (issue #36)
 

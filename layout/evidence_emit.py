@@ -735,10 +735,14 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict,
        ``erc_coverage.checked``, so "the check ran" is read off the envelope
        rather than inferred from the absence of a finding;
     4. the envelope's own ``provenance.spec.content_hash`` must equal the
-       sha256 of the committed spec file.  ``klt signoff``'s item-11 path
-       re-reads that spec document from disk to find the declared supply nets
-       and does **not** verify it against this hash (klt 0.6.0), so an edited
-       spec would otherwise silently change what a citation is graded on.
+       sha256 of the spec file this run just wrote: the envelope and the
+       spec are one run's two halves, and a mismatch means ``klt erc``
+       graded a different document than the one sitting beside the envelope.
+       (Through klt 0.6.0 nothing upstream caught such a split -- ``klt
+       signoff``'s item-11 path re-read the spec without verifying it
+       against this hash, klayout-tools#2496.  At the 0.8.0 pin item 11
+       checks the spec digest and grades drift ``stale_evidence``; the
+       guard stands on the generation-time invariant either way.)
 
     ``out_dir`` redirects the two artifact *writes* (the ``klt`` runs stay
     repo-rooted against the committed GDS) -- the ``gen_comparator.py
@@ -810,9 +814,10 @@ def emit_erc_evidence(klt: str, repo_root: Path, bbox: dict,
         "content_hash")
     if recorded != spec_hash:
         raise RuntimeError(
-            f"the committed spec hashes to {spec_hash} but the envelope records "
-            f"{recorded} -- klt signoff re-reads layout/erc-spec.json without "
-            "checking that hash, so the two must not be allowed to diverge")
+            f"the spec this run wrote hashes to {spec_hash} but the envelope "
+            f"records {recorded} -- klt erc graded a different document than "
+            "the one on disk, so the run's two halves must not be committed "
+            "as a pair")
     return envelope
 
 
