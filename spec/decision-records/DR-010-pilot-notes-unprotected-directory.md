@@ -1,6 +1,6 @@
 # DR-010: Store pilot notes in `sim/<experiment>/pilots/`
 
-- **Status**: ratified on merge after the EE and market key reviews and operator approval. Until that merge, this record is proposed.
+- **Status**: proposed
 - **Date**: 2026-11-17 (operator ruling on the directory convention)
 - **Decided by**: rjwalters chose option (a) on issue #303 and required separate ratification for the protected-path removals. Issue #326 specifies how the gate applies that decision.
 
@@ -18,7 +18,7 @@ Reserve `sim/<experiment>/records/` for graded evidence. Write new pilot
 notes under `sim/<experiment>/pilots/`, where authors can correct commentary
 in place.
 
-This decision authorizes removal of the following seven original paths at
+Ratification would authorize removal of the following seven original paths at
 the blob versions in `c5b25de973cec5b421647e243e88735f68bd7381`.
 Move these six notes with `git mv` to `sim/comparator-decision/pilots/`,
 retain their filenames, and update references to their old locations.
@@ -44,13 +44,18 @@ noise note, then remove the redundant erratum.
 
 ## Spec lines affected
 
-The “Directory / naming convention” and “Append-only rule” sections of
-`sim/README.md` describe the new location and the scope of `records/`.
+PR #325 will update the “Directory / naming convention” and “Append-only rule”
+sections of `sim/README.md` to describe the new location and the scope of `records/`.
 The change concerns document storage and the wording of the comparison in
 issue #286. The measured values and target-spec rows retain their existing
 dispositions.
 
 ## Consequences
+
+After the independent EE and market key reviews, the operator can authorize
+changing the Status field to `ratified`. DR-010 is ratified on merge only
+with the operator’s approval of the reviewed revision bearing that status.
+If the proposed text lands on `main`, the gate still rejects all seven waivers.
 
 PR #325 can use this decision once the ratified record is in its comparison
 base. Its entry in `manifests/append-only-waivers.json` must cite DR-010,
